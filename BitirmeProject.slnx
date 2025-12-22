@@ -1,0 +1,36 @@
+<Solution>
+  <Folder Name="/docs/" />
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/frontend/" />
+  <Folder Name="/src/gateway/" />
+  <Folder Name="/src/services/" />
+  <Folder Name="/src/services/ai/" />
+  <Folder Name="/src/services/experimental/" />
+  <Folder Name="/src/services/experimental/codehealth/" />
+  <Folder Name="/src/services/experimental/compliance/" />
+  <Folder Name="/src/services/identity/">
+    <Project Path="src/services/identity/IdentityService.Api/IdentityService.Api.csproj" />
+    <Project Path="src/services/identity/IdentityService.Application/IdentityService.Application.csproj" Id="3aff35d4-4340-4f23-91de-a3f7982ec654" />
+    <Project Path="src/services/identity/IdentityService.Domain/IdentityService.Domain.csproj" />
+    <Project Path="src/services/identity/IdentityService.Infrastructure/IdentityService.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/services/issues/" />
+  <Folder Name="/src/services/notifications/" />
+  <Folder Name="/src/services/projects/" />
+  <Folder Name="/src/services/sprints/" />
+  <Folder Name="/src/shared/" />
+  <Folder Name="/src/shared/abstractions/">
+    <Project Path="src/shared/abstractions/Shared.Abstractions/Shared.Abstractions.csproj" Id="b70afb77-3638-4d8d-97f1-9589ec6d9310" />
+  </Folder>
+  <Folder Name="/src/shared/common/">
+    <Project Path="src/shared/common/Shared.Common/Shared.Common.csproj" Id="82893440-98e5-421d-8ce3-5777f13186ac" />
+  </Folder>
+  <Folder Name="/src/shared/contracts/">
+    <Project Path="src/shared/contracts/Shared.Contracts/Shared.Contracts.csproj" Id="285f65fb-83d1-4112-849b-a227d01a42b6" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tools/" />
+</Solution>

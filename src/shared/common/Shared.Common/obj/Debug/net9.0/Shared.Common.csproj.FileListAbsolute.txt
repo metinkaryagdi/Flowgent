@@ -1,0 +1,11 @@
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\bin\Debug\net9.0\Shared.Common.deps.json
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\bin\Debug\net9.0\Shared.Common.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\bin\Debug\net9.0\Shared.Common.pdb
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.AssemblyInfoInputs.cache
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.AssemblyInfo.cs
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.csproj.CoreCompileInputs.cache
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\refint\Shared.Common.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.pdb
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\ref\Shared.Common.dll

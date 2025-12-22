@@ -1,0 +1,156 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.infrastructure\\repositories\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|solutionrelative:src\\services\\identity\\identityservice.infrastructure\\repositories\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.infrastructure\\security\\passwordhasheradapter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|solutionrelative:src\\services\\identity\\identityservice.infrastructure\\security\\passwordhasheradapter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.infrastructure\\persistence\\configurations\\userconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|solutionrelative:src\\services\\identity\\identityservice.infrastructure\\persistence\\configurations\\userconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.infrastructure\\persistence\\identitydbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|solutionrelative:src\\services\\identity\\identityservice.infrastructure\\persistence\\identitydbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.infrastructure\\dependencyinjection\\servicecollectionextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6AF14686-3B4A-C547-4BBB-58C3DBB40D9A}|src\\services\\identity\\IdentityService.Infrastructure\\IdentityService.Infrastructure.csproj|solutionrelative:src\\services\\identity\\identityservice.infrastructure\\dependencyinjection\\servicecollectionextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{31E0DF54-F42C-006E-8FE3-231D2FF53624}|src\\services\\identity\\IdentityService.Api\\IdentityService.Api.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.api\\controllers\\userscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{31E0DF54-F42C-006E-8FE3-231D2FF53624}|src\\services\\identity\\IdentityService.Api\\IdentityService.Api.csproj|solutionrelative:src\\services\\identity\\identityservice.api\\controllers\\userscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AFF35D4-4340-4F23-91DE-A3F7982EC654}|src\\services\\identity\\IdentityService.Application\\IdentityService.Application.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.application\\features\\users\\queries\\getuserbyid\\getuserbyidqueryhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AFF35D4-4340-4F23-91DE-A3F7982EC654}|src\\services\\identity\\IdentityService.Application\\IdentityService.Application.csproj|solutionrelative:src\\services\\identity\\identityservice.application\\features\\users\\queries\\getuserbyid\\getuserbyidqueryhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AFF35D4-4340-4F23-91DE-A3F7982EC654}|src\\services\\identity\\IdentityService.Application\\IdentityService.Application.csproj|c:\\users\\metin\\desktop\\yaz\u0131l\u0131m dosyalar\u0131\\projeler\\bitirme_proje\\bitirmeproject\\src\\services\\identity\\identityservice.application\\features\\users\\queries\\getuserbyid\\getuserbyidquery.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AFF35D4-4340-4F23-91DE-A3F7982EC654}|src\\services\\identity\\IdentityService.Application\\IdentityService.Application.csproj|solutionrelative:src\\services\\identity\\identityservice.application\\features\\users\\queries\\getuserbyid\\getuserbyidquery.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "UserRepository.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Repositories\\UserRepository.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Infrastructure\\Repositories\\UserRepository.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Repositories\\UserRepository.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Infrastructure\\Repositories\\UserRepository.cs",
+              "ViewState": "AgIAADMAAAAAAAAAAAAowEwAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:14:45.72Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PasswordHasherAdapter.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Security\\PasswordHasherAdapter.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Infrastructure\\Security\\PasswordHasherAdapter.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Security\\PasswordHasherAdapter.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Infrastructure\\Security\\PasswordHasherAdapter.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:14:37.604Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "UserConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\Configurations\\UserConfiguration.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\Configurations\\UserConfiguration.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\Configurations\\UserConfiguration.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\Configurations\\UserConfiguration.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAQwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:14:32.346Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "IdentityDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\IdentityDbContext.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\IdentityDbContext.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\IdentityDbContext.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Infrastructure\\Persistence\\IdentityDbContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:13:18.295Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ServiceCollectionExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\DependencyInjection\\ServiceCollectionExtensions.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Infrastructure\\DependencyInjection\\ServiceCollectionExtensions.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Infrastructure\\DependencyInjection\\ServiceCollectionExtensions.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Infrastructure\\DependencyInjection\\ServiceCollectionExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:13:11.614Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "GetUserByIdQueryHandler.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQueryHandler.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQueryHandler.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQueryHandler.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQueryHandler.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:06:57.628Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "GetUserByIdQuery.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQuery.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQuery.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQuery.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Application\\Features\\Users\\Queries\\GetUserById\\GetUserByIdQuery.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:06:53.499Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "UsersController.cs",
+              "DocumentMoniker": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Api\\Controllers\\UsersController.cs",
+              "RelativeDocumentMoniker": "src\\services\\identity\\IdentityService.Api\\Controllers\\UsersController.cs",
+              "ToolTip": "C:\\Users\\Metin\\Desktop\\Yaz\u0131l\u0131m dosyalar\u0131\\Projeler\\Bitirme_Proje\\BitirmeProject\\src\\services\\identity\\IdentityService.Api\\Controllers\\UsersController.cs",
+              "RelativeToolTip": "src\\services\\identity\\IdentityService.Api\\Controllers\\UsersController.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-17T14:05:35.799Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

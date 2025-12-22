@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  identity-db:
+    image: postgres:16-alpine
+    container_name: identity-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: identitydb
+      POSTGRES_USER: identity_user
+      POSTGRES_PASSWORD: identity_pass
+    ports:
+      - "5433:5432"   # host:container
+    volumes:
+      - identity-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+
+  identity-api:
+    build:
+      context: .
+      dockerfile: src/services/identity/IdentityService.Api/Dockerfile
+    container_name: identity-api
+    restart: unless-stopped
+    depends_on:
+      - identity-db
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__IdentityDatabase: "Host=identity-db;Port=5432;Database=identitydb;Username=identity_user;Password=identity_pass"
+    ports:
+      - "5001:8080"
+    networks:
+      - bitirme-net
+
+networks:
+  bitirme-net:
+
+volumes:
+  identity-db-data:
