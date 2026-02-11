@@ -9,3 +9,8 @@ C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProjec
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\refint\Shared.Common.dll
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.pdb
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\ref\Shared.Common.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.csproj.AssemblyReference.cache
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.Common.sourcelink.json
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\bin\Debug\net9.0\Shared.Abstractions.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\bin\Debug\net9.0\Shared.Abstractions.pdb
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\obj\Debug\net9.0\Shared.C.898E10A9.Up2Date

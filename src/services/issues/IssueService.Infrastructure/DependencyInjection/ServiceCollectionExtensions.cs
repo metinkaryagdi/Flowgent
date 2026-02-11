@@ -1,0 +1,28 @@
+using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Infrastructure.Persistence;
+using BitirmeProject.IssueService.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Shared.Abstractions.Messaging;
+
+namespace BitirmeProject.IssueService.Infrastructure.DependencyInjection;
+
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddIssueInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("IssueDatabase");
+
+        services.AddDbContext<IssueDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString);
+        });
+
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IssueDbContext>());
+        services.AddScoped<IIssueRepository, IssueRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+
+        return services;
+    }
+}

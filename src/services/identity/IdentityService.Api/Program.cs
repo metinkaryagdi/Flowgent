@@ -1,3 +1,6 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using BitirmeProject.IdentityService.Infrastructure.DependencyInjection;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 
@@ -7,7 +10,28 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// Uygulama & altyap�
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secret = builder.Configuration["Jwt:Secret"] ?? "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters";
+        var issuer = builder.Configuration["Jwt:Issuer"] ?? "BitirmeProject.IdentityService";
+        var audience = builder.Configuration["Jwt:Audience"] ?? "BitirmeProject.Clients";
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// Uygulama & altyapÄ±
 builder.Services.AddIdentityApplication();
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 
@@ -21,6 +45,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

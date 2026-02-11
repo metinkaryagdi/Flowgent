@@ -5,7 +5,9 @@
   </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/frontend/" />
-  <Folder Name="/src/gateway/" />
+  <Folder Name="/src/gateway/">
+    <Project Path="src/gateway/ApiGateway/ApiGateway.csproj" />
+  </Folder>
   <Folder Name="/src/services/" />
   <Folder Name="/src/services/ai/" />
   <Folder Name="/src/services/experimental/" />
@@ -17,9 +19,19 @@
     <Project Path="src/services/identity/IdentityService.Domain/IdentityService.Domain.csproj" />
     <Project Path="src/services/identity/IdentityService.Infrastructure/IdentityService.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/services/issues/" />
+    <Folder Name="/src/services/issues/">
+    <Project Path="src/services/issues/IssueService.Api/IssueService.Api.csproj" />
+    <Project Path="src/services/issues/IssueService.Application/IssueService.Application.csproj" />
+    <Project Path="src/services/issues/IssueService.Domain/IssueService.Domain.csproj" />
+    <Project Path="src/services/issues/IssueService.Infrastructure/IssueService.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/services/notifications/" />
-  <Folder Name="/src/services/projects/" />
+    <Folder Name="/src/services/projects/">
+    <Project Path="src/services/projects/ProjectService.Api/ProjectService.Api.csproj" />
+    <Project Path="src/services/projects/ProjectService.Application/ProjectService.Application.csproj" />
+    <Project Path="src/services/projects/ProjectService.Domain/ProjectService.Domain.csproj" />
+    <Project Path="src/services/projects/ProjectService.Infrastructure/ProjectService.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/services/sprints/" />
   <Folder Name="/src/shared/" />
   <Folder Name="/src/shared/abstractions/">

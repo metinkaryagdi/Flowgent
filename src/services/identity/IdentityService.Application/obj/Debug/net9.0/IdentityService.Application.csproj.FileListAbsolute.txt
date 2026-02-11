@@ -13,3 +13,4 @@ C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProjec
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Application\obj\Debug\net9.0\refint\IdentityService.Application.dll
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Application\obj\Debug\net9.0\IdentityService.Application.pdb
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Application\obj\Debug\net9.0\ref\IdentityService.Application.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Application\obj\Debug\net9.0\IdentityService.Application.sourcelink.json

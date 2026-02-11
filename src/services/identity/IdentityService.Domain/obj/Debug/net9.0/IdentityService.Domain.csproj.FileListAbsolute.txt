@@ -9,3 +9,4 @@ C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProjec
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Domain\obj\Debug\net9.0\refint\IdentityService.Domain.dll
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Domain\obj\Debug\net9.0\IdentityService.Domain.pdb
 C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Domain\obj\Debug\net9.0\ref\IdentityService.Domain.dll
+C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\services\identity\IdentityService.Domain\obj\Debug\net9.0\IdentityService.Domain.sourcelink.json

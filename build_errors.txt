@@ -1,0 +1,1 @@
+   1:7>C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\Options\RabbitMQOptions.cs(16,38): error CS8180: { or ; or => beklenen [C:\Users\Metin\Desktop\Yazılım dosyaları\Projeler\Bitirme_Proje\BitirmeProject\src\shared\common\Shared.Common\Shared.Common.csproj]

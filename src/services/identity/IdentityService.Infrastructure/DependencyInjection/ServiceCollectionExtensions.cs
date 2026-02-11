@@ -1,4 +1,4 @@
-﻿using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using BitirmeProject.IdentityService.Infrastructure.Repositories;
 using BitirmeProject.IdentityService.Infrastructure.Security;
@@ -22,7 +22,7 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(connectionString);
         });
 
-        // IUnitOfWork → DbContext
+        // IUnitOfWork â†’ DbContext
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IdentityDbContext>());
 
         // Repositories
@@ -31,6 +31,8 @@ public static class ServiceCollectionExtensions
 
         // Password hasher
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
+        services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }

@@ -1,0 +1,68 @@
+﻿### Register
+POST http://localhost:5000/api/v1/identity/register
+Content-Type: application/json
+
+{
+  "userName": "demo.user",
+  "email": "demo.user@example.com",
+  "password": "Demo123!"
+}
+
+### Login
+POST http://localhost:5000/api/v1/identity/login
+Content-Type: application/json
+
+{
+  "userNameOrEmail": "demo.user",
+  "password": "Demo123!"
+}
+
+### Create Project (set {{token}} from login response)
+POST http://localhost:5000/api/v1/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Demo Project",
+  "key": "DEMO",
+  "ownerUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Create Issue
+POST http://localhost:5000/api/v1/issues
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "title": "First issue",
+  "description": "Issue description",
+  "priority": 1,
+  "createdByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Assign Issue
+POST http://localhost:5000/api/v1/issues/{{issueId}}/assign
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "issueId": "{{issueId}}",
+  "assigneeUserId": "{{userId}}",
+  "assignedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Change Issue Status
+POST http://localhost:5000/api/v1/issues/{{issueId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "issueId": "{{issueId}}",
+  "newStatus": 1,
+  "changedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}

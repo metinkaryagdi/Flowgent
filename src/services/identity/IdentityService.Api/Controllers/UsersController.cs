@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BitirmeProject.IdentityService.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/identity/users")]
 public class UsersController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -55,3 +55,5 @@ public class UsersController : ControllerBase
     }
 
 }
+
+

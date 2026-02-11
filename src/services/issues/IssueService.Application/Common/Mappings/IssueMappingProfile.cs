@@ -1,0 +1,13 @@
+using AutoMapper;
+using BitirmeProject.IssueService.Application.DTOs;
+using BitirmeProject.IssueService.Domain.Entities;
+
+namespace BitirmeProject.IssueService.Application.Common.Mappings;
+
+public sealed class IssueMappingProfile : Profile
+{
+    public IssueMappingProfile()
+    {
+        CreateMap<Issue, IssueDto>();
+    }
+}

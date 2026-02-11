@@ -1,6 +1,66 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
+  # ============================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================
+  
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+    ports:
+      - "5341:80"      # Seq UI
+      - "5342:5341"    # Ingestion
+    volumes:
+      - seq-data:/data
+    networks:
+      - bitirme-net
+
+  # ============================================
+  # DATABASE SERVICES
+  # ============================================
+
   identity-db:
     image: postgres:16-alpine
     container_name: identity-db
@@ -10,11 +70,60 @@ services:
       POSTGRES_USER: identity_user
       POSTGRES_PASSWORD: identity_pass
     ports:
-      - "5433:5432"   # host:container
+      - "5433:5432"
     volumes:
       - identity-db-data:/var/lib/postgresql/data
     networks:
       - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U identity_user -d identitydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  project-db:
+    image: postgres:16-alpine
+    container_name: project-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: projectdb
+      POSTGRES_USER: project_user
+      POSTGRES_PASSWORD: project_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - project-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project_user -d projectdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  issue-db:
+    image: postgres:16-alpine
+    container_name: issue-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: issuedb
+      POSTGRES_USER: issue_user
+      POSTGRES_PASSWORD: issue_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - issue-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U issue_user -d issuedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # MICROSERVICES
+  # ============================================
 
   identity-api:
     build:
@@ -23,17 +132,135 @@ services:
     container_name: identity-api
     restart: unless-stopped
     depends_on:
-      - identity-db
+      identity-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      # Database
       ConnectionStrings__IdentityDatabase: "Host=identity-db;Port=5432;Database=identitydb;Username=identity_user;Password=identity_pass"
+      # RabbitMQ
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      # Redis
+      Redis__Configuration: "redis:6379,password=redis123"
+      # Seq
+      Seq__ServerUrl: "http://seq:5341"
+      # JWT
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+      Jwt__ExpirationMinutes: "60"
     ports:
       - "5001:8080"
     networks:
       - bitirme-net
 
+  project-api:
+    build:
+      context: .
+      dockerfile: src/services/projects/ProjectService.Api/Dockerfile
+    container_name: project-api
+    restart: unless-stopped
+    depends_on:
+      project-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__ProjectDatabase: "Host=project-db;Port=5432;Database=projectdb;Username=project_user;Password=project_pass"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+      Jwt__ExpirationMinutes: "60"
+    ports:
+      - "5002:8080"
+    networks:
+      - bitirme-net
+
+  issue-api:
+    build:
+      context: .
+      dockerfile: src/services/issues/IssueService.Api/Dockerfile
+    container_name: issue-api
+    restart: unless-stopped
+    depends_on:
+      issue-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__IssueDatabase: "Host=issue-db;Port=5432;Database=issuedb;Username=issue_user;Password=issue_pass"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+      Jwt__ExpirationMinutes: "60"
+    ports:
+      - "5003:8080"
+    networks:
+      - bitirme-net
+
+  gateway-api:
+    build:
+      context: .
+      dockerfile: src/gateway/ApiGateway/Dockerfile
+    container_name: gateway-api
+    restart: unless-stopped
+    depends_on:
+      identity-api:
+        condition: service_started
+      project-api:
+        condition: service_started
+      issue-api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+    ports:
+      - "5000:8080"
+    networks:
+      - bitirme-net
+
+# ============================================
+# NETWORKS
+# ============================================
+
 networks:
   bitirme-net:
+    driver: bridge
+
+# ============================================
+# VOLUMES
+# ============================================
 
 volumes:
+  rabbitmq-data:
+  redis-data:
+  seq-data:
   identity-db-data:
+  project-db-data:
+  issue-db-data:
