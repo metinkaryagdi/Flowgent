@@ -10,6 +10,8 @@ public sealed class ProjectDbContext : DbContext, IUnitOfWork
     public ProjectDbContext(DbContextOptions<ProjectDbContext> options) : base(options) { }
 
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+    public DbSet<ProcessedEvent> ProcessedEvents => Set<ProcessedEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -24,11 +26,24 @@ public sealed class ProjectDbContext : DbContext, IUnitOfWork
             entity.HasIndex(x => x.Key).IsUnique();
         });
 
+        modelBuilder.Entity<ProjectMember>(entity =>
+        {
+            entity.HasKey(x => new { x.ProjectId, x.UserId });
+            entity.HasIndex(x => x.UserId);
+        });
+
         modelBuilder.Entity<OutboxMessage>(entity =>
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.EventType).IsRequired();
             entity.Property(x => x.Payload).IsRequired();
+        });
+
+        modelBuilder.Entity<ProcessedEvent>(entity =>
+        {
+            entity.HasKey(x => x.EventId);
+            entity.Property(x => x.EventType).IsRequired().HasMaxLength(200);
+            entity.HasIndex(x => x.EventId).IsUnique();
         });
     }
 

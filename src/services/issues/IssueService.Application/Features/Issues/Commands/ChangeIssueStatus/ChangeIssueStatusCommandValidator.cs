@@ -8,5 +8,6 @@ public sealed class ChangeIssueStatusCommandValidator : AbstractValidator<Change
     {
         RuleFor(x => x.IssueId).NotEmpty();
         RuleFor(x => x.ChangedByUserId).NotEmpty();
+        RuleFor(x => x.ExpectedVersion).GreaterThan(0);
     }
 }

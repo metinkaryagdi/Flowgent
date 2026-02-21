@@ -12,5 +12,8 @@ public sealed class IssueDto
     public IssuePriority Priority { get; init; }
     public Guid CreatedByUserId { get; init; }
     public Guid? AssigneeUserId { get; init; }
+    public Guid? SprintId { get; init; }
     public DateTime CreatedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
+    public int Version { get; init; }
 }

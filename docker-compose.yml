@@ -121,6 +121,66 @@ services:
       timeout: 5s
       retries: 5
 
+  sprint-db:
+    image: postgres:16-alpine
+    container_name: sprint-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sprintdb
+      POSTGRES_USER: sprint_user
+      POSTGRES_PASSWORD: sprint_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - sprint-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sprint_user -d sprintdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: notification-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_pass
+    ports:
+      - "5437:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_user -d notificationdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  storage-db:
+    image: postgres:16-alpine
+    container_name: storage-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: storagedb
+      POSTGRES_USER: storage_user
+      POSTGRES_PASSWORD: storage_pass
+    ports:
+      - "5438:5432"
+    volumes:
+      - storage-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storage_user -d storagedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ============================================
   # MICROSERVICES
   # ============================================
@@ -178,6 +238,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__ProjectDatabase: "Host=project-db;Port=5432;Database=projectdb;Username=project_user;Password=project_pass"
+      ConnectionStrings__Redis: "redis:6379,password=redis123"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "admin"
@@ -207,6 +268,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__IssueDatabase: "Host=issue-db;Port=5432;Database=issuedb;Username=issue_user;Password=issue_pass"
+      ConnectionStrings__Redis: "redis:6379,password=redis123"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "admin"
@@ -218,6 +280,114 @@ services:
       Jwt__ExpirationMinutes: "60"
     ports:
       - "5003:8080"
+    networks:
+      - bitirme-net
+
+  sprint-api:
+    build:
+      context: .
+      dockerfile: src/services/sprints/SprintService.Api/Dockerfile
+    container_name: sprint-api
+    restart: unless-stopped
+    depends_on:
+      sprint-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__SprintDatabase: "Host=sprint-db;Port=5432;Database=sprintdb;Username=sprint_user;Password=sprint_pass"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+      Jwt__ExpirationMinutes: "60"
+    ports:
+      - "5004:8080"
+    networks:
+      - bitirme-net
+
+  notification-api:
+    build:
+      context: .
+      dockerfile: src/services/notifications/NotificationService.Api/Dockerfile
+    container_name: notification-api
+    restart: unless-stopped
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__NotificationDatabase: "Host=notification-db;Port=5432;Database=notificationdb;Username=notification_user;Password=notification_pass"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+      Jwt__ExpirationMinutes: "60"
+    ports:
+      - "5005:8080"
+    networks:
+      - bitirme-net
+
+  storage-api:
+    build:
+      context: .
+      dockerfile: src/services/storage/StorageService.Api/Dockerfile
+    container_name: storage-api
+    restart: unless-stopped
+    depends_on:
+      storage-db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__StorageDatabase: "Host=storage-db;Port=5432;Database=storagedb;Username=storage_user;Password=storage_pass"
+      Storage__RootPath: "storage-uploads"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+    ports:
+      - "5007:8080"
+    volumes:
+      - storage-uploads:/app/storage-uploads
+    networks:
+      - bitirme-net
+
+  bff-api:
+    build:
+      context: .
+      dockerfile: src/services/bff/Bff.Api/Dockerfile
+    container_name: bff-api
+    restart: unless-stopped
+    depends_on:
+      project-api:
+        condition: service_started
+      issue-api:
+        condition: service_started
+      sprint-api:
+        condition: service_started
+      notification-api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+    ports:
+      - "5006:8080"
     networks:
       - bitirme-net
 
@@ -233,6 +403,12 @@ services:
       project-api:
         condition: service_started
       issue-api:
+        condition: service_started
+      sprint-api:
+        condition: service_started
+      notification-api:
+        condition: service_started
+      storage-api:
         condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
@@ -264,3 +440,7 @@ volumes:
   identity-db-data:
   project-db-data:
   issue-db-data:
+  sprint-db-data:
+  notification-db-data:
+  storage-db-data:
+  storage-uploads:

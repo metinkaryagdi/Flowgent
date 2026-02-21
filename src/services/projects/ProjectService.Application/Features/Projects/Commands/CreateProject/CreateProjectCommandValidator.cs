@@ -6,16 +6,8 @@ public sealed class CreateProjectCommandValidator : AbstractValidator<CreateProj
 {
     public CreateProjectCommandValidator()
     {
-        RuleFor(x => x.Name)
-            .NotEmpty()
-            .MinimumLength(3);
-
-        RuleFor(x => x.Key)
-            .NotEmpty()
-            .MinimumLength(2)
-            .MaximumLength(10);
-
-        RuleFor(x => x.OwnerUserId)
-            .NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Key).NotEmpty().MaximumLength(10);
+        RuleFor(x => x.OwnerUserId).NotEmpty();
     }
 }

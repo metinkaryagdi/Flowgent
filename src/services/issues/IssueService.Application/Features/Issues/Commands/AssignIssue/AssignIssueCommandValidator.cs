@@ -9,5 +9,6 @@ public sealed class AssignIssueCommandValidator : AbstractValidator<AssignIssueC
         RuleFor(x => x.IssueId).NotEmpty();
         RuleFor(x => x.AssigneeUserId).NotEmpty();
         RuleFor(x => x.AssignedByUserId).NotEmpty();
+        RuleFor(x => x.ExpectedVersion).GreaterThan(0);
     }
 }

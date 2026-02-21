@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using BitirmeProject.ProjectService.Application.Abstractions;
+using BitirmeProject.ProjectService.Domain.Entities;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
 
@@ -74,6 +76,8 @@ public sealed class IssueEventsConsumer : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
+            var processedRepo = scope.ServiceProvider.GetRequiredService<IProcessedEventRepository>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
             switch (eventType)
             {
@@ -82,8 +86,22 @@ public sealed class IssueEventsConsumer : BackgroundService
                     var evt = JsonSerializer.Deserialize<IssueCreatedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueCreatedEvent payload");
 
+                    _logger.LogInformation(
+                        "IssueCreatedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
+                        evt.EventId,
+                        evt.CorrelationId);
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate IssueCreatedEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
                     var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<IssueCreatedEvent>>();
                     await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
                     break;
                 }
                 case nameof(IssueStatusChangedEvent):
@@ -91,8 +109,22 @@ public sealed class IssueEventsConsumer : BackgroundService
                     var evt = JsonSerializer.Deserialize<IssueStatusChangedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueStatusChangedEvent payload");
 
+                    _logger.LogInformation(
+                        "IssueStatusChangedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
+                        evt.EventId,
+                        evt.CorrelationId);
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate IssueStatusChangedEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
                     var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<IssueStatusChangedEvent>>();
                     await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
                     break;
                 }
                 case nameof(IssueAssignedEvent):
@@ -100,8 +132,22 @@ public sealed class IssueEventsConsumer : BackgroundService
                     var evt = JsonSerializer.Deserialize<IssueAssignedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueAssignedEvent payload");
 
+                    _logger.LogInformation(
+                        "IssueAssignedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
+                        evt.EventId,
+                        evt.CorrelationId);
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate IssueAssignedEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
                     var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<IssueAssignedEvent>>();
                     await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
                     break;
                 }
                 default:

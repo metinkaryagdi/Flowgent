@@ -9,5 +9,9 @@ public sealed class IssueMappingProfile : Profile
     public IssueMappingProfile()
     {
         CreateMap<Issue, IssueDto>();
+        CreateMap<IssueAudit, IssueAuditDto>();
+        CreateMap<IssueBoardItem, IssueBoardItemDto>();
+        CreateMap<IssueAttachment, IssueAttachmentDto>();
+        CreateMap<IssueComment, IssueCommentDto>();
     }
 }

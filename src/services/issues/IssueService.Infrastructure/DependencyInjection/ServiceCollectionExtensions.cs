@@ -21,6 +21,11 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IssueDbContext>());
         services.AddScoped<IIssueRepository, IssueRepository>();
+        services.AddScoped<IIssueAttachmentRepository, IssueAttachmentRepository>();
+        services.AddScoped<IIssueCommentRepository, IssueCommentRepository>();
+        services.AddScoped<IIssueBoardRepository, IssueBoardRepository>();
+        services.AddScoped<IIssueAuditRepository, IssueAuditRepository>();
+        services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
 
         return services;

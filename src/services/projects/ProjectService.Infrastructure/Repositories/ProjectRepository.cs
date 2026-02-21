@@ -19,6 +19,14 @@ public sealed class ProjectRepository : IProjectRepository
         return await _dbContext.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Project>> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Projects
+            .Where(p => p.OwnerUserId == ownerUserId)
+            .OrderBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var normalized = key.Trim().ToUpperInvariant();

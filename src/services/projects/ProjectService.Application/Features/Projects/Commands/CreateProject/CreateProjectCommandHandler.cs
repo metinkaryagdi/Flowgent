@@ -4,6 +4,7 @@ using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Application.DTOs;
 using BitirmeProject.ProjectService.Domain.Entities;
 using MediatR;
+using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
 
@@ -31,7 +32,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
     public async Task<ProjectDto> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
     {
         if (await _repository.ExistsByKeyAsync(request.Key, cancellationToken))
-            throw new InvalidOperationException("Project key already exists.");
+            throw new BusinessRuleException("Project key already exists.");
 
         var project = new Project(request.Name, request.Key, request.OwnerUserId);
         await _repository.AddAsync(project, cancellationToken);

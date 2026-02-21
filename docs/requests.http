@@ -29,6 +29,10 @@ Content-Type: application/json
   "correlationId": "{{correlationId}}"
 }
 
+### Get Project Members
+GET http://localhost:5000/api/v1/projects/{{projectId}}/members
+Authorization: Bearer {{token}}
+
 ### Create Issue
 POST http://localhost:5000/api/v1/issues
 Authorization: Bearer {{token}}
@@ -66,3 +70,117 @@ Content-Type: application/json
   "changedByUserId": "{{userId}}",
   "correlationId": "{{correlationId}}"
 }
+
+### Get Issues By Sprint
+GET http://localhost:5000/api/v1/issues/sprint/{{sprintId}}
+Authorization: Bearer {{token}}
+
+### Attach File To Issue (metadata only)
+POST http://localhost:5000/api/v1/issues/{{issueId}}/attachments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "issueId": "{{issueId}}",
+  "fileId": "{{fileId}}",
+  "fileName": "spec.pdf",
+  "contentType": "application/pdf",
+  "sizeBytes": 123456,
+  "uploadedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Get Issue Attachments
+GET http://localhost:5000/api/v1/issues/{{issueId}}/attachments
+Authorization: Bearer {{token}}
+
+### Create Sprint
+POST http://localhost:5000/api/v1/sprints
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "name": "Sprint 1",
+  "goal": "Ship MVP",
+  "createdByUserId": "{{userId}}"
+}
+
+### Start Sprint
+POST http://localhost:5000/api/v1/sprints/{{sprintId}}/start
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sprintId": "{{sprintId}}",
+  "startedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Add Issue To Sprint
+POST http://localhost:5000/api/v1/sprints/{{sprintId}}/issues
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sprintId": "{{sprintId}}",
+  "issueId": "{{issueId}}",
+  "addedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Remove Issue From Sprint
+DELETE http://localhost:5000/api/v1/sprints/{{sprintId}}/issues/{{issueId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sprintId": "{{sprintId}}",
+  "issueId": "{{issueId}}",
+  "removedByUserId": "{{userId}}",
+  "correlationId": "{{correlationId}}"
+}
+
+### Get Active Sprint
+GET http://localhost:5000/api/v1/sprints/project/{{projectId}}/active
+Authorization: Bearer {{token}}
+
+### Get Sprint Issues
+GET http://localhost:5000/api/v1/sprints/{{sprintId}}/issues
+Authorization: Bearer {{token}}
+
+### Get Sprint Velocity
+GET http://localhost:5000/api/v1/sprints/{{sprintId}}/velocity
+Authorization: Bearer {{token}}
+
+### Get Sprint Backlog
+GET http://localhost:5000/api/v1/sprints/project/{{projectId}}/backlog
+Authorization: Bearer {{token}}
+
+### Upload File (Storage)
+POST http://localhost:5000/api/v1/storage/files
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="uploadedByUserId"
+
+{{userId}}
+--boundary
+Content-Disposition: form-data; name="file"; filename="example.txt"
+Content-Type: text/plain
+
+Hello storage
+--boundary--
+
+### Get File Metadata (Storage)
+GET http://localhost:5000/api/v1/storage/files/{{fileId}}
+Authorization: Bearer {{token}}
+
+### Download File (Storage)
+GET http://localhost:5000/api/v1/storage/files/{{fileId}}/content
+Authorization: Bearer {{token}}
+
+### Delete File (Storage)
+DELETE http://localhost:5000/api/v1/storage/files/{{fileId}}
+Authorization: Bearer {{token}}

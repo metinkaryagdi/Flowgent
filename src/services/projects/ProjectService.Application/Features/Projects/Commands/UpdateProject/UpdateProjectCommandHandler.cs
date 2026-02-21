@@ -3,6 +3,7 @@ using AutoMapper;
 using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Application.DTOs;
 using MediatR;
+using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
 
@@ -31,13 +32,13 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
     {
         var project = await _repository.GetByIdAsync(request.Id, cancellationToken);
         if (project is null)
-            throw new InvalidOperationException("Project not found.");
+            throw new NotFoundException("Project", request.Id);
 
         var incomingKey = request.Key.Trim().ToUpperInvariant();
         if (!string.Equals(project.Key, incomingKey, StringComparison.OrdinalIgnoreCase))
         {
             if (await _repository.ExistsByKeyAsync(request.Key, cancellationToken))
-                throw new InvalidOperationException("Project key already exists.");
+                throw new BusinessRuleException("Project key already exists.");
         }
 
         project.SetName(request.Name);
@@ -53,6 +54,15 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
             OccurredOn = evt.OccurredOn
         };
         await _outboxRepository.AddAsync(outbox, cancellationToken);
+
+        var settingsEvent = new ProjectSettingsUpdatedEvent(project.Id, project.Name, project.Key, request.UpdatedByUserId, request.CorrelationId ?? Guid.Empty);
+        var settingsOutbox = new OutboxMessage
+        {
+            EventType = settingsEvent.GetType().Name,
+            Payload = JsonSerializer.Serialize(settingsEvent),
+            OccurredOn = settingsEvent.OccurredOn
+        };
+        await _outboxRepository.AddAsync(settingsOutbox, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

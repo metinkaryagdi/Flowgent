@@ -22,119 +22,125 @@ Altyapı bu deneyimi mümkün kılan araçtır.
 - Desktop: Flutter
 - Priority: UI/UX quality over speed
 
-## Phase 3 - Core Microservices + Frontend MVP (PENDING)
+## Phase 3 - Core Microservices + Frontend MVP (IN PROGRESS)
 
 ### Domain Authority & Projection Model
-- MUST: Issue Service is Single Authoritative Source for Issue State
-- MUST: Kanban Board is a READ MODEL / PROJECTION
-- MUST: Projection is stored inside Issue Service as a denormalized read model table
+- [x] MUST: Issue Service is Single Authoritative Source for Issue State
+- [x] MUST: Kanban Board is a READ MODEL / PROJECTION
+- [x] MUST: Projection is stored inside Issue Service as a denormalized read model table
 - SHOULD: Option to extract read model into a dedicated Query Service later (DEFER)
-- MUST: Eventual consistency bound for board projection is <= 500ms under normal load
+- [~] MUST: Eventual consistency bound for board projection is <= 500ms under normal load (LOGGING ADDED, NEEDS VALIDATION)
 
 ### Issue Service State Machine
-- MUST: Workflow State Machine with allowed transitions matrix
-- MUST: Invalid transition rejection with explicit domain error
-- MUST: Optimistic Concurrency Control using Version column or ETag
-- MUST: Conflict handling UX contract defined (HTTP 409 + refresh strategy)
+- [x] MUST: Workflow State Machine with allowed transitions matrix
+- [x] MUST: Invalid transition rejection with explicit domain error
+- [x] MUST: Optimistic Concurrency Control using Version column or ETag
+- [x] MUST: Conflict handling UX contract defined (HTTP 409 + refresh strategy)
 
 ### Issue Service Audit Trail
-- MUST: Audit log records FromStatus, ToStatus, ChangedBy, Timestamp
-- MUST: Audit log stored in a separate table (not full event sourcing)
-- MUST: Issue History API exposes audit trail for UI
+- [x] MUST: Audit log records FromStatus, ToStatus, ChangedBy, Timestamp
+- [x] MUST: Audit log stored in a separate table (not full event sourcing)
+- [x] MUST: Issue History API exposes audit trail for UI
 
 ### Backend - Project Service
-- MUST: Commands Create, Update
-- SHOULD: Commands Delete, AddMember, RemoveMember
-- SHOULD: Queries GetById, GetByUser
-- COULD: Queries GetTeamMembers (DEFER if time constrained)
-- MUST: Events ProjectCreated
-- SHOULD: Events MemberAdded, ProjectSettingsUpdated
-- MUST: Outbox integration
-- MUST: Validation & error contracts (Result pattern)
+- [x] MUST: Commands Create, Update
+- [x] SHOULD: Commands Delete, AddMember, RemoveMember
+- [x] SHOULD: Queries GetById, GetByUser
+- [x] COULD: Queries GetTeamMembers
+- [x] MUST: Events ProjectCreated
+- [x] SHOULD: Events MemberAdded, ProjectSettingsUpdated
+- [x] MUST: Outbox integration
+- [x] MUST: Validation & error contracts (Result pattern)
 
 ### Backend - Issue Service
-- MUST: Commands Create, Assign, UpdateStatus
-- SHOULD: Commands AddComment
-- COULD: Commands AttachFile (DEFER if time constrained)
-- MUST: Queries GetById, GetByProject
-- SHOULD: Queries GetByAssignee
-- COULD: Queries GetBySprint (DEFER if time constrained)
-- MUST: Events IssueCreated, IssueAssigned, IssueStatusChanged
-- SHOULD: Event CommentAdded
-- MUST: NotificationRequestedEvent trigger points
-- MUST: Outbox integration
+- [x] MUST: Commands Create, Assign, UpdateStatus
+- [x] SHOULD: Commands AddComment
+- [x] COULD: Commands AttachFile (metadata only)
+- [x] MUST: Queries GetById, GetByProject
+- [x] SHOULD: Queries GetByAssignee
+- [x] COULD: Queries GetBySprint
+- [x] MUST: Events IssueCreated, IssueAssigned, IssueStatusChanged
+- [x] SHOULD: Event CommentAdded
+- [x] MUST: NotificationRequestedEvent trigger points
+- [x] MUST: Outbox integration
 
 ### Backend - Sprint Service
-- SHOULD: Commands Create, Start, Complete
-- COULD: Commands AddIssue, RemoveIssue (DEFER if time constrained)
-- SHOULD: Queries GetActiveSprint
-- COULD: Queries GetSprintVelocity, GetBacklog (DEFER if time constrained)
-- SHOULD: Events SprintStarted, SprintCompleted
-- COULD: Event IssueAddedToSprint (DEFER if time constrained)
-- SHOULD: Consumers IssueCreated, IssueStatusChanged
-- SHOULD: Outbox integration
+- [x] SHOULD: Commands Create, Start, Complete
+- [x] COULD: Commands AddIssue, RemoveIssue
+- [x] SHOULD: Queries GetActiveSprint
+- [x] COULD: Queries GetBacklog
+- [x] COULD: Queries GetSprintVelocity
+- [x] SHOULD: Events SprintStarted, SprintCompleted
+- [x] COULD: Event IssueAddedToSprint
+- [x] SHOULD: Consumers IssueCreated, IssueStatusChanged (SprintIssue projection)
+- [x] SHOULD: Outbox integration
 
 ### Backend - Notification Service
-- SHOULD: In-app notification model + CRUD
-- SHOULD: SignalR hub skeleton
-- SHOULD: Event consumers NotificationRequested, IssueAssigned, CommentAdded, MemberAdded
-- COULD: Email channel (DEFER)
-- SHOULD: Outbox integration
+- [x] SHOULD: In-app notification model + CRUD (CREATE + GET BY USER + MARK READ)
+- [x] SHOULD: SignalR hub skeleton
+- [x] SHOULD: Event consumers NotificationRequested, IssueAssigned, CommentAdded, MemberAdded
+- [x] COULD: Email channel (no-op sender)
+- [x] SHOULD: Outbox integration (NotificationCreatedEvent, NotificationReadEvent)
 
 ### Backend - Storage Service
-- COULD: File upload/download/delete endpoints (DEFER)
-- COULD: Metadata tracking (PostgreSQL) (DEFER)
-- COULD: Docker volume storage-uploads (DEFER)
+- [x] COULD: File upload/download/delete endpoints
+- [x] COULD: Metadata tracking (PostgreSQL)
+- [x] COULD: Docker volume storage-uploads
 
 ### BFF & Server-Driven UI
-- MUST: Introduce BFF layer for React and Flutter clients
-- MUST: Server-driven board configuration (columns, WIP limits, allowed transitions)
-- MUST: Role-based UI flags delivered by API
-- MUST: Avoid duplicating business rules in frontend
+- [x] MUST: Introduce BFF layer for React and Flutter clients
+- [x] MUST: Server-driven board configuration (columns, WIP limits, allowed transitions) (STATIC CONFIG)
+- [x] MUST: Role-based UI flags delivered by API
+- [x] MUST: Avoid duplicating business rules in frontend (BFF exposes workflow config)
 
 ### Frontend MVP Scope (Phase 3)
 - Web (React)
-- MUST: Auth flow (register/login/refresh)
-- MUST: Project list + create + update
-- MUST: Issue list + create + assign + status update
-- SHOULD: Basic navigation + role-aware route guards
+- [ ] MUST: Auth flow (register/login/refresh) via Gateway `/api/v1/identity/*`
+- [ ] MUST: Project list + create + update via ProjectService `/api/v1/projects/*`
+- [ ] MUST: Board view via BFF `/api/v1/bff/board/{projectId}` + `/api/v1/bff/flags`
+- [ ] MUST: Issue CRUD subset (create/assign/status) via IssueService `/api/v1/issues/*`
+- [ ] MUST: Sprint flows (create/start/add/remove issue) via SprintService `/api/v1/sprints/*`
+- [ ] SHOULD: Backlog + sprint issues list (SprintService endpoints)
+- [ ] SHOULD: Attachments metadata (IssueService `/api/v1/issues/{id}/attachments`) + file upload/download (Storage `/api/v1/storage/*`)
+- [ ] SHOULD: Basic navigation + role-aware route guards (flags from BFF)
+- [ ] SHOULD: Notifications list (BFF `/api/v1/bff/notifications`) + SignalR in-app
 
 - Mobile (Flutter)
-- MUST: Auth flow
-- SHOULD: Project list + issue list (read-only)
-- SHOULD: Basic issue detail view
+- [ ] MUST: Auth flow (Gateway)
+- [ ] SHOULD: Project list + board read (BFF board)
+- [ ] SHOULD: Issue detail + comments read (IssueService)
 
 - Desktop (Flutter)
-- MUST: Auth flow
-- SHOULD: Project list + issue list (read-only)
-- SHOULD: Basic issue detail view
+- [ ] MUST: Auth flow (Gateway)
+- [ ] SHOULD: Project list + board read (BFF board)
+- [ ] SHOULD: Issue detail + comments read (IssueService)
 
 ### Phase 3 Acceptance Criteria (Measurable)
 - MUST: Drag & drop sonrası status kesin olarak değişir ve API 200 döner
 - MUST: Çakışan güncellemelerde veri kaybı olmaz, API 409 döner ve UI refresh ile toparlar
 - MUST: Board projection gecikmesi <= 500ms içinde telafi edilir
-- MUST: Notification duplicate olmaz (idempotency + dedup)
+- [~] MUST: Notification duplicate olmaz (idempotency + dedup) (EVENT-ID DEDUP ADDED, NEEDS VALIDATION)
 - MUST: Audit trail her state değişimini kaydeder
 
 ## Phase 4 - Cross-Cutting Concerns + UX Depth (PENDING)
 
 ### Resilience & Idempotency
-- MUST: Idempotent consumers with MessageId tracking table
+- [x] MUST: Idempotent consumers with MessageId tracking table (Sprint/Project/Notification/Issue done)
 - MUST: Deduplication strategy (MessageId + correlation window)
 - MUST: Retry policy + Dead-letter strategy
-- MUST: Distributed tracing (CorrelationId propagation)
+- [x] MUST: Distributed tracing (CorrelationId propagation)
 
 ### Observability Checklist (per service)
-- MUST: Structured logs with CorrelationId
+- [x] MUST: Structured logs with CorrelationId
 - MUST: Error rate + latency metrics
 - SHOULD: Dashboard for key endpoints (P95, error ratio)
 - SHOULD: Alert thresholds for queue lag
 
 ### Backend Cross-Cutting
-- MUST: Serilog integration (Seq + Console)
-- SHOULD: Polly resilience (retry/circuit/timeout)
-- SHOULD: Redis caching (Project/Issue)
-- MUST: Health checks (per service + gateway aggregation)
+- [x] MUST: Serilog integration (Seq + Console)
+- [x] SHOULD: Polly resilience (retry/circuit/timeout)
+- [x] SHOULD: Redis caching (Project/Issue)
+- [x] MUST: Health checks (per service + gateway aggregation)
 
 ### Frontend (Phase 4)
 - Web (React)

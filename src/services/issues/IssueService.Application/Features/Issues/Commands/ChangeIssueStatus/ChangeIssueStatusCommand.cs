@@ -8,4 +8,5 @@ public sealed record ChangeIssueStatusCommand(
     Guid IssueId,
     IssueStatus NewStatus,
     Guid ChangedByUserId,
+    int ExpectedVersion,
     Guid? CorrelationId) : IRequest<IssueDto>;

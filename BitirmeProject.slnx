@@ -9,6 +9,9 @@
     <Project Path="src/gateway/ApiGateway/ApiGateway.csproj" />
   </Folder>
   <Folder Name="/src/services/" />
+  <Folder Name="/src/services/bff/">
+    <Project Path="src/services/bff/Bff.Api/Bff.Api.csproj" />
+  </Folder>
   <Folder Name="/src/services/ai/" />
   <Folder Name="/src/services/experimental/" />
   <Folder Name="/src/services/experimental/codehealth/" />
@@ -25,14 +28,24 @@
     <Project Path="src/services/issues/IssueService.Domain/IssueService.Domain.csproj" />
     <Project Path="src/services/issues/IssueService.Infrastructure/IssueService.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/services/notifications/" />
+  <Folder Name="/src/services/notifications/">
+    <Project Path="src/services/notifications/NotificationService.Api/NotificationService.Api.csproj" />
+    <Project Path="src/services/notifications/NotificationService.Application/NotificationService.Application.csproj" />
+    <Project Path="src/services/notifications/NotificationService.Domain/NotificationService.Domain.csproj" />
+    <Project Path="src/services/notifications/NotificationService.Infrastructure/NotificationService.Infrastructure.csproj" />
+  </Folder>
     <Folder Name="/src/services/projects/">
     <Project Path="src/services/projects/ProjectService.Api/ProjectService.Api.csproj" />
     <Project Path="src/services/projects/ProjectService.Application/ProjectService.Application.csproj" />
     <Project Path="src/services/projects/ProjectService.Domain/ProjectService.Domain.csproj" />
     <Project Path="src/services/projects/ProjectService.Infrastructure/ProjectService.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/services/sprints/" />
+  <Folder Name="/src/services/sprints/">
+    <Project Path="src/services/sprints/SprintService.Api/SprintService.Api.csproj" />
+    <Project Path="src/services/sprints/SprintService.Application/SprintService.Application.csproj" />
+    <Project Path="src/services/sprints/SprintService.Domain/SprintService.Domain.csproj" />
+    <Project Path="src/services/sprints/SprintService.Infrastructure/SprintService.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/shared/" />
   <Folder Name="/src/shared/abstractions/">
     <Project Path="src/shared/abstractions/Shared.Abstractions/Shared.Abstractions.csproj" Id="b70afb77-3638-4d8d-97f1-9589ec6d9310" />

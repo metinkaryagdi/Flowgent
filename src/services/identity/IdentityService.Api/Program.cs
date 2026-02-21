@@ -5,8 +5,18 @@ using BitirmeProject.IdentityService.Infrastructure.DependencyInjection;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Shared.Common.Extensions;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Seq("http://seq:5341")
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 
@@ -30,6 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHealthChecks();
 
 // Uygulama & altyapÄ±
 builder.Services.AddIdentityApplication();
@@ -45,8 +56,10 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseRouting();
+app.UseCorrelationId();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
