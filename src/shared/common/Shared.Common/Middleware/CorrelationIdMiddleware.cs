@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Serilog.Context;
 
 namespace Shared.Common.Middleware;

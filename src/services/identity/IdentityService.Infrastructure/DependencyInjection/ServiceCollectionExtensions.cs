@@ -1,6 +1,7 @@
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using BitirmeProject.IdentityService.Infrastructure.Repositories;
+using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

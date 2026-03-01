@@ -50,7 +50,7 @@ public sealed class BffController : ControllerBase
         {
             Project = project,
             Config = BuildBoardConfig(workflow),
-            Items = items ?? Array.Empty<IssueBoardItemDto>()
+            Items = items ?? new List<IssueBoardItemDto>()
         };
 
         return Ok(response);
@@ -105,7 +105,7 @@ public sealed class BffController : ControllerBase
             cancellationToken);
         if (error is not null) return error;
 
-        return Ok(items ?? Array.Empty<NotificationDto>());
+        return Ok(items ?? new List<NotificationDto>());
     }
 
     private static BoardConfig BuildBoardConfig(WorkflowConfigDto? workflow)

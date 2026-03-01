@@ -1,0 +1,104 @@
+.authLayout {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--bg-body) 50%, var(--color-primary-100) 100%);
+}
+
+.authLayout__left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+}
+
+.authLayout__brand {
+    max-width: 420px;
+    text-align: center;
+}
+
+.authLayout__logo {
+    width: 64px;
+    height: 64px;
+    background: var(--color-primary);
+    border-radius: var(--border-radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-6);
+    box-shadow: var(--shadow-lg);
+}
+
+.authLayout__logoIcon {
+    font-size: 2rem;
+    color: var(--text-on-primary);
+}
+
+.authLayout__title {
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-3);
+}
+
+.authLayout__subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.authLayout__right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-8);
+}
+
+.authLayout__card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--bg-surface);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-xl);
+    padding: var(--spacing-10);
+}
+
+.authLayout__cardTitle {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-2);
+}
+
+.authLayout__cardSubtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-8);
+}
+
+@media (max-width: 768px) {
+    .authLayout {
+        flex-direction: column;
+    }
+
+    .authLayout__left {
+        padding: var(--spacing-6) var(--spacing-4);
+    }
+
+    .authLayout__brand {
+        max-width: 320px;
+    }
+
+    .authLayout__title {
+        font-size: var(--font-size-2xl);
+    }
+
+    .authLayout__right {
+        padding: var(--spacing-4);
+    }
+
+    .authLayout__card {
+        padding: var(--spacing-6);
+    }
+}

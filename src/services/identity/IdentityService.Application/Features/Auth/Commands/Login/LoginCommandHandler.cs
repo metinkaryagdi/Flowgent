@@ -5,6 +5,7 @@ using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Options;
+using BitirmeProject.IdentityService.Application.Options;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 

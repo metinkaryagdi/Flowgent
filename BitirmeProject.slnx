@@ -56,6 +56,15 @@
   <Folder Name="/src/shared/contracts/">
     <Project Path="src/shared/contracts/Shared.Contracts/Shared.Contracts.csproj" Id="285f65fb-83d1-4112-849b-a227d01a42b6" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/IssueService.UnitTests/IssueService.UnitTests.csproj" />
+    <Project Path="tests/ProjectService.UnitTests/ProjectService.UnitTests.csproj" />
+    <Project Path="tests/SprintService.UnitTests/SprintService.UnitTests.csproj" />
+    <Project Path="tests/NotificationService.UnitTests/NotificationService.UnitTests.csproj" />
+    <Project Path="tests/StorageService.UnitTests/StorageService.UnitTests.csproj" />
+    <Project Path="tests/IdentityService.UnitTests/IdentityService.UnitTests.csproj" />
+    <Project Path="tests/Bff.UnitTests/Bff.UnitTests.csproj" />
+    <Project Path="tests/Shared.UnitTests/Shared.UnitTests.csproj" />
+  </Folder>
   <Folder Name="/tools/" />
 </Solution>

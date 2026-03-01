@@ -1,0 +1,470 @@
+.sprintPage {
+    max-width: 1200px;
+}
+
+/* ── Header ──────────────────── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-5);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.backBtn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.backBtn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.title {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+}
+
+.createBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-4);
+    background: var(--color-primary);
+    color: var(--text-on-primary);
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.createBtn:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* ── Active Sprint ───────────── */
+.activeSprint {
+    background: var(--bg-surface);
+    border: 2px solid var(--color-primary-500);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-6);
+    margin-bottom: var(--spacing-6);
+}
+
+.activeSprintHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-4);
+}
+
+.activeSprintTitle {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+}
+
+.activeSprintBadge {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--color-success);
+}
+
+.sprintDates {
+    display: flex;
+    gap: var(--spacing-6);
+    margin-bottom: var(--spacing-4);
+}
+
+.sprintDate {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.sprintDateLabel {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-right: var(--spacing-1);
+}
+
+/* ── Progress Bar ────────────── */
+.progressBar {
+    height: 8px;
+    background: var(--bg-surface-hover);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-3);
+}
+
+.progressFill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progressText {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    text-align: right;
+}
+
+/* ── Sprint Actions ──────────── */
+.sprintActions {
+    display: flex;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-4);
+}
+
+.completeBtn {
+    padding: var(--spacing-2) var(--spacing-4);
+    border: none;
+    border-radius: var(--border-radius-md);
+    background: var(--color-success);
+    color: #fff;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.completeBtn:hover {
+    background: #16a34a;
+}
+
+.startBtn {
+    padding: var(--spacing-2) var(--spacing-4);
+    border: none;
+    border-radius: var(--border-radius-md);
+    background: var(--color-primary);
+    color: var(--text-on-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ── Sprint List ─────────────── */
+.sectionTitle {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-3);
+}
+
+.sprintList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-6);
+}
+
+.sprintCard {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-4) var(--spacing-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all var(--transition-fast);
+}
+
+.sprintCard:hover {
+    border-color: var(--color-primary-500);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprintCardInfo h3 {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.sprintCardInfo p {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.statusBadge {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.statusPlanned {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--status-open);
+}
+
+.statusActive {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--color-success);
+}
+
+.statusCompleted {
+    background: var(--bg-surface-hover);
+    color: var(--text-tertiary);
+}
+
+/* ── Backlog ─────────────────── */
+.backlogSection {
+    margin-top: var(--spacing-6);
+}
+
+.backlogList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.backlogItem {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-3) var(--spacing-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.backlogItem:hover {
+    border-color: var(--color-primary-500);
+}
+
+.backlogItemLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    flex: 1;
+    min-width: 0;
+}
+
+.backlogItemTitle {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.priorityDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dotLow {
+    background: var(--priority-low);
+}
+
+.dotMedium {
+    background: var(--priority-medium);
+}
+
+.dotHigh {
+    background: var(--priority-high);
+}
+
+.dotCritical {
+    background: var(--priority-critical);
+}
+
+.assignSprintBtn {
+    padding: 2px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+}
+
+.assignSprintBtn:hover {
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* ── Empty ───────────────────── */
+.empty {
+    text-align: center;
+    padding: var(--spacing-8);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+}
+
+.emptyIcon {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-2);
+}
+
+/* ── Loading ─────────────────── */
+.skeleton {
+    height: 80px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ── Modal ───────────────────── */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: var(--bg-surface);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 480px;
+    padding: var(--spacing-8);
+}
+
+.modalTitle {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    margin-bottom: var(--spacing-6);
+}
+
+.formGroup {
+    margin-bottom: var(--spacing-4);
+}
+
+.formLabel {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    margin-bottom: var(--spacing-1);
+}
+
+.formInput {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    outline: none;
+}
+
+.formInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.modalFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-6);
+}
+
+.btnSecondary {
+    padding: var(--spacing-2) var(--spacing-5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btnPrimary {
+    padding: var(--spacing-2) var(--spacing-5);
+    border: none;
+    border-radius: var(--border-radius-md);
+    background: var(--color-primary);
+    color: var(--text-on-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btnPrimary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Toast ───────────────────── */
+.toast {
+    position: fixed;
+    bottom: var(--spacing-6);
+    right: var(--spacing-6);
+    padding: var(--spacing-3) var(--spacing-5);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    z-index: 2000;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.2s ease;
+}
+
+.toastSuccess {
+    background: var(--color-success);
+    color: #fff;
+}
+
+.toastError {
+    background: var(--color-error);
+    color: #fff;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

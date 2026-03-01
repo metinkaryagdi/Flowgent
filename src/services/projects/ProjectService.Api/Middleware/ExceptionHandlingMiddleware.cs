@@ -34,7 +34,7 @@ public sealed class ExceptionHandlingMiddleware
         {
             NotFoundException => (HttpStatusCode.NotFound, "Not Found", exception.Message, null),
             BusinessRuleException => (HttpStatusCode.BadRequest, "Business Rule Violation", exception.Message, null),
-            ValidationException ve => (HttpStatusCode.BadRequest, "Validation Error", "One or more validation errors occurred.", new Dictionary<string, object?>
+            FluentValidation.ValidationException ve => (HttpStatusCode.BadRequest, "Validation Error", "One or more validation errors occurred.", new Dictionary<string, object?>
             {
                 ["errors"] = ve.Errors
                     .GroupBy(e => e.PropertyName)

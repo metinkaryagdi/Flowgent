@@ -1,0 +1,106 @@
+.formGroup {
+    margin-bottom: var(--spacing-5);
+}
+
+.formLabel {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-2);
+}
+
+.formInput {
+    width: 100%;
+    padding: var(--spacing-3) var(--spacing-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    transition: all var(--transition-fast);
+    outline: none;
+}
+
+.formInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.formInput::placeholder {
+    color: var(--text-tertiary);
+}
+
+.formInputError {
+    border-color: var(--color-error);
+}
+
+.formInputError:focus {
+    box-shadow: 0 0 0 3px var(--color-error-light);
+}
+
+.formError {
+    font-size: var(--font-size-xs);
+    color: var(--color-error);
+    margin-top: var(--spacing-1);
+}
+
+.formButton {
+    width: 100%;
+    padding: var(--spacing-3) var(--spacing-5);
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-on-primary);
+    background: var(--color-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-top: var(--spacing-2);
+}
+
+.formButton:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.formButton:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.formButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.formFooter {
+    text-align: center;
+    margin-top: var(--spacing-6);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.formFooter a {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.formAlert {
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-5);
+}
+
+.formAlertError {
+    background: var(--color-error-light);
+    color: var(--color-error);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.formAlertSuccess {
+    background: var(--color-success-light);
+    color: var(--color-success);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+}

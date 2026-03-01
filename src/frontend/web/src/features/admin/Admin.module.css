@@ -1,0 +1,302 @@
+.adminPage {
+    max-width: 1100px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-6);
+}
+
+.title {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+/* ── Table ───────────────────── */
+.tableWrap {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-body);
+}
+
+.table td {
+    padding: var(--spacing-3) var(--spacing-4);
+    font-size: var(--font-size-sm);
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover td {
+    background: var(--bg-surface-hover);
+}
+
+/* ── User Info Cell ──────────── */
+.userInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.userAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-primary-100);
+    color: var(--color-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.userName {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.userEmail {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* ── Status Badge ────────────── */
+.statusActive {
+    display: inline-block;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--color-success);
+}
+
+.statusInactive {
+    display: inline-block;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+}
+
+/* ── Role Tags ───────────────── */
+.roleTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.roleTag {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+}
+
+.roleTagAdmin {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+/* ── Actions ─────────────────── */
+.actionBtn {
+    padding: 4px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-right: 4px;
+}
+
+.actionBtn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.actionBtnDanger {
+    composes: actionBtn;
+}
+
+.actionBtnDanger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+/* ── Loading ─────────────────── */
+.skeleton {
+    height: 56px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ── Empty ───────────────────── */
+.empty {
+    text-align: center;
+    padding: var(--spacing-10);
+    color: var(--text-tertiary);
+}
+
+/* ── Modal ───────────────────── */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: var(--bg-surface);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%;
+    max-width: 420px;
+    padding: var(--spacing-6);
+}
+
+.modalTitle {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    margin-bottom: var(--spacing-4);
+}
+
+.roleList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+}
+
+.roleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--bg-body);
+    border-radius: var(--border-radius-md);
+}
+
+.roleRowName {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+.roleToggle {
+    padding: 2px 10px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.roleAssigned {
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+}
+
+.roleUnassigned {
+    background: var(--bg-surface-hover);
+    color: var(--text-tertiary);
+}
+
+.modalClose {
+    width: 100%;
+    margin-top: var(--spacing-4);
+    padding: var(--spacing-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+}
+
+/* ── Toast ───────────────────── */
+.toast {
+    position: fixed;
+    bottom: var(--spacing-6);
+    right: var(--spacing-6);
+    padding: var(--spacing-3) var(--spacing-5);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    z-index: 2000;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.2s ease;
+}
+
+.toastSuccess {
+    background: var(--color-success);
+    color: #fff;
+}
+
+.toastError {
+    background: var(--color-error);
+    color: #fff;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Shared.Common.Middleware;
 
 namespace Shared.Common.Extensions;
