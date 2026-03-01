@@ -88,6 +88,7 @@ export default function RegisterPage() {
                         onChange={(e) => setUserName(e.target.value)}
                         autoComplete="username"
                         autoFocus
+                        data-testid="register-username"
                     />
                 </div>
 
@@ -103,6 +104,7 @@ export default function RegisterPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
+                        data-testid="register-email"
                     />
                 </div>
 
@@ -118,6 +120,7 @@ export default function RegisterPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
+                        data-testid="register-password"
                     />
                 </div>
 
@@ -133,6 +136,7 @@ export default function RegisterPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         autoComplete="new-password"
+                        data-testid="register-confirm"
                     />
                 </div>
 
@@ -140,14 +144,17 @@ export default function RegisterPage() {
                     type="submit"
                     className={styles.formButton}
                     disabled={loading}
+                    data-testid="register-submit"
                 >
                     {loading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
                 </button>
             </form>
 
             <div className={styles.formFooter}>
-                Zaten hesabınız var mı? <Link to="/login">Giriş Yap</Link>
+                Zaten hesabınız var mı? <Link to="/login" data-testid="register-to-login">Giriş Yap</Link>
             </div>
         </>
     );
 }
+
+

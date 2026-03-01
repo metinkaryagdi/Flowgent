@@ -23,7 +23,8 @@ export default function App() {
   useEffect(() => {
     // 🔧 DEV ONLY: Backend olmadan test için otomatik mock login
     // Prodüksiyon öncesi bu bloğu kaldırın!
-    if (import.meta.env.DEV && !localStorage.getItem('accessToken')) {
+    const disableMockAuth = String(import.meta.env.VITE_DISABLE_MOCK_AUTH).toLowerCase() === 'true';
+    if (import.meta.env.DEV && !disableMockAuth && !localStorage.getItem('accessToken')) {
       localStorage.setItem('accessToken', 'dev-mock-token');
       localStorage.setItem('user', JSON.stringify({
         id: 'dev-user-1',
@@ -73,3 +74,4 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+

@@ -89,6 +89,7 @@ export interface ProjectMemberDto {
 export interface CreateProjectRequest {
   name: string;
   key: string;
+  ownerUserId?: string;
 }
 
 export interface UpdateProjectRequest {

@@ -81,7 +81,7 @@ export default function NotificationsPage() {
                 <div className={styles.header}>
                     <h1 className={styles.title}>Bildirimler</h1>
                 </div>
-                <div className={styles.list}>
+                <div className={styles.list} data-testid="notifications-list">
                     {[1, 2, 3, 4].map((i) => <div key={i} className={styles.skeleton} />)}
                 </div>
             </div>
@@ -116,13 +116,14 @@ export default function NotificationsPage() {
                     <p className={styles.emptyText}>Henüz bildirim yok.</p>
                 </div>
             ) : (
-                <div className={styles.list}>
+                <div className={styles.list} data-testid="notifications-list">
                     {notifications.map((notif) => {
                         const isUnread = notif.status === NotificationStatus.Unread;
                         return (
                             <div
                                 key={notif.id}
                                 className={`${styles.item} ${isUnread ? styles.itemUnread : ''}`}
+                                data-testid="notification-item"
                                 onClick={() => isUnread && handleMarkAsRead(notif.id)}
                             >
                                 <span className={`${styles.dot} ${!isUnread ? styles.dotRead : ''}`} />

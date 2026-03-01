@@ -81,6 +81,7 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
                         autoFocus
+                        data-testid="login-email"
                     />
                 </div>
 
@@ -96,6 +97,7 @@ export default function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
+                        data-testid="login-password"
                     />
                 </div>
 
@@ -103,14 +105,16 @@ export default function LoginPage() {
                     type="submit"
                     className={styles.formButton}
                     disabled={loading}
+                    data-testid="login-submit"
                 >
                     {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                 </button>
             </form>
 
             <div className={styles.formFooter}>
-                Hesabınız yok mu? <Link to="/register">Kayıt Ol</Link>
+                Hesabınız yok mu? <Link to="/register" data-testid="login-to-register">Kayıt Ol</Link>
             </div>
         </>
     );
 }
+

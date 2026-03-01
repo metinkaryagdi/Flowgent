@@ -36,6 +36,7 @@ export default function AppLayout() {
                         className={({ isActive }) =>
                             `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
                         }
+                        data-testid="nav-projects"
                     >
                         <span className={styles.sidebar__linkIcon}>📁</span>
                         Projeler
@@ -46,6 +47,7 @@ export default function AppLayout() {
                         className={({ isActive }) =>
                             `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
                         }
+                        data-testid="nav-notifications"
                     >
                         <span className={styles.sidebar__linkIcon}>🔔</span>
                         Bildirimler
@@ -97,6 +99,7 @@ export default function AppLayout() {
                             className={styles.topbar__iconBtn}
                             title="Bildirimler"
                             onClick={() => navigate('/notifications')}
+                            data-testid="topbar-notifications"
                         >
                             🔔
                         </button>

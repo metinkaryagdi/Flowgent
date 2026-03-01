@@ -71,3 +71,24 @@ export default defineConfig([
   },
 ])
 ```
+
+## E2E Tests
+
+Prereqs:
+- Docker stack is running (`docker compose up -d` from repo root)
+- Frontend dev server is available at `http://localhost:5173` (docker-compose sets this)
+
+Install deps and run:
+
+```bash
+cd src/frontend/web
+npm ci
+npx playwright install
+npm run test:e2e
+```
+
+Override base URL if needed:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:5173 npm run test:e2e
+```

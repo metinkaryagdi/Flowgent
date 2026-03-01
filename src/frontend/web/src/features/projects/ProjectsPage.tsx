@@ -47,8 +47,12 @@ export default function ProjectsPage() {
 
     // ── Create project ────────────
     const handleCreate = async (name: string, key: string) => {
+        if (!user?.id) {
+            showToast('Kullanıcı bilgisi bulunamadı.', 'error');
+            return;
+        }
         try {
-            await projectsApi.create({ name, key });
+            await projectsApi.create({ name, key, ownerUserId: user.id });
             showToast('Proje başarıyla oluşturuldu!');
             setShowCreateModal(false);
             await loadProjects();
@@ -105,7 +109,7 @@ export default function ProjectsPage() {
                     <p>{projects.length} proje</p>
                 </div>
                 {flags?.canManageProjects !== false && (
-                    <button className={styles.createBtn} onClick={() => setShowCreateModal(true)}>
+                    <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
                         <span>+</span> Yeni Proje
                     </button>
                 )}
@@ -131,7 +135,7 @@ export default function ProjectsPage() {
                                 İlk projenizi oluşturarak başlayın.
                             </p>
                             {flags?.canManageProjects !== false && (
-                                <button className={styles.createBtn} onClick={() => setShowCreateModal(true)}>
+                                <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
                                     <span>+</span> Yeni Proje Oluştur
                                 </button>
                             )}
@@ -140,7 +144,7 @@ export default function ProjectsPage() {
                         projects.map((project) => (
                             <div
                                 key={project.id}
-                                className={styles.card}
+                                className={styles.card} data-testid="project-card" data-project-id={project.id}
                                 onClick={() => handleOpenProject(project)}
                             >
                                 <div className={styles.cardHeader}>
@@ -338,6 +342,7 @@ function ProjectFormModal({
                         </label>
                         <input
                             id="projectName"
+                            data-testid="project-name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -368,6 +373,7 @@ function ProjectFormModal({
                         </label>
                         <input
                             id="projectKey"
+                            data-testid="project-key"
                             type="text"
                             value={key}
                             onChange={(e) => setKey(e.target.value.toUpperCase())}
@@ -393,7 +399,12 @@ function ProjectFormModal({
                         <button type="button" className={styles.btnSecondary} onClick={onClose}>
                             İptal
                         </button>
-                        <button type="submit" className={styles.btnPrimary} disabled={submitting}>
+                        <button
+                            type="submit"
+                            className={styles.btnPrimary}
+                            disabled={submitting}
+                            data-testid="project-submit"
+                        >
                             {submitting ? 'Kaydediliyor...' : 'Kaydet'}
                         </button>
                     </div>
@@ -402,3 +413,4 @@ function ProjectFormModal({
         </div>
     );
 }
+

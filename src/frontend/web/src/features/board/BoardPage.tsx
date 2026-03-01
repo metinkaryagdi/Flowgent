@@ -78,6 +78,8 @@ function SortableIssueCard({ item, onClick }: { item: IssueBoardItemDto; onClick
             {...attributes}
             {...listeners}
             className={`${styles.issueCard} ${isDragging ? styles.issueCardDragging : ''}`}
+            data-testid="issue-card"
+            data-issue-id={item.issueId}
             onClick={onClick}
         >
             <IssueCardContent item={item} />
@@ -125,7 +127,10 @@ function DroppableColumn({
     const itemIds = items.map((i) => i.issueId);
 
     return (
-        <div className={styles.column}>
+        <div
+            className={styles.column}
+            data-testid={`board-column-${column.key.toLowerCase()}`}
+        >
             <div className={styles.columnHeader}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span className={`${styles.columnDot} ${columnDotClass(column.key)}`} />
@@ -356,7 +361,7 @@ export default function BoardPage() {
                 </div>
                 <div className={styles.boardHeaderRight}>
                     {flags?.canEditIssues !== false && (
-                        <button className={styles.addIssueBtn} onClick={() => setShowCreateModal(true)}>
+                        <button className={styles.addIssueBtn} data-testid="issue-create-open" onClick={() => setShowCreateModal(true)}>
                             <span>+</span> Yeni Issue
                         </button>
                     )}
@@ -459,6 +464,7 @@ function CreateIssueModal({
                         <label className={styles.formLabel} htmlFor="issueTitle">Başlık *</label>
                         <input
                             id="issueTitle"
+                            data-testid="issue-title"
                             type="text"
                             className={styles.formInput}
                             value={title}
@@ -471,6 +477,7 @@ function CreateIssueModal({
                         <label className={styles.formLabel} htmlFor="issueDesc">Açıklama</label>
                         <textarea
                             id="issueDesc"
+                            data-testid="issue-description"
                             className={styles.formTextarea}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
@@ -481,6 +488,7 @@ function CreateIssueModal({
                         <label className={styles.formLabel} htmlFor="issuePriority">Öncelik</label>
                         <select
                             id="issuePriority"
+                            data-testid="issue-priority"
                             className={styles.formSelect}
                             value={priority}
                             onChange={(e) => setPriority(Number(e.target.value) as IssuePriority)}
@@ -493,7 +501,12 @@ function CreateIssueModal({
                     </div>
                     <div className={styles.modalFooter}>
                         <button type="button" className={styles.btnSecondary} onClick={onClose}>İptal</button>
-                        <button type="submit" className={styles.btnPrimary} disabled={submitting || !title.trim()}>
+                        <button
+                            type="submit"
+                            className={styles.btnPrimary}
+                            disabled={submitting || !title.trim()}
+                            data-testid="issue-create-submit"
+                        >
                             {submitting ? 'Oluşturuluyor...' : 'Oluştur'}
                         </button>
                     </div>
@@ -502,3 +515,4 @@ function CreateIssueModal({
         </div>
     );
 }
+
