@@ -47,9 +47,6 @@ namespace IssueService.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("SprintId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -70,8 +67,6 @@ namespace IssueService.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProjectId");
-
-                    b.HasIndex("SprintId");
 
                     b.ToTable("Issues");
                 });

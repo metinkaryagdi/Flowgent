@@ -74,15 +74,16 @@ public sealed class AssignIssueCommandHandlerTests
         issue.AssignTo(assignee);
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
 
-        var expectedDto = new IssueDto { Id = issue.Id, AssigneeUserId = assignee };
-        mapper.Map<IssueDto>(issue).Returns(expectedDto);
+        var boardItem = new IssueBoardItem(issue);
+        boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
         var handler = new AssignIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
         var command = new AssignIssueCommand(issue.Id, assignee, Guid.NewGuid(), expectedVersion: issue.Version, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(issue.Id);
+        result.AssigneeUserId.Should().Be(assignee);
         await outboxRepository.DidNotReceive().AddAsync(Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>());
         await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -101,15 +102,13 @@ public sealed class AssignIssueCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns((IssueBoardItem?)null);
 
-        var expectedDto = new IssueDto { Id = issue.Id, AssigneeUserId = Guid.NewGuid() };
-        mapper.Map<IssueDto>(issue).Returns(expectedDto);
-
         var handler = new AssignIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
         var command = new AssignIssueCommand(issue.Id, Guid.NewGuid(), Guid.NewGuid(), expectedVersion: issue.Version, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(issue.Id);
+        result.AssigneeUserId.Should().Be(command.AssigneeUserId);
         await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m => m.EventType == "IssueAssignedEvent"), Arg.Any<CancellationToken>());
         await boardRepository.Received(1).AddAsync(Arg.Any<IssueBoardItem>(), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

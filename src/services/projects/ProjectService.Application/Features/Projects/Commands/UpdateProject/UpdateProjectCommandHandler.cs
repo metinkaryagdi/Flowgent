@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using AutoMapper;
 using BitirmeProject.ProjectService.Application.Abstractions;
+using BitirmeProject.ProjectService.Application.Common.Mappings;
 using BitirmeProject.ProjectService.Application.DTOs;
 using MediatR;
 using Shared.Abstractions.Exceptions;
@@ -12,17 +13,20 @@ namespace BitirmeProject.ProjectService.Application.Features.Projects.Commands.U
 public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectCommand, ProjectDto>
 {
     private readonly IProjectRepository _repository;
+    private readonly IProjectSummaryRepository _summaryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
 
     public UpdateProjectCommandHandler(
         IProjectRepository repository,
+        IProjectSummaryRepository summaryRepository,
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper)
     {
         _repository = repository;
+        _summaryRepository = summaryRepository;
         _unitOfWork = unitOfWork;
         _outboxRepository = outboxRepository;
         _mapper = mapper;
@@ -66,6 +70,7 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ProjectDto>(project);
+        var summary = await _summaryRepository.GetByProjectIdAsync(project.Id, cancellationToken);
+        return ProjectDtoFactory.Create(project, summary);
     }
 }

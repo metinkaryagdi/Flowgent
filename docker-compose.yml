@@ -4,7 +4,7 @@ services:
   # ============================================
   # INFRASTRUCTURE SERVICES
   # ============================================
-  
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
@@ -14,14 +14,14 @@ services:
       RABBITMQ_DEFAULT_PASS: admin123
       RABBITMQ_DEFAULT_VHOST: /
     ports:
-      - "5672:5672"    # AMQP protocol
-      - "15672:15672"  # Management UI
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # Management UI
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -38,20 +38,20 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 10s
       retries: 5
 
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2024.3
     container_name: seq
     restart: unless-stopped
     environment:
-      ACCEPT_EULA: Y
+      ACCEPT_EULA: "Y"
     ports:
-      - "5341:80"      # Seq UI
-      - "5342:5341"    # Ingestion
+      - "5341:80" # Seq UI
+      - "5342:5341" # Ingestion
     volumes:
       - seq-data:/data
     networks:
@@ -76,7 +76,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U identity_user -d identitydb"]
+      test: [ "CMD-SHELL", "pg_isready -U identity_user -d identitydb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,7 +96,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U project_user -d projectdb"]
+      test: [ "CMD-SHELL", "pg_isready -U project_user -d projectdb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -116,7 +116,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U issue_user -d issuedb"]
+      test: [ "CMD-SHELL", "pg_isready -U issue_user -d issuedb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -136,7 +136,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sprint_user -d sprintdb"]
+      test: [ "CMD-SHELL", "pg_isready -U sprint_user -d sprintdb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -156,7 +156,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U notification_user -d notificationdb"]
+      test: [ "CMD-SHELL", "pg_isready -U notification_user -d notificationdb" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -176,7 +176,7 @@ services:
     networks:
       - bitirme-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U storage_user -d storagedb"]
+      test: [ "CMD-SHELL", "pg_isready -U storage_user -d storagedb" ]
       interval: 10s
       timeout: 5s
       retries: 5

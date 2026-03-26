@@ -25,6 +25,7 @@ public sealed class NotificationDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Message).IsRequired().HasMaxLength(2000);
             entity.Property(x => x.Channel).HasConversion<int>();
             entity.Property(x => x.Status).HasConversion<int>();
+            entity.Property(x => x.IsRead).IsRequired();
             entity.Property(x => x.EntityType).HasMaxLength(100);
             entity.Property(x => x.ExternalEventId);
             entity.HasIndex(x => x.UserId);

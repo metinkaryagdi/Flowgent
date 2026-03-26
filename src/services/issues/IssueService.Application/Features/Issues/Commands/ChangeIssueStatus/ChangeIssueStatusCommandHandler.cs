@@ -2,6 +2,7 @@
 using AutoMapper;
 using System.Diagnostics;
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.Common.Mappings;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
@@ -55,7 +56,10 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
         var oldStatus = issue.Status;
         issue.ChangeStatus(request.NewStatus);
         if (oldStatus == issue.Status)
-            return _mapper.Map<IssueDto>(issue);
+        {
+            var currentBoardItem = await _boardRepository.GetByIssueIdAsync(issue.Id, cancellationToken);
+            return IssueDtoFactory.Create(issue, currentBoardItem?.SprintId);
+        }
 
         var statusEvent = new IssueStatusChangedEvent(issue.Id, issue.ProjectId, oldStatus.ToString(), request.NewStatus.ToString(), request.ChangedByUserId, request.CorrelationId ?? Guid.Empty);
         var statusOutbox = new OutboxMessage
@@ -65,24 +69,6 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
             OccurredOn = statusEvent.OccurredOn
         };
         await _outboxRepository.AddAsync(statusOutbox, cancellationToken);
-
-        var notificationEvent = new NotificationRequestedEvent(
-            Guid.NewGuid(),
-            request.ChangedByUserId,
-            "Issue status changed",
-            $"Issue {issue.Id} status changed from {oldStatus} to {request.NewStatus}.",
-            "InApp",
-            "Issue",
-            issue.Id,
-            request.CorrelationId ?? Guid.Empty);
-
-        var notificationOutbox = new OutboxMessage
-        {
-            EventType = notificationEvent.GetType().Name,
-            Payload = JsonSerializer.Serialize(notificationEvent),
-            OccurredOn = notificationEvent.OccurredOn
-        };
-        await _outboxRepository.AddAsync(notificationOutbox, cancellationToken);
 
         var audit = new IssueAudit(issue.Id, oldStatus, issue.Status, request.ChangedByUserId);
         await _auditRepository.AddAsync(audit, cancellationToken);
@@ -106,6 +92,6 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
             sw.ElapsedMilliseconds,
             issue.Id);
 
-        return _mapper.Map<IssueDto>(issue);
+        return IssueDtoFactory.Create(issue, boardItem.SprintId);
     }
 }

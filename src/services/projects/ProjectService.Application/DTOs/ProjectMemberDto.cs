@@ -1,3 +1,5 @@
+using BitirmeProject.ProjectService.Domain.Enums;
+
 namespace BitirmeProject.ProjectService.Application.DTOs;
 
 public sealed class ProjectMemberDto
@@ -6,4 +8,5 @@ public sealed class ProjectMemberDto
     public Guid UserId { get; init; }
     public Guid AddedByUserId { get; init; }
     public DateTime AddedAt { get; init; }
+    public ProjectMemberRole Role { get; init; }
 }

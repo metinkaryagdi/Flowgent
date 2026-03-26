@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { sprintsApi } from '../../api/sprints';
 import { issuesApi } from '../../api/issues';
 import { IssuePriority, SprintStatus } from '../../types';
-import type { SprintDto, IssueDto } from '../../types';
+import type { SprintDto, IssueBoardItemDto } from '../../types';
 import styles from './Sprint.module.css';
 
 const priorityDot: Record<number, string> = {
@@ -21,10 +21,17 @@ export default function SprintPage() {
     const navigate = useNavigate();
 
     const [sprints, setSprints] = useState<SprintDto[]>([]);
-    const [backlogIssues, setBacklogIssues] = useState<IssueDto[]>([]);
+    const [backlog, setBacklog] = useState<{ items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>({
+        items: [],
+        page: 1,
+        total: 0,
+        loading: false,
+    });
+    const [sprintIssues, setSprintIssues] = useState<Record<string, { items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>>({});
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const pageSize = 20;
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -36,18 +43,84 @@ export default function SprintPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId]);
 
+        const loadBacklog = async (page: number) => {
+        if (!projectId) return;
+        setBacklog((prev) => ({ ...prev, loading: true }));
+        try {
+            const result = await issuesApi.getByProjectPaged(projectId, {
+                page,
+                pageSize,
+                backlogOnly: true,
+            });
+            setBacklog((prev) => ({
+                items: page === 1 ? result.items : [...prev.items, ...result.items],
+                page: result.page,
+                total: result.totalCount,
+                loading: false,
+            }));
+        } catch {
+            setBacklog((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
+    const loadSprintIssues = async (sprintId: string, page: number) => {
+        if (!projectId) return;
+        setSprintIssues((prev) => ({
+            ...prev,
+            [sprintId]: {
+                items: prev[sprintId]?.items || [],
+                page: prev[sprintId]?.page || 1,
+                total: prev[sprintId]?.total || 0,
+                loading: true,
+            }
+        }));
+        try {
+            const result = await issuesApi.getByProjectPaged(projectId, {
+                page,
+                pageSize,
+                sprintId,
+            });
+            setSprintIssues((prev) => {
+                const current = prev[sprintId] || { items: [], page: 1, total: 0, loading: false };
+                return {
+                    ...prev,
+                    [sprintId]: {
+                        items: page === 1 ? result.items : [...current.items, ...result.items],
+                        page: result.page,
+                        total: result.totalCount,
+                        loading: false,
+                    }
+                };
+            });
+        } catch {
+            setSprintIssues((prev) => ({
+                ...prev,
+                [sprintId]: { ...(prev[sprintId] || { items: [], page: 1, total: 0 }), loading: false },
+            }));
+        }
+    };
+
     const loadData = async () => {
         if (!projectId) return;
         setLoading(true);
         try {
-            const [sprintData, issueData] = await Promise.all([
-                sprintsApi.getByProject(projectId),
-                issuesApi.getByProject(projectId),
-            ]);
+            const sprintData = await sprintsApi.getByProject(projectId);
             setSprints(sprintData);
-            // Backlog = issues without a sprint
-            const backlog = (issueData as unknown as IssueDto[]).filter((i) => !i.sprintId);
-            setBacklogIssues(backlog);
+
+            setBacklog({ items: [], page: 1, total: 0, loading: true });
+            setSprintIssues({});
+
+            const activeSprint = sprintData.find((s) => s.status === SprintStatus.Active);
+            const plannedSprints = sprintData.filter((s) => s.status === SprintStatus.Planned);
+            const sprintIdsToLoad = [
+                ...(activeSprint ? [activeSprint.id] : []),
+                ...plannedSprints.map((s) => s.id),
+            ];
+
+            await Promise.all([
+                loadBacklog(1),
+                ...sprintIdsToLoad.map((id) => loadSprintIssues(id, 1)),
+            ]);
         } catch {
             showToast('Veriler yüklenirken hata oluştu.', 'error');
         } finally {
@@ -59,24 +132,26 @@ export default function SprintPage() {
     const plannedSprints = sprints.filter((s) => s.status === SprintStatus.Planned);
     const completedSprints = sprints.filter((s) => s.status === SprintStatus.Completed);
 
-    // ── Sprint actions ────────────
+    const backlogIssues = backlog.items;
+
+    // â”€â”€ Sprint actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const handleStartSprint = async (id: string) => {
         try {
             await sprintsApi.start(id);
-            showToast('Sprint başlatıldı!');
+            showToast('Sprint baÅŸlatÄ±ldÄ±!');
             await loadData();
         } catch {
-            showToast('Sprint başlatılırken hata oluştu.', 'error');
+            showToast('Sprint baÅŸlatÄ±lÄ±rken hata oluÅŸtu.', 'error');
         }
     };
 
     const handleCompleteSprint = async (id: string) => {
         try {
             await sprintsApi.complete(id);
-            showToast('Sprint tamamlandı!');
+            showToast('Sprint tamamlandÄ±!');
             await loadData();
         } catch {
-            showToast('Sprint tamamlanırken hata oluştu.', 'error');
+            showToast('Sprint tamamlanÄ±rken hata oluÅŸtu.', 'error');
         }
     };
 
@@ -84,11 +159,21 @@ export default function SprintPage() {
         if (!projectId) return;
         try {
             await sprintsApi.create({ projectId, name, startDate, endDate });
-            showToast('Sprint oluşturuldu!');
+            showToast('Sprint oluÅŸturuldu!');
             setShowCreateModal(false);
             await loadData();
         } catch {
-            showToast('Sprint oluşturulurken hata oluştu.', 'error');
+            showToast('Sprint oluÅŸturulurken hata oluÅŸtu.', 'error');
+        }
+    };
+
+    const handleAddIssueToSprint = async (sprintId: string, issueId: string) => {
+        try {
+            await sprintsApi.addIssue(sprintId, issueId);
+            showToast('Issue sprint\'e eklendi!');
+            await loadData();
+        } catch {
+            showToast('Issue eklenirken hata oluÅŸtu.', 'error');
         }
     };
 
@@ -97,8 +182,8 @@ export default function SprintPage() {
             <div className={styles.sprintPage}>
                 <div className={styles.header}>
                     <div className={styles.headerLeft}>
-                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>←</button>
-                        <h1 className={styles.title}>Yükleniyor...</h1>
+                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>â†</button>
+                        <h1 className={styles.title}>YÃ¼kleniyor...</h1>
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -110,10 +195,10 @@ export default function SprintPage() {
 
     return (
         <div className={styles.sprintPage}>
-            {/* ── Header ─────────────── */}
+            {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <button className={styles.backBtn} onClick={() => navigate(`/projects/${projectId}/board`)}>←</button>
+                    <button className={styles.backBtn} onClick={() => navigate(`/projects/${projectId}/board`)}>â†</button>
                     <h1 className={styles.title}>Sprint & Backlog</h1>
                 </div>
                 <button className={styles.createBtn} onClick={() => setShowCreateModal(true)}>
@@ -121,7 +206,7 @@ export default function SprintPage() {
                 </button>
             </div>
 
-            {/* ── Active Sprint ──────── */}
+            {/* â”€â”€ Active Sprint â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeSprint && (
                 <div className={styles.activeSprint}>
                     <div className={styles.activeSprintHeader}>
@@ -130,11 +215,11 @@ export default function SprintPage() {
                     </div>
                     <div className={styles.sprintDates}>
                         <div className={styles.sprintDate}>
-                            <span className={styles.sprintDateLabel}>Başlangıç:</span>
+                            <span className={styles.sprintDateLabel}>BaÅŸlangÄ±Ã§:</span>
                             {formatDate(activeSprint.startDate)}
                         </div>
                         <div className={styles.sprintDate}>
-                            <span className={styles.sprintDateLabel}>Bitiş:</span>
+                            <span className={styles.sprintDateLabel}>BitiÅŸ:</span>
                             {formatDate(activeSprint.endDate)}
                         </div>
                     </div>
@@ -145,17 +230,41 @@ export default function SprintPage() {
                         />
                     </div>
                     <div className={styles.progressText}>
-                        {activeSprint.completedIssueCount || 0} / {activeSprint.totalIssueCount || 0} tamamlandı
+                        {activeSprint.completedIssueCount || 0} / {activeSprint.totalIssueCount || 0} tamamlandÄ±
                     </div>
                     <div className={styles.sprintActions}>
                         <button className={styles.completeBtn} onClick={() => handleCompleteSprint(activeSprint.id)}>
-                            ✓ Sprint'i Tamamla
+                            âœ“ Sprint'i Tamamla
                         </button>
+                    </div>
+                    {/* Active Sprint Issues */}
+                    <div className={styles.backlogList} style={{ marginTop: 16 }}>
+                        {(sprintIssues[activeSprint.id]?.items || []).map(issue => (
+                            <div key={issue.issueId} className={styles.backlogItem}>
+                                <div className={styles.backlogItemLeft}>
+                                    <span className={`${styles.priorityDot} ${priorityDot[issue.priority] || ''}`} />
+                                    <span className={styles.backlogItemTitle}>{issue.title}</span>
+                                </div>
+                            </div>
+                        ))}
+                        {sprintIssues[activeSprint.id]?.loading && (
+                            <div className={styles.backlogItem} style={{ color: 'var(--text-tertiary)', fontSize: 13, border: 'none' }}>
+                                Yükleniyor...
+                            </div>
+                        )}
+                        {(sprintIssues[activeSprint.id]?.items?.length || 0) < (sprintIssues[activeSprint.id]?.total || 0) && (
+                            <button
+                                className={styles.assignSprintBtn}
+                                onClick={() => loadSprintIssues(activeSprint.id, (sprintIssues[activeSprint.id]?.page || 1) + 1)}
+                            >
+                                Daha Fazla
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* ── Planned Sprints ────── */}
+            {/* â”€â”€ Planned Sprints â”€â”€â”€â”€â”€â”€ */}
             {plannedSprints.length > 0 && (
                 <>
                     <h3 className={styles.sectionTitle}>Planlanan Sprint'ler</h3>
@@ -164,13 +273,41 @@ export default function SprintPage() {
                             <div key={sprint.id} className={styles.sprintCard}>
                                 <div className={styles.sprintCardInfo}>
                                     <h3>{sprint.name}</h3>
-                                    <p>{formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}</p>
+                                    <p>{formatDate(sprint.startDate)} â€” {formatDate(sprint.endDate)}</p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span className={`${styles.statusBadge} ${styles.statusPlanned}`}>Planlandı</span>
+                                    <span className={`${styles.statusBadge} ${styles.statusPlanned}`}>PlanlandÄ±</span>
                                     {!activeSprint && (
                                         <button className={styles.startBtn} onClick={() => handleStartSprint(sprint.id)}>
-                                            Başlat
+                                            BaÅŸlat
+                                        </button>
+                                    )}
+                                </div>
+                                <div className={styles.backlogList} style={{ marginTop: 16 }}>
+                                    {(sprintIssues[sprint.id]?.items || []).map(issue => (
+                                        <div key={issue.issueId} className={styles.backlogItem}>
+                                            <div className={styles.backlogItemLeft}>
+                                                <span className={`${styles.priorityDot} ${priorityDot[issue.priority] || ''}`} />
+                                                <span className={styles.backlogItemTitle}>{issue.title}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {sprintIssues[sprint.id]?.loading && (
+                                        <div className={styles.backlogItem} style={{ color: 'var(--text-tertiary)', fontSize: 13, border: 'none' }}>
+                                            Yükleniyor...
+                                        </div>
+                                    )}
+                                    {!sprintIssues[sprint.id]?.loading && (sprintIssues[sprint.id]?.items?.length || 0) === 0 && (
+                                        <div className={styles.backlogItem} style={{ color: 'var(--text-tertiary)', fontSize: 13, border: 'none' }}>
+                                            Henüz issue eklenmemiş.
+                                        </div>
+                                    )}
+                                    {(sprintIssues[sprint.id]?.items?.length || 0) < (sprintIssues[sprint.id]?.total || 0) && (
+                                        <button
+                                            className={styles.assignSprintBtn}
+                                            onClick={() => loadSprintIssues(sprint.id, (sprintIssues[sprint.id]?.page || 1) + 1)}
+                                        >
+                                            Daha Fazla
                                         </button>
                                     )}
                                 </div>
@@ -180,7 +317,7 @@ export default function SprintPage() {
                 </>
             )}
 
-            {/* ── Completed Sprints ──── */}
+            {/* â”€â”€ Completed Sprints â”€â”€â”€â”€ */}
             {completedSprints.length > 0 && (
                 <>
                     <h3 className={styles.sectionTitle}>Tamamlanan Sprint'ler</h3>
@@ -189,41 +326,74 @@ export default function SprintPage() {
                             <div key={sprint.id} className={styles.sprintCard}>
                                 <div className={styles.sprintCardInfo}>
                                     <h3>{sprint.name}</h3>
-                                    <p>{formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}</p>
+                                    <p>{formatDate(sprint.startDate)} â€” {formatDate(sprint.endDate)}</p>
                                 </div>
-                                <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>Tamamlandı</span>
+                                <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>TamamlandÄ±</span>
                             </div>
                         ))}
                     </div>
                 </>
             )}
 
-            {/* ── Backlog ────────────── */}
+            {/* â”€â”€ Backlog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className={styles.backlogSection}>
-                <h3 className={styles.sectionTitle}>Backlog ({backlogIssues.length})</h3>
-                {backlogIssues.length === 0 ? (
+                <h3 className={styles.sectionTitle}>Backlog ({backlog.total || backlogIssues.length})</h3>
+                {backlogIssues.length === 0 && !backlog.loading ? (
                     <div className={styles.empty}>
-                        <div className={styles.emptyIcon}>📋</div>
+                        <div className={styles.emptyIcon}>ğŸ“‹</div>
                         <p>Backlog'da issue yok.</p>
                     </div>
                 ) : (
                     <div className={styles.backlogList}>
                         {backlogIssues.map((issue) => (
-                            <div key={issue.id} className={styles.backlogItem}>
+                            <div key={issue.issueId} className={styles.backlogItem}>
                                 <div className={styles.backlogItemLeft}>
                                     <span className={`${styles.priorityDot} ${priorityDot[issue.priority] || ''}`} />
                                     <span className={styles.backlogItemTitle}>{issue.title}</span>
                                 </div>
-                                {plannedSprints.length > 0 && (
-                                    <button className={styles.assignSprintBtn}>Sprint'e Ekle</button>
+                                {plannedSprints.length === 1 && (
+                                    <button
+                                        className={styles.assignSprintBtn}
+                                        onClick={() => handleAddIssueToSprint(plannedSprints[0].id, issue.issueId)}
+                                    >
+                                        Sprint'e Ekle
+                                    </button>
+                                )}
+                                {plannedSprints.length > 1 && (
+                                    <select
+                                        className={styles.assignSprintBtn}
+                                        defaultValue=""
+                                        onChange={(e) => {
+                                            if (e.target.value) handleAddIssueToSprint(e.target.value, issue.issueId);
+                                            e.target.value = '';
+                                        }}
+                                    >
+                                        <option value="" disabled>Sprint'e Ekle</option>
+                                        {plannedSprints.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
                                 )}
                             </div>
                         ))}
+                        {backlog.loading && (
+                            <div className={styles.backlogItem} style={{ color: 'var(--text-tertiary)', fontSize: 13, border: 'none' }}>
+                                Yükleniyor...
+                            </div>
+                        )}
+                        {backlog.items.length < backlog.total && !backlog.loading && (
+                            <button
+                                className={styles.assignSprintBtn}
+                                onClick={() => loadBacklog(backlog.page + 1)}
+                            >
+                                Daha Fazla
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
 
-            {/* ── Create Modal ──────── */}
+            {/* â”€â”€ Create Modal â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {showCreateModal && (
                 <CreateSprintModal
                     onSubmit={handleCreateSprint}
@@ -231,7 +401,7 @@ export default function SprintPage() {
                 />
             )}
 
-            {/* ── Toast ─────────────── */}
+            {/* â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {toast && (
                 <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
                     {toast.message}
@@ -241,9 +411,9 @@ export default function SprintPage() {
     );
 }
 
-// ═════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Create Sprint Modal
-// ═════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function CreateSprintModal({
     onSubmit,
     onClose,
@@ -270,21 +440,21 @@ function CreateSprintModal({
     return (
         <div className={styles.modalOverlay} onClick={onClose}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <h2 className={styles.modalTitle}>Yeni Sprint Oluştur</h2>
+                <h2 className={styles.modalTitle}>Yeni Sprint OluÅŸtur</h2>
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Sprint Adı</label>
+                        <label className={styles.formLabel}>Sprint AdÄ±</label>
                         <input
                             type="text"
                             className={styles.formInput}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Örn: Sprint 1"
+                            placeholder="Ã–rn: Sprint 1"
                             autoFocus
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Başlangıç Tarihi</label>
+                        <label className={styles.formLabel}>BaÅŸlangÄ±Ã§ Tarihi</label>
                         <input
                             type="date"
                             className={styles.formInput}
@@ -293,7 +463,7 @@ function CreateSprintModal({
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Bitiş Tarihi</label>
+                        <label className={styles.formLabel}>BitiÅŸ Tarihi</label>
                         <input
                             type="date"
                             className={styles.formInput}
@@ -302,9 +472,9 @@ function CreateSprintModal({
                         />
                     </div>
                     <div className={styles.modalFooter}>
-                        <button type="button" className={styles.btnSecondary} onClick={onClose}>İptal</button>
+                        <button type="button" className={styles.btnSecondary} onClick={onClose}>Ä°ptal</button>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting || !name.trim() || !startDate || !endDate}>
-                            {submitting ? 'Oluşturuluyor...' : 'Oluştur'}
+                            {submitting ? 'OluÅŸturuluyor...' : 'OluÅŸtur'}
                         </button>
                     </div>
                 </form>

@@ -24,7 +24,13 @@ public sealed class CreateSprintCommandHandler : IRequestHandler<CreateSprintCom
 
     public async Task<SprintDto> Handle(CreateSprintCommand request, CancellationToken cancellationToken)
     {
-        var sprint = new Sprint(request.ProjectId, request.Name, request.Goal, request.CreatedByUserId);
+        var sprint = new Sprint(
+            request.ProjectId,
+            request.Name,
+            request.Goal,
+            request.StartDate,
+            request.EndDate,
+            request.CreatedByUserId);
         await _repository.AddAsync(sprint, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

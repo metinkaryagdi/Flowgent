@@ -27,6 +27,38 @@ public sealed class ProjectRepository : IProjectRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByOwnerUserIdPagedAsync(
+        Guid ownerUserId,
+        int page,
+        int pageSize,
+        string? search,
+        bool includeArchived,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Projects.Where(p => p.OwnerUserId == ownerUserId);
+
+        if (!includeArchived)
+        {
+            query = query.Where(p => !p.IsArchived);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(p => p.Name.ToLower().Contains(term) || p.Key.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<bool> ExistsByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var normalized = key.Trim().ToUpperInvariant();

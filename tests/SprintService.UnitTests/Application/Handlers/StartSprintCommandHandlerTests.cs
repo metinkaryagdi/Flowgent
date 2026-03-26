@@ -12,6 +12,12 @@ namespace SprintService.UnitTests.Application.Handlers;
 
 public sealed class StartSprintCommandHandlerTests
 {
+    private static Sprint CreateSprint(Guid? projectId = null, string name = "Sprint")
+    {
+        var startDate = DateTime.UtcNow.Date;
+        return new Sprint(projectId ?? Guid.NewGuid(), name, null, startDate, startDate.AddDays(14), Guid.NewGuid());
+    }
+
     [Fact]
     public async Task Handle_Throws_WhenSprintMissing()
     {
@@ -41,10 +47,10 @@ public sealed class StartSprintCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var anotherActive = new Sprint(sprint.ProjectId, "Active", null, Guid.NewGuid());
+        var anotherActive = CreateSprint(sprint.ProjectId, "Active");
         repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<CancellationToken>()).Returns(anotherActive);
 
         var handler = new StartSprintCommandHandler(repository, unitOfWork, outboxRepository, mapper);
@@ -66,7 +72,7 @@ public sealed class StartSprintCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
         repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<CancellationToken>()).Returns((Sprint?)null);
 

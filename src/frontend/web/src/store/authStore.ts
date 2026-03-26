@@ -10,7 +10,7 @@ interface AuthState {
     isAuthenticated: boolean;
 
     // Actions
-    setAuth: (token: string, user: UserDto, roles: string[]) => void;
+    setAuth: (user: UserDto, roles: string[]) => void;
     setFlags: (flags: UiFlags) => void;
     logout: () => void;
     hydrate: () => void;
@@ -23,11 +23,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     flags: null,
     isAuthenticated: false,
 
-    setAuth: (token, user, roles) => {
-        localStorage.setItem('accessToken', token);
+    setAuth: (user, roles) => {
+        // Token is now managed by HttpOnly cookies
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('roles', JSON.stringify(roles));
-        set({ token, user, roles, isAuthenticated: true });
+        set({ token: null, user, roles, isAuthenticated: true });
     },
 
     setFlags: (flags) => {
@@ -35,24 +35,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     logout: () => {
-        localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         localStorage.removeItem('roles');
         set({ token: null, user: null, roles: [], flags: null, isAuthenticated: false });
     },
 
     hydrate: () => {
-        const token = localStorage.getItem('accessToken');
         const userStr = localStorage.getItem('user');
         const rolesStr = localStorage.getItem('roles');
 
-        if (token && userStr) {
+        if (userStr) {
             try {
                 const user = JSON.parse(userStr) as UserDto;
                 const roles = rolesStr ? JSON.parse(rolesStr) as string[] : [];
-                set({ token, user, roles, isAuthenticated: true });
+                set({ token: null, user, roles, isAuthenticated: true });
             } catch {
-                localStorage.removeItem('accessToken');
                 localStorage.removeItem('user');
                 localStorage.removeItem('roles');
             }

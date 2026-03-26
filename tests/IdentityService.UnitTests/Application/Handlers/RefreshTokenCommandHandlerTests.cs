@@ -1,5 +1,6 @@
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -41,7 +42,7 @@ public sealed class RefreshTokenCommandHandlerTests
         var mapper = Substitute.For<IMapper>();
         var options = Options.Create(new JwtOptions { RefreshTokenDays = 7 });
 
-        var token = new RefreshToken(Guid.NewGuid(), "token", DateTime.UtcNow.AddDays(1));
+        var token = new RefreshToken(Guid.NewGuid(), "tokenHash", DateTime.UtcNow.AddDays(1));
         refreshRepo.GetByTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(token);
 
         var user = new User("user", "user@example.com", "hash");
@@ -66,7 +67,7 @@ public sealed class RefreshTokenCommandHandlerTests
         var mapper = Substitute.For<IMapper>();
         var options = Options.Create(new JwtOptions { RefreshTokenDays = 7 });
 
-        var token = new RefreshToken(Guid.NewGuid(), "token", DateTime.UtcNow.AddDays(1));
+        var token = new RefreshToken(Guid.NewGuid(), "tokenHash", DateTime.UtcNow.AddDays(1));
         refreshRepo.GetByTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(token);
 
         var user = new User("user", "user@example.com", "hash");
@@ -76,14 +77,19 @@ public sealed class RefreshTokenCommandHandlerTests
         mapper.Map<UserDto>(user).Returns(new UserDto { Id = user.Id, Email = user.Email });
 
         var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);
-        var command = new RefreshTokenCommand("token");
+        var rawToken = "myRawToken";
+        var command = new RefreshTokenCommand(rawToken);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.AccessToken.Should().Be("access");
         result.RefreshToken.Should().NotBeNullOrWhiteSpace();
-        await refreshRepo.Received(1).UpdateAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
-        await refreshRepo.Received(1).AddAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        // The handler must search by hash of the incoming raw token
+        await refreshRepo.Received(1).GetByTokenAsync(
+            TokenHasher.Hash(rawToken), Arg.Any<CancellationToken>());
+        // New token persisted to DB must be hashed (not equal to the raw token returned to client)
+        await refreshRepo.Received(1).AddAsync(
+            Arg.Is<RefreshToken>(t => t.Token != result.RefreshToken), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

@@ -5,4 +5,5 @@ namespace BitirmeProject.ProjectService.Application.Features.Projects.Commands.R
 
 public sealed record RemoveMemberCommand(
     Guid ProjectId,
-    Guid UserId) : IRequest<ProjectDto>;
+    Guid UserId,
+    Guid RemovedByUserId) : IRequest<ProjectDto>;

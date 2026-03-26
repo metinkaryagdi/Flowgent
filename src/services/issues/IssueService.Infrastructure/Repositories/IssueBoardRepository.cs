@@ -19,6 +19,16 @@ public sealed class IssueBoardRepository : IIssueBoardRepository
         return await _dbContext.IssueBoardItems.FirstOrDefaultAsync(x => x.IssueId == issueId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<IssueBoardItem>> GetByIssueIdsAsync(IReadOnlyCollection<Guid> issueIds, CancellationToken cancellationToken = default)
+    {
+        if (issueIds.Count == 0)
+            return Array.Empty<IssueBoardItem>();
+
+        return await _dbContext.IssueBoardItems
+            .Where(x => issueIds.Contains(x.IssueId))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<IssueBoardItem>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.IssueBoardItems
@@ -26,6 +36,46 @@ public sealed class IssueBoardRepository : IIssueBoardRepository
             .OrderBy(x => x.Status)
             .ThenBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<IssueBoardItem>> GetBySprintIdAsync(Guid sprintId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.IssueBoardItems
+            .Where(x => x.SprintId == sprintId)
+            .OrderBy(x => x.Status)
+            .ThenBy(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<IssueBoardItem> Items, int TotalCount)> GetByProjectIdPagedAsync(
+        Guid projectId,
+        int page,
+        int pageSize,
+        Guid? sprintId = null,
+        bool backlogOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.IssueBoardItems.Where(x => x.ProjectId == projectId);
+
+        if (backlogOnly)
+        {
+            query = query.Where(x => x.SprintId == null);
+        }
+        else if (sprintId.HasValue)
+        {
+            query = query.Where(x => x.SprintId == sprintId);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderBy(x => x.Status)
+            .ThenBy(x => x.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
     }
 
     public async Task AddAsync(IssueBoardItem boardItem, CancellationToken cancellationToken = default)

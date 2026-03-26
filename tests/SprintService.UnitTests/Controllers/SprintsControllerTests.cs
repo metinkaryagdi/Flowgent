@@ -17,7 +17,8 @@ public sealed class SprintsControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         var controller = new SprintsController(mediator);
-        var command = new CreateSprintCommand(Guid.NewGuid(), "Sprint 1", null, Guid.NewGuid(), null);
+        var startDate = DateTime.UtcNow.Date;
+        var command = new CreateSprintCommand(Guid.NewGuid(), "Sprint 1", null, Guid.NewGuid(), null, startDate, startDate.AddDays(14));
         var dto = new SprintDto { Id = Guid.NewGuid(), Name = command.Name };
         mediator.Send(command).Returns(dto);
 

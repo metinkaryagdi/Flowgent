@@ -59,6 +59,9 @@ namespace SprintService.Infrastructure.Migrations
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Goal")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -71,6 +74,9 @@ namespace SprintService.Infrastructure.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -82,7 +88,10 @@ namespace SprintService.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProjectId");
+                    b.HasIndex("ProjectId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 1")
+                        .HasDatabaseName("IX_Sprints_ProjectId_Active");
 
                     b.ToTable("Sprints");
                 });

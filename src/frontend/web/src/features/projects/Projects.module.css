@@ -43,6 +43,43 @@
     box-shadow: var(--shadow-md);
 }
 
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-5);
+    flex-wrap: wrap;
+}
+
+.searchInput {
+    flex: 1;
+    min-width: 220px;
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.searchInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.toggle input {
+    width: 16px;
+    height: 16px;
+}
+
 /* ── Grid ────────────────────── */
 .grid {
     display: grid;
@@ -136,6 +173,18 @@
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: var(--spacing-4);
+}
+
+.archivedBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    margin-left: var(--spacing-2);
 }
 
 /* ── Stats ───────────────────── */
@@ -364,6 +413,34 @@
 .toastError {
     background: var(--color-error);
     color: #fff;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-3);
+    margin-top: var(--spacing-6);
+}
+
+.pageBtn {
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+}
+
+.pageBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pageInfo {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 @keyframes fadeIn {

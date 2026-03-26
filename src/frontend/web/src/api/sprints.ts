@@ -32,4 +32,14 @@ export const sprintsApi = {
         const response = await apiClient.post<SprintDto>(`/api/v1/sprints/${id}/complete`);
         return response.data;
     },
+
+    addIssue: async (sprintId: string, issueId: string): Promise<void> => {
+        if (useMockApi) return mockApi.sprints.addIssue(sprintId, issueId);
+        await apiClient.post(`/api/v1/sprints/${sprintId}/issues`, { issueId });
+    },
+
+    removeIssue: async (sprintId: string, issueId: string): Promise<void> => {
+        if (useMockApi) return mockApi.sprints.removeIssue(sprintId, issueId);
+        await apiClient.delete(`/api/v1/sprints/${sprintId}/issues/${issueId}`);
+    },
 };

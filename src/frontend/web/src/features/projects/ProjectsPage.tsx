@@ -10,7 +10,12 @@ export default function ProjectsPage() {
     const navigate = useNavigate();
 
     const [projects, setProjects] = useState<ProjectDto[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showArchived, setShowArchived] = useState(false);
+    const [page, setPage] = useState(1);
+    const pageSize = 9;
 
     // Modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -30,14 +35,24 @@ export default function ProjectsPage() {
         if (!user?.id) return;
         loadProjects();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id]);
+    }, [user?.id, page, searchTerm, showArchived]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, showArchived]);
 
     const loadProjects = async () => {
         if (!user?.id) return;
         setLoading(true);
         try {
-            const data = await projectsApi.getByUser(user.id);
-            setProjects(data);
+            const result = await projectsApi.getByUserPaged(user.id, {
+                page,
+                pageSize,
+                search: searchTerm.trim() || undefined,
+                includeArchived: showArchived,
+            });
+            setProjects(result.items);
+            setTotalCount(result.totalCount);
         } catch {
             showToast('Projeler yüklenirken hata oluştu.', 'error');
         } finally {
@@ -79,7 +94,7 @@ export default function ProjectsPage() {
         if (!deleteProject) return;
         try {
             await projectsApi.delete(deleteProject.id);
-            showToast('Proje silindi.');
+            showToast('Proje arşivlendi.');
             setDeleteProject(null);
             await loadProjects();
         } catch {
@@ -100,19 +115,44 @@ export default function ProjectsPage() {
         });
     };
 
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const pagedProjects = projects;
+
+    useEffect(() => {
+        if (page > totalPages) setPage(totalPages);
+    }, [page, totalPages]);
+
     return (
         <div className={styles.projectsPage}>
             {/* ── Header ─────────────── */}
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
                     <h1>Projeler</h1>
-                    <p>{projects.length} proje</p>
+                    <p>{totalCount} proje</p>
                 </div>
                 {flags?.canManageProjects !== false && (
                     <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
                         <span>+</span> Yeni Proje
                     </button>
                 )}
+            </div>
+
+            <div className={styles.toolbar}>
+                <input
+                    className={styles.searchInput}
+                    type="text"
+                    placeholder="Proje ara..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <label className={styles.toggle}>
+                    <input
+                        type="checkbox"
+                        checked={showArchived}
+                        onChange={(e) => setShowArchived(e.target.checked)}
+                    />
+                    <span>Arşivlenenleri göster</span>
+                </label>
             </div>
 
             {/* ── Loading ────────────── */}
@@ -127,12 +167,16 @@ export default function ProjectsPage() {
             {/* ── Project Grid ──────── */}
             {!loading && (
                 <div className={styles.grid}>
-                    {projects.length === 0 ? (
+                    {pagedProjects.length === 0 ? (
                         <div className={styles.emptyState}>
                             <div className={styles.emptyIcon}>📁</div>
-                            <h2 className={styles.emptyTitle}>Henüz proje yok</h2>
+                            <h2 className={styles.emptyTitle}>
+                                {totalCount === 0 ? 'Henüz proje yok' : 'Sonuç bulunamadı'}
+                            </h2>
                             <p className={styles.emptyText}>
-                                İlk projenizi oluşturarak başlayın.
+                                {totalCount === 0
+                                    ? 'İlk projenizi oluşturarak başlayın.'
+                                    : 'Arama veya filtreleri değiştirin.'}
                             </p>
                             {flags?.canManageProjects !== false && (
                                 <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
@@ -141,7 +185,7 @@ export default function ProjectsPage() {
                             )}
                         </div>
                     ) : (
-                        projects.map((project) => (
+                        pagedProjects.map((project) => (
                             <div
                                 key={project.id}
                                 className={styles.card} data-testid="project-card" data-project-id={project.id}
@@ -165,7 +209,7 @@ export default function ProjectsPage() {
                                             </button>
                                             <button
                                                 className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`}
-                                                title="Sil"
+                                                title="Arşivle"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setDeleteProject(project);
@@ -179,6 +223,9 @@ export default function ProjectsPage() {
 
                                 <h3 className={styles.cardTitle}>{project.name}</h3>
                                 <span className={styles.cardKey}>{project.key}</span>
+                                {project.isArchived && (
+                                    <span className={styles.archivedBadge}>Arşivli</span>
+                                )}
 
                                 <div className={styles.cardStats}>
                                     <div className={styles.stat}>
@@ -207,6 +254,26 @@ export default function ProjectsPage() {
                 </div>
             )}
 
+            {!loading && totalPages > 1 && (
+                <div className={styles.pagination}>
+                    <button
+                        className={styles.pageBtn}
+                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                        disabled={page === 1}
+                    >
+                        Önceki
+                    </button>
+                    <span className={styles.pageInfo}>Sayfa {page} / {totalPages}</span>
+                    <button
+                        className={styles.pageBtn}
+                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Sonraki
+                    </button>
+                </div>
+            )}
+
             {/* ── Create Modal ──────── */}
             {showCreateModal && (
                 <ProjectFormModal
@@ -231,17 +298,17 @@ export default function ProjectsPage() {
             {deleteProject && (
                 <div className={styles.modalOverlay} onClick={() => setDeleteProject(null)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <h2 className={styles.modalTitle}>Projeyi Sil</h2>
+                        <h2 className={styles.modalTitle}>Projeyi Arşivle</h2>
                         <p className={styles.confirmText}>
                             <span className={styles.confirmProjectName}>{deleteProject.name}</span> projesini
-                            silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                            arşivlemek istediğinize emin misiniz? Bu işlem geri alınamaz.
                         </p>
                         <div className={styles.modalFooter}>
                             <button className={styles.btnSecondary} onClick={() => setDeleteProject(null)}>
                                 İptal
                             </button>
                             <button className={styles.btnDanger} onClick={handleDelete}>
-                                Sil
+                                Arşivle
                             </button>
                         </div>
                     </div>

@@ -7,6 +7,7 @@ public sealed class StoredFile
     public string ContentType { get; private set; } = string.Empty;
     public long SizeBytes { get; private set; }
     public string StoragePath { get; private set; } = string.Empty;
+    // StorageService intentionally owns only blob identity and minimal file metadata.
     public Guid UploadedByUserId { get; private set; }
     public DateTime UploadedAt { get; private set; }
 

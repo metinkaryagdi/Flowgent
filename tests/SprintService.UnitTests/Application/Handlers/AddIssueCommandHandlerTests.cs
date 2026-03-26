@@ -13,6 +13,12 @@ namespace SprintService.UnitTests.Application.Handlers;
 
 public sealed class AddIssueCommandHandlerTests
 {
+    private static Sprint CreateSprint()
+    {
+        var startDate = DateTime.UtcNow.Date;
+        return new Sprint(Guid.NewGuid(), "Sprint", null, startDate, startDate.AddDays(14), Guid.NewGuid());
+    }
+
     [Fact]
     public async Task Handle_Throws_WhenSprintMissing()
     {
@@ -44,7 +50,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprint.Start();
         sprint.Complete();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
@@ -69,7 +75,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SprintIssue?)null);
 
@@ -93,7 +99,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "Title", "Task", "Low", "Open", Guid.NewGuid());
@@ -119,7 +125,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
@@ -146,7 +152,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
@@ -176,7 +182,7 @@ public sealed class AddIssueCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());

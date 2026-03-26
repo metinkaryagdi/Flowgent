@@ -1,8 +1,10 @@
 using System.Text.Json;
 using AutoMapper;
 using BitirmeProject.ProjectService.Application.Abstractions;
+using BitirmeProject.ProjectService.Application.Common.Mappings;
 using BitirmeProject.ProjectService.Application.DTOs;
 using BitirmeProject.ProjectService.Domain.Entities;
+using BitirmeProject.ProjectService.Domain.Enums;
 using MediatR;
 using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
@@ -13,17 +15,23 @@ namespace BitirmeProject.ProjectService.Application.Features.Projects.Commands.C
 public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, ProjectDto>
 {
     private readonly IProjectRepository _repository;
+    private readonly IProjectSummaryRepository _summaryRepository;
+    private readonly IProjectMemberRepository _memberRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
 
     public CreateProjectCommandHandler(
         IProjectRepository repository,
+        IProjectSummaryRepository summaryRepository,
+        IProjectMemberRepository memberRepository,
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper)
     {
         _repository = repository;
+        _summaryRepository = summaryRepository;
+        _memberRepository = memberRepository;
         _unitOfWork = unitOfWork;
         _outboxRepository = outboxRepository;
         _mapper = mapper;
@@ -37,6 +45,12 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
         var project = new Project(request.Name, request.Key, request.OwnerUserId);
         await _repository.AddAsync(project, cancellationToken);
 
+        var summary = new ProjectSummary(project.Id);
+        await _summaryRepository.AddAsync(summary, cancellationToken);
+
+        var ownerMember = new ProjectMember(project.Id, project.OwnerUserId, project.OwnerUserId, ProjectMemberRole.Owner);
+        await _memberRepository.AddAsync(ownerMember, cancellationToken);
+
         var evt = new ProjectCreatedEvent(project.Id, project.Name, project.Key, project.OwnerUserId, request.CorrelationId ?? Guid.Empty);
         var outbox = new OutboxMessage
         {
@@ -48,6 +62,6 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return _mapper.Map<ProjectDto>(project);
+        return ProjectDtoFactory.Create(project, summary);
     }
 }

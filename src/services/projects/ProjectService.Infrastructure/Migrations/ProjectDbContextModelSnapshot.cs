@@ -53,17 +53,8 @@ namespace ProjectService.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("DoneIssueCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("InProgressIssueCount")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("IssueCount")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -74,9 +65,6 @@ namespace ProjectService.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<int>("OpenIssueCount")
-                        .HasColumnType("integer");
 
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
@@ -92,6 +80,34 @@ namespace ProjectService.Infrastructure.Migrations
                     b.ToTable("Projects");
                 });
 
+            modelBuilder.Entity("BitirmeProject.ProjectService.Domain.Entities.ProjectSummary", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DoneIssueCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("InProgressIssueCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IssueCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OpenIssueCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ProjectId");
+
+                    b.ToTable("ProjectSummaries");
+                });
+
             modelBuilder.Entity("BitirmeProject.ProjectService.Domain.Entities.ProjectMember", b =>
                 {
                     b.Property<Guid>("ProjectId")
@@ -105,6 +121,9 @@ namespace ProjectService.Infrastructure.Migrations
 
                     b.Property<Guid>("AddedByUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
 
                     b.HasKey("ProjectId", "UserId");
 
@@ -145,6 +164,15 @@ namespace ProjectService.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OutboxMessages");
+                });
+
+            modelBuilder.Entity("BitirmeProject.ProjectService.Domain.Entities.ProjectSummary", b =>
+                {
+                    b.HasOne("BitirmeProject.ProjectService.Domain.Entities.Project", null)
+                        .WithOne()
+                        .HasForeignKey("BitirmeProject.ProjectService.Domain.Entities.ProjectSummary", "ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

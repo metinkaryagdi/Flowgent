@@ -15,11 +15,12 @@ public sealed class GetIssueByIdQueryHandlerTests
     public async Task Handle_ReturnsNull_WhenMissing()
     {
         var repository = Substitute.For<IIssueRepository>();
+        var boardRepository = Substitute.For<IIssueBoardRepository>();
         var mapper = Substitute.For<IMapper>();
 
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Issue?)null);
 
-        var handler = new GetIssueByIdQueryHandler(repository, mapper);
+        var handler = new GetIssueByIdQueryHandler(repository, boardRepository, mapper);
         var query = new GetIssueByIdQuery(Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -31,19 +32,21 @@ public sealed class GetIssueByIdQueryHandlerTests
     public async Task Handle_ReturnsDto_WhenFound()
     {
         var repository = Substitute.For<IIssueRepository>();
+        var boardRepository = Substitute.For<IIssueBoardRepository>();
         var mapper = Substitute.For<IMapper>();
 
         var issue = new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Low, Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
+        var boardItem = new IssueBoardItem(issue);
+        boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
-        var expected = new IssueDto { Id = issue.Id };
-        mapper.Map<IssueDto>(issue).Returns(expected);
-
-        var handler = new GetIssueByIdQueryHandler(repository, mapper);
+        var handler = new GetIssueByIdQueryHandler(repository, boardRepository, mapper);
         var query = new GetIssueByIdQuery(Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);
 
-        result.Should().Be(expected);
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(issue.Id);
+        result.SprintId.Should().BeNull();
     }
 }

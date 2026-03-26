@@ -1,6 +1,7 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -36,7 +37,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
 
     public async Task<AuthResponseDto> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
-        var existing = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+        var existing = await _refreshTokenRepository.GetByTokenAsync(TokenHasher.Hash(request.RefreshToken), cancellationToken);
         if (existing is null || !existing.IsActive)
             throw new InvalidOperationException("Invalid refresh token.");
 
@@ -56,9 +57,10 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
 
         var token = _jwtTokenGenerator.Generate(user, roles);
 
+        var rawNewToken = GenerateToken();
         var newRefreshToken = new RefreshToken(
             user.Id,
-            GenerateToken(),
+            TokenHasher.Hash(rawNewToken),
             DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays));
 
         await _refreshTokenRepository.AddAsync(newRefreshToken, cancellationToken);
@@ -68,7 +70,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
         {
             AccessToken = token.AccessToken,
             ExpiresAt = token.ExpiresAt,
-            RefreshToken = newRefreshToken.Token,
+            RefreshToken = rawNewToken,
             User = _mapper.Map<UserDto>(user),
             Roles = roles
         };

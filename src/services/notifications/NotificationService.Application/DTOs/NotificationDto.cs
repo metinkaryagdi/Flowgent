@@ -10,6 +10,8 @@ public sealed class NotificationDto
     public string Message { get; init; } = string.Empty;
     public NotificationChannel Channel { get; init; }
     public NotificationStatus Status { get; init; }
+    public bool IsRead { get; init; }
+    public DateTime? ReadAt { get; init; }
     public string? EntityType { get; init; }
     public Guid? EntityId { get; init; }
     public DateTime CreatedAt { get; init; }

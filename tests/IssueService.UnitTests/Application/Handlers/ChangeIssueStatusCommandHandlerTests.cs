@@ -77,15 +77,16 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         var issue = new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Low, Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
 
-        var expectedDto = new IssueDto { Id = issue.Id, Status = issue.Status };
-        mapper.Map<IssueDto>(issue).Returns(expectedDto);
+        var boardItem = new IssueBoardItem(issue);
+        boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
         var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
         var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.Open, Guid.NewGuid(), expectedVersion: issue.Version, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(issue.Id);
+        result.Status.Should().Be(issue.Status);
         await outboxRepository.DidNotReceive().AddAsync(Arg.Any<OutboxMessage>(), Arg.Any<CancellationToken>());
         await auditRepository.DidNotReceive().AddAsync(Arg.Any<IssueAudit>(), Arg.Any<CancellationToken>());
         await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -106,17 +107,14 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns((IssueBoardItem?)null);
 
-        var expectedDto = new IssueDto { Id = issue.Id, Status = IssueStatus.InProgress };
-        mapper.Map<IssueDto>(issue).Returns(expectedDto);
-
         var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
         var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), expectedVersion: issue.Version, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(issue.Id);
+        result.Status.Should().Be(IssueStatus.InProgress);
         await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m => m.EventType == "IssueStatusChangedEvent"), Arg.Any<CancellationToken>());
-        await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m => m.EventType == "NotificationRequestedEvent"), Arg.Any<CancellationToken>());
         await auditRepository.Received(1).AddAsync(Arg.Any<IssueAudit>(), Arg.Any<CancellationToken>());
         await boardRepository.Received(1).AddAsync(Arg.Any<IssueBoardItem>(), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

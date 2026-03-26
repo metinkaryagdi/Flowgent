@@ -1,3 +1,4 @@
+using BitirmeProject.SprintService.Domain.Enums;
 using BitirmeProject.SprintService.Application.DTOs;
 using MediatR;
 
@@ -6,4 +7,6 @@ namespace BitirmeProject.SprintService.Application.Features.Sprints.Commands.Com
 public sealed record CompleteSprintCommand(
     Guid SprintId,
     Guid CompletedByUserId,
-    Guid? CorrelationId) : IRequest<SprintDto>;
+    Guid? CorrelationId,
+    SprintCarryOverPolicy CarryOverPolicy,
+    Guid? NextSprintId) : IRequest<SprintDto>;

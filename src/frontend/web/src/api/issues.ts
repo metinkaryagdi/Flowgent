@@ -8,9 +8,11 @@ import type {
     IssueAuditDto,
     WorkflowConfigDto,
     CreateIssueRequest,
+    UpdateIssueRequest,
     AssignIssueRequest,
     ChangeIssueStatusRequest,
     AddCommentRequest,
+    PagedResult,
 } from '../types';
 
 export const issuesApi = {
@@ -29,6 +31,17 @@ export const issuesApi = {
     getByProject: async (projectId: string): Promise<IssueBoardItemDto[]> => {
         if (useMockApi) return mockApi.issues.getByProject(projectId);
         const response = await apiClient.get<IssueBoardItemDto[]>(`/api/v1/issues/project/${projectId}`);
+        return response.data;
+    },
+
+    getByProjectPaged: async (
+        projectId: string,
+        options: { page?: number; pageSize?: number; sprintId?: string; backlogOnly?: boolean } = {}
+    ): Promise<PagedResult<IssueBoardItemDto>> => {
+        if (useMockApi) return mockApi.issues.getByProjectPaged(projectId, options);
+        const response = await apiClient.get<PagedResult<IssueBoardItemDto>>(`/api/v1/issues/project/${projectId}/paged`, {
+            params: options,
+        });
         return response.data;
     },
 
@@ -62,6 +75,12 @@ export const issuesApi = {
         return response.data;
     },
 
+    getComments: async (id: string): Promise<IssueCommentDto[]> => {
+        if (useMockApi) return mockApi.issues.getComments(id);
+        const response = await apiClient.get<IssueCommentDto[]>(`/api/v1/issues/${id}/comments`);
+        return response.data;
+    },
+
     getAttachments: async (id: string): Promise<IssueAttachmentDto[]> => {
         if (useMockApi) return mockApi.issues.getAttachments(id);
         const response = await apiClient.get<IssueAttachmentDto[]>(`/api/v1/issues/${id}/attachments`);
@@ -78,5 +97,16 @@ export const issuesApi = {
         if (useMockApi) return mockApi.issues.getWorkflow();
         const response = await apiClient.get<WorkflowConfigDto>('/api/v1/issues/workflow');
         return response.data;
+    },
+
+    update: async (id: string, data: UpdateIssueRequest): Promise<IssueDto> => {
+        if (useMockApi) return mockApi.issues.update(id, data);
+        const response = await apiClient.put<IssueDto>(`/api/v1/issues/${id}`, data);
+        return response.data;
+    },
+
+    delete: async (id: string): Promise<void> => {
+        if (useMockApi) return mockApi.issues.delete(id);
+        await apiClient.delete(`/api/v1/issues/${id}`);
     },
 };

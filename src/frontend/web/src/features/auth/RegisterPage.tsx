@@ -37,7 +37,9 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             const result = await authApi.register({ userName, email, password });
-            setAuth(result.accessToken, result.user, result.roles);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { accessToken: _, ...rest } = result;
+            setAuth(rest.user, rest.roles);
 
             try {
                 const flags = await authApi.getFlags();

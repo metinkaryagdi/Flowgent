@@ -24,8 +24,12 @@ public sealed class SprintDbContext : DbContext, IUnitOfWork
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Name).IsRequired().HasMaxLength(200);
             entity.Property(x => x.Goal).HasMaxLength(2000);
+            entity.Property(x => x.StartDate).IsRequired();
+            entity.Property(x => x.EndDate).IsRequired();
             entity.Property(x => x.Status).HasConversion<int>();
-            entity.HasIndex(x => x.ProjectId);
+            entity.HasIndex(x => x.ProjectId)
+                .HasFilter($"\"Status\" = {(int)SprintStatus.Active}")
+                .IsUnique();
         });
 
         modelBuilder.Entity<OutboxMessage>(entity =>

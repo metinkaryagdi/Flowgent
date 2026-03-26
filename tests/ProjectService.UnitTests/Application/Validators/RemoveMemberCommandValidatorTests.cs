@@ -9,7 +9,7 @@ public sealed class RemoveMemberCommandValidatorTests
     public void Validate_Fails_WhenProjectMissing()
     {
         var validator = new RemoveMemberCommandValidator();
-        var command = new RemoveMemberCommand(Guid.Empty, Guid.NewGuid());
+        var command = new RemoveMemberCommand(Guid.Empty, Guid.NewGuid(), Guid.NewGuid());
 
         var result = validator.Validate(command);
 
@@ -20,7 +20,7 @@ public sealed class RemoveMemberCommandValidatorTests
     public void Validate_Fails_WhenUserMissing()
     {
         var validator = new RemoveMemberCommandValidator();
-        var command = new RemoveMemberCommand(Guid.NewGuid(), Guid.Empty);
+        var command = new RemoveMemberCommand(Guid.NewGuid(), Guid.Empty, Guid.NewGuid());
 
         var result = validator.Validate(command);
 
@@ -31,7 +31,7 @@ public sealed class RemoveMemberCommandValidatorTests
     public void Validate_Passes_WhenValid()
     {
         var validator = new RemoveMemberCommandValidator();
-        var command = new RemoveMemberCommand(Guid.NewGuid(), Guid.NewGuid());
+        var command = new RemoveMemberCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         var result = validator.Validate(command);
 

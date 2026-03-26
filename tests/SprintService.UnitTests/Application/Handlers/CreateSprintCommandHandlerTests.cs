@@ -23,9 +23,11 @@ public sealed class CreateSprintCommandHandlerTests
 
         var expectedDto = new SprintDto { Id = Guid.NewGuid() };
         mapper.Map<SprintDto>(Arg.Any<Sprint>()).Returns(expectedDto);
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = startDate.AddDays(14);
 
         var handler = new CreateSprintCommandHandler(repository, unitOfWork, mapper);
-        var command = new CreateSprintCommand(Guid.NewGuid(), "Sprint", "Goal", Guid.NewGuid(), null);
+        var command = new CreateSprintCommand(Guid.NewGuid(), "Sprint", "Goal", Guid.NewGuid(), null, startDate, endDate);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -33,6 +35,8 @@ public sealed class CreateSprintCommandHandlerTests
         captured.Should().NotBeNull();
         captured!.ProjectId.Should().Be(command.ProjectId);
         captured.Name.Should().Be(command.Name);
+        captured.StartDate.Should().Be(startDate);
+        captured.EndDate.Should().Be(endDate);
 
         await repository.Received(1).AddAsync(Arg.Any<Sprint>(), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

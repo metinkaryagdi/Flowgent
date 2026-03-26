@@ -7,6 +7,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Abstractions.Exceptions;
+using Shared.Common.Extensions;
 
 namespace BitirmeProject.StorageService.Api.Controllers;
 
@@ -30,11 +31,13 @@ public sealed class StorageController : ControllerBase
     [RequestSizeLimit(50_000_000)]
     public async Task<ActionResult<StoredFileDto>> Upload(
         [FromForm] IFormFile file,
-        [FromForm] Guid uploadedByUserId,
         CancellationToken cancellationToken)
     {
         if (file.Length <= 0)
             throw new BusinessRuleException("File is empty.");
+
+        // UploadedByUserId must come from authenticated Claims, never from the request body.
+        var uploadedByUserId = User.GetUserId();
 
         await using var stream = file.OpenReadStream();
         var storagePath = await _fileStorage.SaveAsync(stream, file.FileName, cancellationToken);
@@ -66,6 +69,11 @@ public sealed class StorageController : ControllerBase
         if (file is null)
             return NotFound();
 
+        // Authorization: only the uploader or an Admin may download the file.
+        var requesterId = User.TryGetUserId();
+        if (!User.HasRole("Admin") && file.UploadedByUserId != requesterId)
+            return Forbid();
+
         var stream = await _fileStorage.OpenReadAsync(file.StoragePath, cancellationToken);
         if (stream is null)
             return NotFound();
@@ -76,6 +84,15 @@ public sealed class StorageController : ControllerBase
     [HttpDelete("files/{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
+        var file = await _repository.GetByIdAsync(id, cancellationToken);
+        if (file is null)
+            return NotFound();
+
+        // Authorization: only the uploader or an Admin may delete the file.
+        var requesterId = User.TryGetUserId();
+        if (!User.HasRole("Admin") && file.UploadedByUserId != requesterId)
+            return Forbid();
+
         await _mediator.Send(new DeleteFileCommand(id), cancellationToken);
         return NoContent();
     }

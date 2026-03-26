@@ -10,6 +10,12 @@ namespace SprintService.UnitTests.Application.Handlers;
 
 public sealed class GetActiveSprintQueryHandlerTests
 {
+    private static Sprint CreateSprint()
+    {
+        var startDate = DateTime.UtcNow.Date;
+        return new Sprint(Guid.NewGuid(), "Sprint", null, startDate, startDate.AddDays(14), Guid.NewGuid());
+    }
+
     [Fact]
     public async Task Handle_ReturnsNull_WhenNoActiveSprint()
     {
@@ -32,7 +38,7 @@ public sealed class GetActiveSprintQueryHandlerTests
         var repository = Substitute.For<ISprintRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, Guid.NewGuid());
+        var sprint = CreateSprint();
         repository.GetActiveByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var expected = new SprintDto { Id = sprint.Id };

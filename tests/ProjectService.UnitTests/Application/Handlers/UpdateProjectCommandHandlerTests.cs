@@ -16,13 +16,14 @@ public sealed class UpdateProjectCommandHandlerTests
     public async Task Handle_Throws_WhenProjectMissing()
     {
         var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Project?)null);
 
-        var handler = new UpdateProjectCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
         var command = new UpdateProjectCommand(Guid.NewGuid(), "Name", "KEY", Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -37,6 +38,7 @@ public sealed class UpdateProjectCommandHandlerTests
     public async Task Handle_Throws_WhenKeyAlreadyExists()
     {
         var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -45,7 +47,7 @@ public sealed class UpdateProjectCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
         repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        var handler = new UpdateProjectCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
         var command = new UpdateProjectCommand(project.Id, "Name", "NEW", Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -60,6 +62,7 @@ public sealed class UpdateProjectCommandHandlerTests
     public async Task Handle_UpdatesProject_AndWritesTwoOutboxMessages()
     {
         var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -67,16 +70,14 @@ public sealed class UpdateProjectCommandHandlerTests
         var project = new Project("Old", "OLD", Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
         repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        summaryRepository.GetByProjectIdAsync(project.Id, Arg.Any<CancellationToken>()).Returns(new ProjectSummary(project.Id));
 
-        var expectedDto = new ProjectDto { Id = project.Id };
-        mapper.Map<ProjectDto>(Arg.Any<Project>()).Returns(expectedDto);
-
-        var handler = new UpdateProjectCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
         var command = new UpdateProjectCommand(project.Id, "New Name", "NEW", Guid.NewGuid(), Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(project.Id);
         project.Name.Should().Be("New Name");
         project.Key.Should().Be("NEW");
 
@@ -85,6 +86,5 @@ public sealed class UpdateProjectCommandHandlerTests
             m.EventType is "ProjectUpdatedEvent" or "ProjectSettingsUpdatedEvent" &&
             !string.IsNullOrWhiteSpace(m.Payload)), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        mapper.Received(1).Map<ProjectDto>(project);
     }
 }

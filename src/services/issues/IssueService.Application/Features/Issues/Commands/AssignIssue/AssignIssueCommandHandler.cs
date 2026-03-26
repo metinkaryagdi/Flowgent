@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.Common.Mappings;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Domain.Entities;
 using MediatR;
@@ -51,7 +52,10 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
         var hadAssignee = issue.AssigneeUserId;
         issue.AssignTo(request.AssigneeUserId);
         if (issue.AssigneeUserId == hadAssignee)
-            return _mapper.Map<IssueDto>(issue);
+        {
+            var currentBoardItem = await _boardRepository.GetByIssueIdAsync(issue.Id, cancellationToken);
+            return IssueDtoFactory.Create(issue, currentBoardItem?.SprintId);
+        }
 
         var assignedEvent = new IssueAssignedEvent(issue.Id, issue.ProjectId, request.AssigneeUserId, request.AssignedByUserId, request.CorrelationId ?? Guid.Empty);
         var assignedOutbox = new OutboxMessage
@@ -81,6 +85,6 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
             sw.ElapsedMilliseconds,
             issue.Id);
 
-        return _mapper.Map<IssueDto>(issue);
+        return IssueDtoFactory.Create(issue, boardItem.SprintId);
     }
 }

@@ -60,6 +60,60 @@
     gap: var(--spacing-3);
 }
 
+.filterBar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    flex-wrap: wrap;
+}
+
+.filterInput {
+    flex: 1;
+    min-width: 200px;
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.filterInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.filterSelect {
+    min-width: 160px;
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.filterClear {
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface-hover);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.filterClear:hover {
+    background: var(--bg-surface-active);
+    color: var(--text-primary);
+}
+
 .addIssueBtn {
     display: inline-flex;
     align-items: center;

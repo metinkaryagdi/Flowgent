@@ -5,7 +5,7 @@ using BitirmeProject.NotificationService.Application.Features.Notifications.Quer
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Shared.Common.Extensions;
 
 namespace BitirmeProject.NotificationService.Api.Controllers;
 
@@ -28,9 +28,19 @@ public sealed class NotificationsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns notifications for the given user.
+    /// Accessible by: the user themselves or an Admin.
+    /// </summary>
     [HttpGet("user/{userId:guid}")]
     public async Task<ActionResult<IReadOnlyList<NotificationDto>>> GetByUser(Guid userId)
     {
+        var requesterId = User.TryGetUserId();
+        var isAdmin = User.HasRole("Admin");
+
+        if (!isAdmin && requesterId != userId)
+            return Forbid();
+
         var result = await _mediator.Send(new GetNotificationsByUserQuery(userId));
         return Ok(result);
     }
@@ -38,22 +48,11 @@ public sealed class NotificationsController : ControllerBase
     [HttpPut("{id:guid}/read")]
     public async Task<ActionResult<NotificationDto>> MarkRead(Guid id)
     {
-        var userId = GetUserId();
+        var userId = User.TryGetUserId();
         if (userId is null)
             return Unauthorized();
 
         var result = await _mediator.Send(new MarkNotificationReadCommand(id, userId.Value));
         return Ok(result);
-    }
-
-    private Guid? GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                  User.FindFirstValue(ClaimTypes.Name) ??
-                  User.FindFirstValue(ClaimTypes.Sid) ??
-                  User.FindFirstValue("sub") ??
-                  User.FindFirstValue("userId");
-
-        return Guid.TryParse(sub, out var id) ? id : null;
     }
 }

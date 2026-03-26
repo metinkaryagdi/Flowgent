@@ -1,6 +1,7 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Domain.Entities;
 using MediatR;
@@ -39,8 +40,9 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
 
     public async Task<AuthResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByUserNameAsync(request.UserNameOrEmail, cancellationToken)
-                   ?? await _userRepository.GetByEmailAsync(request.UserNameOrEmail, cancellationToken);
+        var normalizedInput = request.UserNameOrEmail.ToLowerInvariant();
+        var user = await _userRepository.GetByUserNameAsync(normalizedInput, cancellationToken)
+                   ?? await _userRepository.GetByEmailAsync(normalizedInput, cancellationToken);
 
         if (user is null)
             throw new InvalidOperationException("Invalid credentials.");
@@ -60,9 +62,10 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
 
         var token = _jwtTokenGenerator.Generate(user, roles);
 
+        var rawToken = GenerateToken();
         var refreshToken = new RefreshToken(
             user.Id,
-            GenerateToken(),
+            HashToken(rawToken),
             DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays));
 
         await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
@@ -72,7 +75,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         {
             AccessToken = token.AccessToken,
             ExpiresAt = token.ExpiresAt,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = rawToken,
             User = _mapper.Map<UserDto>(user),
             Roles = roles
         };
@@ -84,4 +87,6 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         RandomNumberGenerator.Fill(bytes);
         return Convert.ToBase64String(bytes);
     }
+
+    internal static string HashToken(string rawToken) => TokenHasher.Hash(rawToken);
 }

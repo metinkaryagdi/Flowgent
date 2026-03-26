@@ -9,6 +9,7 @@ using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssueHi
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssueById;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByAssignee;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByProject;
+using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByProjectPaged;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesBySprint;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssueWorkflowConfig;
 using MediatR;
@@ -51,6 +52,22 @@ public sealed class IssuesController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<IssueBoardItemDto>>> GetByProject(Guid projectId)
     {
         var result = await _mediator.Send(new GetIssuesByProjectQuery(projectId));
+        return Ok(result);
+    }
+
+    [HttpGet("project/{projectId:guid}/paged")]
+    public async Task<ActionResult<PagedResult<IssueBoardItemDto>>> GetByProjectPaged(
+        Guid projectId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] Guid? sprintId = null,
+        [FromQuery] bool backlogOnly = false)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 200) pageSize = 200;
+
+        var result = await _mediator.Send(new GetIssuesByProjectPagedQuery(projectId, page, pageSize, sprintId, backlogOnly));
         return Ok(result);
     }
 

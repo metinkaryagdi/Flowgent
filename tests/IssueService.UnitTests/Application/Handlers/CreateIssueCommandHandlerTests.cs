@@ -27,19 +27,17 @@ public sealed class CreateIssueCommandHandlerTests
         repository.AddAsync(Arg.Do<Issue>(x => capturedIssue = x), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var expectedDto = new IssueDto { Id = Guid.NewGuid() };
-        mapper.Map<IssueDto>(Arg.Any<Issue>()).Returns(expectedDto);
-
         var handler = new CreateIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
         var command = new CreateIssueCommand(Guid.NewGuid(), "Test Issue", "Desc", IssuePriority.High, Guid.NewGuid(), Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
         capturedIssue.Should().NotBeNull();
+        result.Id.Should().Be(capturedIssue!.Id);
         capturedIssue!.ProjectId.Should().Be(command.ProjectId);
         capturedIssue.Title.Should().Be(command.Title);
         capturedIssue.Priority.Should().Be(command.Priority);
+        result.SprintId.Should().BeNull();
 
         await repository.Received(1).AddAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>());
         await boardRepository.Received(1).AddAsync(Arg.Any<IssueBoardItem>(), Arg.Any<CancellationToken>());
@@ -47,6 +45,5 @@ public sealed class CreateIssueCommandHandlerTests
             m.EventType == "IssueCreatedEvent" &&
             !string.IsNullOrWhiteSpace(m.Payload)), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        mapper.Received(1).Map<IssueDto>(Arg.Any<Issue>());
     }
 }

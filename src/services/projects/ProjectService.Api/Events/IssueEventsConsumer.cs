@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,6 +21,8 @@ public sealed class IssueEventsConsumer : BackgroundService
     private IConnection? _connection;
     private IModel? _channel;
     private const string ExchangeName = "bitirme_events";
+    private const string ServiceName = "ProjectService";
+    private const string DlxName = "bitirme_events.dlx";
 
     public IssueEventsConsumer(
         IServiceScopeFactory scopeFactory,
@@ -44,10 +46,22 @@ public sealed class IssueEventsConsumer : BackgroundService
             nameof(IssueAssignedEvent)
         };
 
+        // Declare Dead Letter Exchange for failed messages
+        _channel.ExchangeDeclare(exchange: DlxName, type: ExchangeType.Topic, durable: true, autoDelete: false);
+
         foreach (var eventType in eventTypes)
         {
-            var queueName = $"{eventType}_queue";
-            _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false);
+            var dlqName = $"{ServiceName}.{eventType}.dlq";
+            _channel.QueueDeclare(queue: dlqName, durable: true, exclusive: false, autoDelete: false);
+            _channel.QueueBind(queue: dlqName, exchange: DlxName, routingKey: $"{ServiceName}.{eventType}");
+
+            var queueName = $"{ServiceName}.{eventType}.queue";
+            var queueArgs = new Dictionary<string, object>
+            {
+                ["x-dead-letter-exchange"] = DlxName,
+                ["x-dead-letter-routing-key"] = $"{ServiceName}.{eventType}"
+            };
+            _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: queueArgs);
             _channel.QueueBind(queue: queueName, exchange: ExchangeName, routingKey: eventType);
         }
 
@@ -56,7 +70,7 @@ public sealed class IssueEventsConsumer : BackgroundService
 
         foreach (var eventType in eventTypes)
         {
-            var queueName = $"{eventType}_queue";
+            var queueName = $"{ServiceName}.{eventType}.queue";
             _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
         }
 
@@ -160,7 +174,7 @@ public sealed class IssueEventsConsumer : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling event {EventType}", eventType);
-            _channel!.BasicNack(args.DeliveryTag, multiple: false, requeue: false);
+            _channel!.BasicNack(args.DeliveryTag, multiple: false, requeue: false); // Goes to DLQ
         }
     }
 

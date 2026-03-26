@@ -21,6 +21,8 @@ public sealed class NotificationEventsConsumer : BackgroundService
     private IConnection? _connection;
     private IModel? _channel;
     private const string ExchangeName = "bitirme_events";
+    private const string ServiceName = "NotificationService";
+    private const string DlxName = "bitirme_events.dlx";
 
     public NotificationEventsConsumer(
         IServiceScopeFactory scopeFactory,
@@ -39,16 +41,28 @@ public sealed class NotificationEventsConsumer : BackgroundService
 
         var eventTypes = new[]
         {
-            nameof(NotificationRequestedEvent),
             nameof(IssueAssignedEvent),
+            nameof(IssueStatusChangedEvent),
             nameof(CommentAddedEvent),
             nameof(MemberAddedEvent)
         };
 
+        // Declare Dead Letter Exchange for failed messages
+        _channel.ExchangeDeclare(exchange: DlxName, type: ExchangeType.Topic, durable: true, autoDelete: false);
+
         foreach (var eventType in eventTypes)
         {
-            var queueName = $"{eventType}_queue";
-            _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false);
+            var dlqName = $"{ServiceName}.{eventType}.dlq";
+            _channel.QueueDeclare(queue: dlqName, durable: true, exclusive: false, autoDelete: false);
+            _channel.QueueBind(queue: dlqName, exchange: DlxName, routingKey: $"{ServiceName}.{eventType}");
+
+            var queueName = $"{ServiceName}.{eventType}.queue";
+            var queueArgs = new Dictionary<string, object>
+            {
+                ["x-dead-letter-exchange"] = DlxName,
+                ["x-dead-letter-routing-key"] = $"{ServiceName}.{eventType}"
+            };
+            _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: queueArgs);
             _channel.QueueBind(queue: queueName, exchange: ExchangeName, routingKey: eventType);
         }
 
@@ -57,7 +71,7 @@ public sealed class NotificationEventsConsumer : BackgroundService
 
         foreach (var eventType in eventTypes)
         {
-            var queueName = $"{eventType}_queue";
+            var queueName = $"{ServiceName}.{eventType}.queue";
             _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
         }
 
@@ -82,29 +96,6 @@ public sealed class NotificationEventsConsumer : BackgroundService
 
             switch (eventType)
             {
-                case nameof(NotificationRequestedEvent):
-                {
-                    var evt = JsonSerializer.Deserialize<NotificationRequestedEvent>(message);
-                    if (evt is null) throw new InvalidOperationException("Invalid NotificationRequestedEvent payload");
-
-                    _logger.LogInformation(
-                        "NotificationRequestedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
-                        evt.EventId,
-                        evt.CorrelationId);
-
-                    if (await processedRepo.ExistsAsync(evt.EventId))
-                    {
-                        _logger.LogInformation("Duplicate NotificationRequestedEvent ignored. EventId={EventId}", evt.EventId);
-                        break;
-                    }
-
-                    var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<NotificationRequestedEvent>>();
-                    await handler.HandleAsync(evt);
-
-                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
-                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
-                    break;
-                }
                 case nameof(IssueAssignedEvent):
                 {
                     var evt = JsonSerializer.Deserialize<IssueAssignedEvent>(message);
@@ -122,6 +113,29 @@ public sealed class NotificationEventsConsumer : BackgroundService
                     }
 
                     var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<IssueAssignedEvent>>();
+                    await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
+                    break;
+                }
+                case nameof(IssueStatusChangedEvent):
+                {
+                    var evt = JsonSerializer.Deserialize<IssueStatusChangedEvent>(message);
+                    if (evt is null) throw new InvalidOperationException("Invalid IssueStatusChangedEvent payload");
+
+                    _logger.LogInformation(
+                        "IssueStatusChangedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
+                        evt.EventId,
+                        evt.CorrelationId);
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate IssueStatusChangedEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
+                    var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<IssueStatusChangedEvent>>();
                     await handler.HandleAsync(evt);
 
                     await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
@@ -184,7 +198,7 @@ public sealed class NotificationEventsConsumer : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling event {EventType}", eventType);
-            _channel!.BasicNack(args.DeliveryTag, multiple: false, requeue: false);
+            _channel!.BasicNack(args.DeliveryTag, multiple: false, requeue: false); // Goes to DLQ
         }
     }
 

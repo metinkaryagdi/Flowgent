@@ -4,34 +4,39 @@
    =================================== */
 
 // ─── Enums ───────────────────────────
-export enum IssueStatus {
-  Open = 0,
-  InProgress = 1,
-  Done = 2,
-}
+export const IssueStatus = {
+  Open: 0,
+  InProgress: 1,
+  Done: 2,
+} as const;
+export type IssueStatus = typeof IssueStatus[keyof typeof IssueStatus];
 
-export enum IssuePriority {
-  Low = 0,
-  Medium = 1,
-  High = 2,
-  Critical = 3,
-}
+export const IssuePriority = {
+  Low: 0,
+  Medium: 1,
+  High: 2,
+  Critical: 3,
+} as const;
+export type IssuePriority = typeof IssuePriority[keyof typeof IssuePriority];
 
-export enum SprintStatus {
-  Planned = 0,
-  Active = 1,
-  Completed = 2,
-}
+export const SprintStatus = {
+  Planned: 0,
+  Active: 1,
+  Completed: 2,
+} as const;
+export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus];
 
-export enum NotificationStatus {
-  Unread = 0,
-  Read = 1,
-}
+export const NotificationStatus = {
+  Unread: 0,
+  Read: 1,
+} as const;
+export type NotificationStatus = typeof NotificationStatus[keyof typeof NotificationStatus];
 
-export enum NotificationChannel {
-  InApp = 0,
-  Email = 1,
-}
+export const NotificationChannel = {
+  InApp: 0,
+  Email: 1,
+} as const;
+export type NotificationChannel = typeof NotificationChannel[keyof typeof NotificationChannel];
 
 // ─── Identity DTOs ───────────────────
 export interface UserDto {
@@ -55,7 +60,7 @@ export interface RoleDto {
 }
 
 export interface LoginRequest {
-  email: string;
+  userNameOrEmail: string;
   password: string;
 }
 
@@ -162,12 +167,26 @@ export interface WorkflowConfigDto {
   allowedTransitions: Record<string, string[]>;
 }
 
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface CreateIssueRequest {
   projectId: string;
   title: string;
   description?: string;
   priority: IssuePriority;
   assigneeUserId?: string;
+}
+
+export interface UpdateIssueRequest {
+  title?: string;
+  description?: string;
+  priority?: IssuePriority;
+  expectedVersion: number;
 }
 
 export interface AssignIssueRequest {

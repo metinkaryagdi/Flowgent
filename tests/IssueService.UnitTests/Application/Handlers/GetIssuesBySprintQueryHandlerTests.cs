@@ -15,26 +15,31 @@ public sealed class GetIssuesBySprintQueryHandlerTests
     public async Task Handle_ReturnsMappedList()
     {
         var repository = Substitute.For<IIssueRepository>();
+        var boardRepository = Substitute.For<IIssueBoardRepository>();
         var mapper = Substitute.For<IMapper>();
+        var sprintId = Guid.NewGuid();
 
         var items = new List<Issue>
         {
             new Issue(Guid.NewGuid(), "T1", null, IssuePriority.Low, Guid.NewGuid()),
             new Issue(Guid.NewGuid(), "T2", null, IssuePriority.High, Guid.NewGuid())
         };
-        repository.GetBySprintIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
+        repository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(items);
+        boardRepository.GetBySprintIdAsync(sprintId, Arg.Any<CancellationToken>())
+            .Returns(items.Select(i =>
+            {
+                var boardItem = new IssueBoardItem(i);
+                boardItem.AssignToSprint(sprintId);
+                return boardItem;
+            }).ToList());
 
-        var dto1 = new IssueDto { Id = items[0].Id };
-        var dto2 = new IssueDto { Id = items[1].Id };
-        mapper.Map<IssueDto>(items[0]).Returns(dto1);
-        mapper.Map<IssueDto>(items[1]).Returns(dto2);
-
-        var handler = new GetIssuesBySprintQueryHandler(repository, mapper);
-        var query = new GetIssuesBySprintQuery(Guid.NewGuid());
+        var handler = new GetIssuesBySprintQueryHandler(repository, boardRepository, mapper);
+        var query = new GetIssuesBySprintQuery(sprintId);
 
         var result = await handler.Handle(query, CancellationToken.None);
 
         result.Should().HaveCount(2);
-        result.Should().ContainInOrder(dto1, dto2);
+        result.Select(x => x.Id).Should().ContainInOrder(items[0].Id, items[1].Id);
+        result.Select(x => x.SprintId).Should().OnlyContain(x => x == sprintId);
     }
 }

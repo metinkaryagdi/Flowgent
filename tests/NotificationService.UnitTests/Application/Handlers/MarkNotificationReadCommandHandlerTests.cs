@@ -77,6 +77,8 @@ public sealed class MarkNotificationReadCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.Should().Be(expected);
+        notification.IsRead.Should().BeTrue();
+        notification.ReadAt.Should().NotBeNull();
         await repository.Received(1).UpdateAsync(notification, Arg.Any<CancellationToken>());
         await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m => m.EventType == "NotificationReadEvent"), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());

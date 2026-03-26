@@ -1,3 +1,4 @@
+using BitirmeProject.ProjectService.Domain.Enums;
 using BitirmeProject.ProjectService.Application.DTOs;
 using MediatR;
 
@@ -7,4 +8,5 @@ public sealed record AddMemberCommand(
     Guid ProjectId,
     Guid UserId,
     Guid AddedByUserId,
-    Guid? CorrelationId) : IRequest<ProjectDto>;
+    Guid? CorrelationId,
+    ProjectMemberRole Role) : IRequest<ProjectDto>;

@@ -1,6 +1,7 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -42,14 +43,17 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
 
     public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        if (await _userRepository.ExistsByUserNameAsync(request.UserName, null, cancellationToken))
+        var normalizedUserName = request.UserName.ToLowerInvariant();
+        var normalizedEmail    = request.Email.ToLowerInvariant();
+
+        if (await _userRepository.ExistsByUserNameAsync(normalizedUserName, null, cancellationToken))
             throw new InvalidOperationException("Username already exists.");
 
-        if (await _userRepository.ExistsByEmailAsync(request.Email, null, cancellationToken))
+        if (await _userRepository.ExistsByEmailAsync(normalizedEmail, null, cancellationToken))
             throw new InvalidOperationException("Email already exists.");
 
         var passwordHash = _passwordHasher.HashPassword(request.Password);
-        var user = new User(request.UserName, request.Email, passwordHash);
+        var user = new User(normalizedUserName, normalizedEmail, passwordHash);
 
         await _userRepository.AddAsync(user, cancellationToken);
 
@@ -68,9 +72,10 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
 
         var token = _jwtTokenGenerator.Generate(user, roles);
 
+        var rawToken = GenerateToken();
         var refreshToken = new RefreshToken(
             user.Id,
-            GenerateToken(),
+            TokenHasher.Hash(rawToken),
             DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays));
 
         await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
@@ -80,7 +85,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
         {
             AccessToken = token.AccessToken,
             ExpiresAt = token.ExpiresAt,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = rawToken,
             User = _mapper.Map<UserDto>(user),
             Roles = roles
         };

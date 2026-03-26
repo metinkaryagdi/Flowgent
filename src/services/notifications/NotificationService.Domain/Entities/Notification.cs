@@ -10,6 +10,8 @@ public sealed class Notification : AggregateRoot<Guid>
     public string Message { get; private set; } = string.Empty;
     public NotificationChannel Channel { get; private set; }
     public NotificationStatus Status { get; private set; }
+    public bool IsRead { get; private set; }
+    public DateTime? ReadAt { get; private set; }
     public string? EntityType { get; private set; }
     public Guid? EntityId { get; private set; }
     public Guid? ExternalEventId { get; private set; }
@@ -30,7 +32,10 @@ public sealed class Notification : AggregateRoot<Guid>
         SetTitle(title);
         SetMessage(message);
         Channel = channel;
-        Status = NotificationStatus.Unread;
+        Status = channel == NotificationChannel.InApp
+            ? NotificationStatus.Delivered
+            : NotificationStatus.Queued;
+        IsRead = false;
         EntityType = string.IsNullOrWhiteSpace(entityType) ? null : entityType.Trim();
         EntityId = entityId;
         ExternalEventId = externalEventId;
@@ -38,7 +43,29 @@ public sealed class Notification : AggregateRoot<Guid>
 
     public void MarkAsRead()
     {
-        Status = NotificationStatus.Read;
+        if (IsRead)
+            return;
+
+        IsRead = true;
+        ReadAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkAsSent()
+    {
+        Status = NotificationStatus.Sent;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkAsDelivered()
+    {
+        Status = NotificationStatus.Delivered;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkAsFailed()
+    {
+        Status = NotificationStatus.Failed;
         UpdatedAt = DateTime.UtcNow;
     }
 

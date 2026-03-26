@@ -2,6 +2,7 @@ using AutoMapper;
 using System.Text.Json;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
+using BitirmeProject.SprintService.Domain.Enums;
 using MediatR;
 using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
@@ -36,6 +37,9 @@ public sealed class RemoveIssueCommandHandler : IRequestHandler<RemoveIssueComma
         var sprint = await _sprintRepository.GetByIdAsync(request.SprintId, cancellationToken);
         if (sprint is null)
             throw new NotFoundException("Sprint", request.SprintId);
+
+        if (sprint.Status == SprintStatus.Completed)
+            throw new BusinessRuleException("Cannot remove issues from a completed sprint.");
 
         var sprintIssue = await _issueRepository.GetByIssueIdAsync(request.IssueId, cancellationToken);
         if (sprintIssue is null)

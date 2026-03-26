@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.Common.Mappings;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Domain.Entities;
 using MediatR;
@@ -57,6 +58,6 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
             sw.ElapsedMilliseconds,
             issue.Id);
 
-        return _mapper.Map<IssueDto>(issue);
+        return IssueDtoFactory.Create(issue, boardItem.SprintId);
     }
 }

@@ -27,10 +27,13 @@ public sealed class IssueRepository : IIssueRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Issue>> GetBySprintIdAsync(Guid sprintId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Issue>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
     {
+        if (ids.Count == 0)
+            return Array.Empty<Issue>();
+
         return await _dbContext.Issues
-            .Where(i => i.SprintId == sprintId)
+            .Where(i => ids.Contains(i.Id))
             .OrderByDescending(i => i.UpdatedAt ?? i.CreatedAt)
             .ToListAsync(cancellationToken);
     }

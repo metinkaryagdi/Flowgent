@@ -2,6 +2,8 @@ namespace BitirmeProject.NotificationService.Domain.Enums;
 
 public enum NotificationStatus
 {
-    Unread = 0,
-    Read = 1
+    Queued = 0,
+    Sent = 1,
+    Failed = 2,
+    Delivered = 3
 }

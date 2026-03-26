@@ -8,5 +8,6 @@ public sealed class RemoveMemberCommandValidator : AbstractValidator<RemoveMembe
     {
         RuleFor(x => x.ProjectId).NotEmpty();
         RuleFor(x => x.UserId).NotEmpty();
+        RuleFor(x => x.RemovedByUserId).NotEmpty();
     }
 }

@@ -44,8 +44,8 @@ builder.Services.AddHttpClient("IssueService", (sp, client) =>
     client.BaseAddress = new Uri(endpoints.IssueService);
 }).AddPolicyHandler(GetRetryPolicy());
 
-builder.Services.AddScoped<IEventHandler<NotificationRequestedEvent>, NotificationRequestedEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueAssignedEvent>, IssueAssignedEventHandler>();
+builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusChangedEventHandler>();
 builder.Services.AddScoped<IEventHandler<CommentAddedEvent>, CommentAddedEventHandler>();
 builder.Services.AddScoped<IEventHandler<MemberAddedEvent>, MemberAddedEventHandler>();
 builder.Services.AddHostedService<NotificationEventsConsumer>();

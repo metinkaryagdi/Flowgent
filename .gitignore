@@ -12,6 +12,7 @@
 # IDE / tooling
 .vs/
 .vscode/
+.claude/
 *.user
 *.suo
 *.cache
@@ -20,3 +21,9 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Local diagnostics / env
+build_issue_api*.txt
+src/frontend/web/.env
+src/frontend/web/errors*.txt
+src/frontend/web/out.txt

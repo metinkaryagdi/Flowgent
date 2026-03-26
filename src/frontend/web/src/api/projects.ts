@@ -6,12 +6,24 @@ import type {
     CreateProjectRequest,
     UpdateProjectRequest,
     AddMemberRequest,
+    PagedResult,
 } from '../types';
 
 export const projectsApi = {
     getByUser: async (userId: string): Promise<ProjectDto[]> => {
         if (useMockApi) return mockApi.projects.getByUser(userId);
         const response = await apiClient.get<ProjectDto[]>(`/api/v1/projects/user/${userId}`);
+        return response.data;
+    },
+
+    getByUserPaged: async (
+        userId: string,
+        options: { page?: number; pageSize?: number; search?: string; includeArchived?: boolean } = {}
+    ): Promise<PagedResult<ProjectDto>> => {
+        if (useMockApi) return mockApi.projects.getByUserPaged(userId, options);
+        const response = await apiClient.get<PagedResult<ProjectDto>>(`/api/v1/projects/user/${userId}/paged`, {
+            params: options,
+        });
         return response.data;
     },
 

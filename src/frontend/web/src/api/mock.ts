@@ -23,6 +23,7 @@ import type {
     CreateSprintRequest,
     NotificationDto,
     RoleDto,
+    PagedResult,
 } from '../types';
 import {
     IssuePriority,
@@ -45,6 +46,7 @@ const STORAGE_KEYS = {
     roles: 'mock_roles',
     userRoles: 'mock_user_roles',
     projectMembers: 'mock_project_members',
+    issueComments: 'mock_issue_comments',
 };
 
 const nowIso = () => new Date().toISOString();
@@ -193,6 +195,7 @@ const seedNotifications = (): NotificationDto[] => {
 };
 
 const seedSprints = (): SprintDto[] => [];
+const seedIssueComments = (): Record<string, IssueCommentDto[]> => ({});
 
 const seedUsers = (): UserDto[] => [
     defaultUser,
@@ -251,6 +254,7 @@ const ensureSeed = () => {
     safeGet<RoleDto[]>(STORAGE_KEYS.roles, seedRoles());
     safeGet<Record<string, string[]>>(STORAGE_KEYS.userRoles, seedUserRoles());
     safeGet<ProjectMemberDto[]>(STORAGE_KEYS.projectMembers, seedProjectMembers());
+    safeGet<Record<string, IssueCommentDto[]>>(STORAGE_KEYS.issueComments, seedIssueComments());
 };
 
 const recalcProjectStats = (projects: ProjectDto[], issues: IssueDto[]): ProjectDto[] => {
@@ -328,6 +332,14 @@ const getProjectMembers = () => {
 
 const setProjectMembers = (members: ProjectMemberDto[]) =>
     safeSet(STORAGE_KEYS.projectMembers, members);
+
+const getIssueComments = () => {
+    ensureSeed();
+    return safeGet<Record<string, IssueCommentDto[]>>(STORAGE_KEYS.issueComments, seedIssueComments());
+};
+
+const setIssueComments = (comments: Record<string, IssueCommentDto[]>) =>
+    safeSet(STORAGE_KEYS.issueComments, comments);
 
 const statusLabel = (status: IssueStatus) => {
     if (status === IssueStatus.Open) return 'Acik';
@@ -453,6 +465,35 @@ export const mockApi = {
         getByUser: async (userId: string): Promise<ProjectDto[]> => {
             return getProjects().filter((p) => p.ownerUserId === userId);
         },
+        getByUserPaged: async (
+            userId: string,
+            options: { page?: number; pageSize?: number; search?: string; includeArchived?: boolean } = {}
+        ): Promise<PagedResult<ProjectDto>> => {
+            const page = options.page ?? 1;
+            const pageSize = options.pageSize ?? 12;
+            const includeArchived = options.includeArchived ?? false;
+            const search = options.search?.trim().toLowerCase();
+
+            let items = getProjects().filter((p) => p.ownerUserId === userId);
+            if (!includeArchived) {
+                items = items.filter((p) => !p.isArchived);
+            }
+            if (search) {
+                items = items.filter((p) =>
+                    p.name.toLowerCase().includes(search) || p.key.toLowerCase().includes(search)
+                );
+            }
+
+            const totalCount = items.length;
+            const paged = items.slice((page - 1) * pageSize, page * pageSize);
+
+            return {
+                items: paged,
+                totalCount,
+                page,
+                pageSize,
+            };
+        },
         getById: async (id: string): Promise<ProjectDto> => {
             const project = getProjects().find((p) => p.id === id);
             if (!project) {
@@ -496,10 +537,10 @@ export const mockApi = {
             return project;
         },
         delete: async (id: string): Promise<void> => {
-            const projects = getProjects().filter((p) => p.id !== id);
-            const issues = getIssues().filter((i) => i.projectId !== id);
+            const projects = getProjects().map((p) =>
+                p.id === id ? { ...p, isArchived: true } : p
+            );
             setProjects(projects);
-            setIssues(issues);
         },
         getMembers: async (projectId: string): Promise<ProjectMemberDto[]> => {
             const members = getProjectMembers();
@@ -564,6 +605,34 @@ export const mockApi = {
             const items = getIssues().filter((i) => i.projectId === projectId).map(toBoardItem);
             return items;
         },
+        getByProjectPaged: async (
+            projectId: string,
+            options: { page?: number; pageSize?: number; sprintId?: string; backlogOnly?: boolean } = {}
+        ): Promise<PagedResult<IssueBoardItemDto>> => {
+            const page = options.page ?? 1;
+            const pageSize = options.pageSize ?? 20;
+            const sprintId = options.sprintId ?? null;
+            const backlogOnly = options.backlogOnly ?? false;
+
+            let items = getIssues().filter((i) => i.projectId === projectId);
+            if (backlogOnly) {
+                items = items.filter((i) => !i.sprintId);
+            } else if (sprintId) {
+                items = items.filter((i) => i.sprintId === sprintId);
+            }
+
+            const totalCount = items.length;
+            const paged = items
+                .map(toBoardItem)
+                .slice((page - 1) * pageSize, page * pageSize);
+
+            return {
+                items: paged,
+                totalCount,
+                page,
+                pageSize,
+            };
+        },
         getByAssignee: async (assigneeUserId: string): Promise<IssueDto[]> => {
             return getIssues().filter((i) => i.assigneeUserId === assigneeUserId);
         },
@@ -604,14 +673,49 @@ export const mockApi = {
             );
             return issue;
         },
+        update: async (id: string, data: any): Promise<IssueDto> => {
+            await new Promise(r => setTimeout(r, 400));
+            const issues = getIssues();
+            const index = issues.findIndex((i) => i.id === id);
+            if (index === -1) throw new Error('Issue not found');
+
+            const updatedIssue = {
+                ...issues[index],
+                title: data.title ?? issues[index].title,
+                description: data.description ?? issues[index].description,
+                priority: data.priority ?? issues[index].priority,
+                updatedAt: nowIso(),
+                version: issues[index].version + 1,
+            };
+
+            issues[index] = updatedIssue;
+            setIssues(issues);
+            return updatedIssue;
+        },
+        delete: async (id: string): Promise<void> => {
+            await new Promise(r => setTimeout(r, 400));
+            const issues = getIssues();
+            const filtered = issues.filter(i => i.id !== id);
+            if (issues.length === filtered.length) throw new Error('Issue not found');
+            setIssues(filtered);
+        },
         addComment: async (_id: string, data: AddCommentRequest): Promise<IssueCommentDto> => {
-            return {
+            const comment = {
                 id: uid('comment'),
                 issueId: _id,
                 authorUserId: data.authorUserId,
                 content: data.content,
                 createdAt: nowIso(),
             };
+            const map = getIssueComments();
+            const list = map[_id] || [];
+            map[_id] = [...list, comment];
+            setIssueComments(map);
+            return comment;
+        },
+        getComments: async (_id: string): Promise<IssueCommentDto[]> => {
+            const map = getIssueComments();
+            return map[_id] || [];
         },
         getAttachments: async (_id: string): Promise<IssueAttachmentDto[]> => [],
         getHistory: async (_id: string): Promise<IssueAuditDto[]> => [],
@@ -697,6 +801,34 @@ export const mockApi = {
             const sprint = updated.find((s) => s.id === id);
             if (!sprint) throw new Error('Sprint not found');
             return sprint;
+        },
+        addIssue: async (sprintId: string, issueId: string): Promise<void> => {
+            const issues = getIssues();
+            const updated = issues.map((i) =>
+                i.id === issueId ? { ...i, sprintId } : i
+            );
+            setIssues(updated);
+            // Recalc sprint counts
+            const sprints = getSprints();
+            const sprintIssues = updated.filter((i) => i.sprintId === sprintId);
+            const updatedSprints = sprints.map((s) =>
+                s.id === sprintId
+                    ? {
+                        ...s,
+                        totalIssueCount: sprintIssues.length,
+                        completedIssueCount: sprintIssues.filter((i) => i.status === IssueStatus.Done).length,
+                    }
+                    : s
+            );
+            setSprints(updatedSprints);
+        },
+        removeIssue: async (sprintId: string, issueId: string): Promise<void> => {
+            void sprintId;
+            const issues = getIssues();
+            const updated = issues.map((i) =>
+                i.id === issueId ? { ...i, sprintId: null } : i
+            );
+            setIssues(updated);
         },
     },
     admin: {

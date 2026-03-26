@@ -28,7 +28,7 @@ public sealed class CreateNotificationCommandHandlerTests
         mapper.Map<NotificationDto>(existing).Returns(expected);
 
         var handler = new CreateNotificationCommandHandler(repository, unitOfWork, outboxRepository, mapper);
-        var command = new CreateNotificationCommand(existing.UserId, "Title", "Body", "InApp", "Issue", existing.EntityId, existing.ExternalEventId, null);
+        var command = new CreateNotificationCommand(existing.UserId, "Title", "Body", "InApp", "Issue", existing.EntityId, null, existing.ExternalEventId);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -82,6 +82,8 @@ public sealed class CreateNotificationCommandHandlerTests
         result.Should().Be(expected);
         captured.Should().NotBeNull();
         captured!.Channel.Should().Be(NotificationChannel.InApp);
+        captured.Status.Should().Be(NotificationStatus.Delivered);
+        captured.IsRead.Should().BeFalse();
 
         await repository.Received(1).AddAsync(Arg.Any<Notification>(), Arg.Any<CancellationToken>());
         await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m =>

@@ -21,6 +21,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ProjectDbContext>());
         services.AddScoped<IProjectRepository, ProjectRepository>();
+        services.AddScoped<IProjectSummaryRepository, ProjectSummaryRepository>();
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();

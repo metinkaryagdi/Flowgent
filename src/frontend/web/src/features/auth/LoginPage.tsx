@@ -24,8 +24,10 @@ export default function LoginPage() {
 
         setLoading(true);
         try {
-            const result = await authApi.login({ email, password });
-            setAuth(result.accessToken, result.user, result.roles);
+            const result = await authApi.login({ userNameOrEmail: email, password });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { accessToken: _, ...rest } = result;
+            setAuth(rest.user, rest.roles);
 
             // BFF flags çek
             try {

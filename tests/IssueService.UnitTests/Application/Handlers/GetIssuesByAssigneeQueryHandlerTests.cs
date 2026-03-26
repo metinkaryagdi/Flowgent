@@ -15,6 +15,7 @@ public sealed class GetIssuesByAssigneeQueryHandlerTests
     public async Task Handle_ReturnsMappedList()
     {
         var repository = Substitute.For<IIssueRepository>();
+        var boardRepository = Substitute.For<IIssueBoardRepository>();
         var mapper = Substitute.For<IMapper>();
 
         var items = new List<Issue>
@@ -23,18 +24,15 @@ public sealed class GetIssuesByAssigneeQueryHandlerTests
             new Issue(Guid.NewGuid(), "T2", null, IssuePriority.High, Guid.NewGuid())
         };
         repository.GetByAssigneeAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
+        boardRepository.GetByIssueIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(items.Select(i => new IssueBoardItem(i)).ToList());
 
-        var dto1 = new IssueDto { Id = items[0].Id };
-        var dto2 = new IssueDto { Id = items[1].Id };
-        mapper.Map<IssueDto>(items[0]).Returns(dto1);
-        mapper.Map<IssueDto>(items[1]).Returns(dto2);
-
-        var handler = new GetIssuesByAssigneeQueryHandler(repository, mapper);
+        var handler = new GetIssuesByAssigneeQueryHandler(repository, boardRepository, mapper);
         var query = new GetIssuesByAssigneeQuery(Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);
 
         result.Should().HaveCount(2);
-        result.Should().ContainInOrder(dto1, dto2);
+        result.Select(x => x.Id).Should().ContainInOrder(items[0].Id, items[1].Id);
     }
 }

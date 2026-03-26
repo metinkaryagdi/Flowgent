@@ -31,7 +31,6 @@ public sealed class IssueDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Priority).HasConversion<int>();
             entity.Property(x => x.Version).IsConcurrencyToken().HasDefaultValue(1);
             entity.HasIndex(x => x.ProjectId);
-            entity.HasIndex(x => x.SprintId);
         });
 
         modelBuilder.Entity<IssueComment>(entity =>

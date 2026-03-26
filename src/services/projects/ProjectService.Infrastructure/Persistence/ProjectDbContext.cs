@@ -1,5 +1,6 @@
 using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Domain.Entities;
+using BitirmeProject.ProjectService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Shared.Abstractions.Messaging;
 
@@ -10,6 +11,7 @@ public sealed class ProjectDbContext : DbContext, IUnitOfWork
     public ProjectDbContext(DbContextOptions<ProjectDbContext> options) : base(options) { }
 
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectSummary> ProjectSummaries => Set<ProjectSummary>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
     public DbSet<ProcessedEvent> ProcessedEvents => Set<ProcessedEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
@@ -26,9 +28,19 @@ public sealed class ProjectDbContext : DbContext, IUnitOfWork
             entity.HasIndex(x => x.Key).IsUnique();
         });
 
+        modelBuilder.Entity<ProjectSummary>(entity =>
+        {
+            entity.HasKey(x => x.ProjectId);
+            entity.HasOne<Project>()
+                .WithOne()
+                .HasForeignKey<ProjectSummary>(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ProjectMember>(entity =>
         {
             entity.HasKey(x => new { x.ProjectId, x.UserId });
+            entity.Property(x => x.Role).HasConversion<int>();
             entity.HasIndex(x => x.UserId);
         });
 

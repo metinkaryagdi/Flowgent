@@ -1,16 +1,105 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
+import { notificationsApi } from '../api/notifications';
+import type { NotificationDto } from '../types';
 import styles from './AppLayout.module.css';
 
 export default function AppLayout() {
     const { user, roles, flags, logout } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
+    const [notificationsError, setNotificationsError] = useState('');
+    const notificationsRef = useRef<HTMLDivElement>(null);
+
+    const fetchUnreadCount = useCallback(async () => {
+        try {
+            const count = await notificationsApi.getUnreadCount();
+            setUnreadCount(count);
+        } catch { /* ignore */ }
+    }, []);
+
+    const fetchNotifications = useCallback(async () => {
+        setNotificationsLoading(true);
+        setNotificationsError('');
+        try {
+            const data = await notificationsApi.getAll();
+            setNotifications(data);
+        } catch {
+            setNotificationsError('Bildirimler yÃ¼klenemedi.');
+        } finally {
+            setNotificationsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 30000);
+        return () => clearInterval(interval);
+    }, [fetchUnreadCount]);
+
+    useEffect(() => {
+        if (!showNotifications) return;
+        void fetchNotifications();
+    }, [showNotifications, fetchNotifications]);
+
+    useEffect(() => {
+        const handleClick = (event: MouseEvent) => {
+            if (!notificationsRef.current) return;
+            if (!notificationsRef.current.contains(event.target as Node)) {
+                setShowNotifications(false);
+            }
+        };
+        if (showNotifications) {
+            document.addEventListener('mousedown', handleClick);
+        }
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showNotifications]);
+
+    const getBreadcrumb = () => {
+        const path = location.pathname;
+        if (path === '/projects') return 'Projeler';
+        if (path === '/notifications') return 'Bildirimler';
+        if (path === '/admin') return 'YÃ¶netim Paneli';
+        if (path.includes('/board')) return 'Projeler â€º Board';
+        if (path.includes('/sprints')) return 'Projeler â€º Sprint';
+        return 'Kontrol Paneli';
+    };
 
     const handleLogout = () => {
         logout();
         navigate('/login');
+    };
+
+    const formatDate = (dateStr: string) =>
+        new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+    const handleMarkAllRead = async () => {
+        try {
+            await notificationsApi.markAllAsRead();
+            setNotifications((prev) => prev.map((n) => ({ ...n, status: 1 })));
+            setUnreadCount(0);
+        } catch { /* ignore */ }
+    };
+
+    const handleNotificationClick = async (notification: NotificationDto) => {
+        try {
+            if (notification.status === 0) {
+                await notificationsApi.markAsRead(notification.id);
+                setNotifications((prev) =>
+                    prev.map((n) => (n.id === notification.id ? { ...n, status: 1 } : n))
+                );
+                fetchUnreadCount();
+            }
+        } catch { /* ignore */ }
+        setShowNotifications(false);
+        navigate('/notifications');
     };
 
     const initials = user?.userName
@@ -21,15 +110,15 @@ export default function AppLayout() {
 
     return (
         <div className={styles.appLayout}>
-            {/* ── Sidebar ─────────────── */}
+            {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <aside className={styles.sidebar}>
                 <div className={styles.sidebar__header}>
-                    <div className={styles.sidebar__logoIcon}>⚡</div>
+                    <div className={styles.sidebar__logoIcon}>âš¡</div>
                     <span className={styles.sidebar__logoText}>BitirmeProject</span>
                 </div>
 
                 <nav className={styles.sidebar__nav}>
-                    <span className={styles.sidebar__sectionLabel}>Ana Menü</span>
+                    <span className={styles.sidebar__sectionLabel}>Ana MenÃ¼</span>
 
                     <NavLink
                         to="/projects"
@@ -38,7 +127,7 @@ export default function AppLayout() {
                         }
                         data-testid="nav-projects"
                     >
-                        <span className={styles.sidebar__linkIcon}>📁</span>
+                        <span className={styles.sidebar__linkIcon}>ğŸ“</span>
                         Projeler
                     </NavLink>
 
@@ -49,20 +138,21 @@ export default function AppLayout() {
                         }
                         data-testid="nav-notifications"
                     >
-                        <span className={styles.sidebar__linkIcon}>🔔</span>
+                        <span className={styles.sidebar__linkIcon}>ğŸ””</span>
                         Bildirimler
+                        {unreadCount > 0 && <span className={styles.sidebar__badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
                     </NavLink>
 
                     {flags?.canViewAdmin && (
                         <>
-                            <span className={styles.sidebar__sectionLabel}>Yönetim</span>
+                            <span className={styles.sidebar__sectionLabel}>YÃ¶netim</span>
                             <NavLink
                                 to="/admin"
                                 className={({ isActive }) =>
                                     `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
                                 }
                             >
-                                <span className={styles.sidebar__linkIcon}>⚙️</span>
+                                <span className={styles.sidebar__linkIcon}>âš™ï¸</span>
                                 Admin Panel
                             </NavLink>
                         </>
@@ -80,11 +170,11 @@ export default function AppLayout() {
                 </div>
             </aside>
 
-            {/* ── Main ────────────────── */}
+            {/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className={styles.main}>
                 <header className={styles.topbar}>
                     <div className={styles.topbar__left}>
-                        <span className={styles.topbar__breadcrumb}>Kontrol Paneli</span>
+                        <span className={styles.topbar__breadcrumb}>{getBreadcrumb()}</span>
                     </div>
                     <div className={styles.topbar__right}>
                         <button
@@ -95,16 +185,66 @@ export default function AppLayout() {
                         >
                             {theme === 'light' ? '🌙' : '☀️'}
                         </button>
-                        <button
-                            className={styles.topbar__iconBtn}
-                            title="Bildirimler"
-                            onClick={() => navigate('/notifications')}
-                            data-testid="topbar-notifications"
-                        >
-                            🔔
-                        </button>
+                        <div className={styles.topbar__notifications} ref={notificationsRef}>
+                            <button
+                                className={styles.topbar__iconBtn}
+                                title="Bildirimler"
+                                onClick={() => setShowNotifications((prev) => !prev)}
+                                data-testid="topbar-notifications"
+                            >
+                                🔔
+                                {unreadCount > 0 && (
+                                    <span className={styles.topbar__badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                                )}
+                            </button>
+                            {showNotifications && (
+                                <div className={styles.notificationsDropdown}>
+                                    <div className={styles.notificationsHeader}>
+                                        <span>Bildirimler</span>
+                                        {notifications.length > 0 && (
+                                            <button className={styles.notificationsAction} onClick={handleMarkAllRead}>
+                                                Tümünü okundu yap
+                                            </button>
+                                        )}
+                                    </div>
+                                    {notificationsLoading && (
+                                        <div className={styles.notificationsEmpty}>Yükleniyor...</div>
+                                    )}
+                                    {notificationsError && !notificationsLoading && (
+                                        <div className={styles.notificationsEmpty}>{notificationsError}</div>
+                                    )}
+                                    {!notificationsLoading && !notificationsError && notifications.length === 0 && (
+                                        <div className={styles.notificationsEmpty}>Henüz bildirim yok.</div>
+                                    )}
+                                    {!notificationsLoading && !notificationsError && notifications.length > 0 && (
+                                        <div className={styles.notificationsList}>
+                                            {notifications.slice(0, 5).map((notification) => (
+                                                <button
+                                                    key={notification.id}
+                                                    className={`${styles.notificationItem} ${notification.status === 0 ? styles.notificationUnread : ''}`}
+                                                    onClick={() => handleNotificationClick(notification)}
+                                                >
+                                                    <div className={styles.notificationTitle}>{notification.title}</div>
+                                                    <div className={styles.notificationMessage}>{notification.message}</div>
+                                                    <div className={styles.notificationDate}>{formatDate(notification.createdAt)}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <button
+                                        className={styles.notificationsFooter}
+                                        onClick={() => {
+                                            setShowNotifications(false);
+                                            navigate('/notifications');
+                                        }}
+                                    >
+                                        Tüm bildirimleri gör
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         <button className={styles.topbar__logoutBtn} onClick={handleLogout}>
-                            Çıkış Yap
+                            Ã‡Ä±kÄ±ÅŸ Yap
                         </button>
                     </div>
                 </header>

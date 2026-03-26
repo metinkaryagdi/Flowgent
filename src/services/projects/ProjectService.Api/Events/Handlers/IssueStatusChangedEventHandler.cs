@@ -1,4 +1,5 @@
 using BitirmeProject.ProjectService.Application.Abstractions;
+using BitirmeProject.ProjectService.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
@@ -7,12 +8,12 @@ namespace BitirmeProject.ProjectService.Api.Events.Handlers;
 
 public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusChangedEvent>
 {
-    private readonly IProjectRepository _repository;
+    private readonly IProjectSummaryRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<IssueStatusChangedEventHandler> _logger;
 
     public IssueStatusChangedEventHandler(
-        IProjectRepository repository,
+        IProjectSummaryRepository repository,
         IUnitOfWork unitOfWork,
         ILogger<IssueStatusChangedEventHandler> logger)
     {
@@ -23,15 +24,15 @@ public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusCh
 
     public async Task HandleAsync(IssueStatusChangedEvent @event, CancellationToken cancellationToken = default)
     {
-        var project = await _repository.GetByIdAsync(@event.ProjectId, cancellationToken);
-        if (project is null)
+        var summary = await _repository.GetByProjectIdAsync(@event.ProjectId, cancellationToken);
+        if (summary is null)
         {
-            _logger.LogWarning("Project not found for IssueStatusChangedEvent. ProjectId={ProjectId}", @event.ProjectId);
-            return;
+            summary = new ProjectSummary(@event.ProjectId);
+            await _repository.AddAsync(summary, cancellationToken);
         }
 
-        project.ApplyIssueStatusChange(@event.OldStatus, @event.NewStatus);
-        await _repository.UpdateAsync(project, cancellationToken);
+        summary.ApplyIssueStatusChange(@event.OldStatus, @event.NewStatus);
+        await _repository.UpdateAsync(summary, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(

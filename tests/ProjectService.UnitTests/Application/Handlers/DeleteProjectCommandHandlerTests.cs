@@ -15,12 +15,13 @@ public sealed class DeleteProjectCommandHandlerTests
     public async Task Handle_Throws_WhenProjectMissing()
     {
         var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var mapper = Substitute.For<IMapper>();
 
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Project?)null);
 
-        var handler = new DeleteProjectCommandHandler(repository, unitOfWork, mapper);
+        var handler = new DeleteProjectCommandHandler(repository, summaryRepository, unitOfWork, mapper);
         var command = new DeleteProjectCommand(Guid.NewGuid());
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -34,23 +35,21 @@ public sealed class DeleteProjectCommandHandlerTests
     public async Task Handle_ArchivesProject_AndSaves()
     {
         var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var mapper = Substitute.For<IMapper>();
 
         var project = new Project("Name", "KEY", Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
+        summaryRepository.GetByProjectIdAsync(project.Id, Arg.Any<CancellationToken>()).Returns(new ProjectSummary(project.Id));
 
-        var expectedDto = new ProjectDto { Id = project.Id };
-        mapper.Map<ProjectDto>(Arg.Any<Project>()).Returns(expectedDto);
-
-        var handler = new DeleteProjectCommandHandler(repository, unitOfWork, mapper);
+        var handler = new DeleteProjectCommandHandler(repository, summaryRepository, unitOfWork, mapper);
         var command = new DeleteProjectCommand(project.Id);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        result.Should().Be(expectedDto);
+        result.Id.Should().Be(project.Id);
         await repository.Received(1).UpdateAsync(project, Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
-        mapper.Received(1).Map<ProjectDto>(project);
     }
 }

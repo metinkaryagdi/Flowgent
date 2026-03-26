@@ -12,7 +12,7 @@ namespace Shared.Common.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers RabbitMQ event bus and related services
+    /// Registers RabbitMQ event bus, outbox publisher, and correlation context.
     /// </summary>
     public static IServiceCollection AddRabbitMQ(
         this IServiceCollection services,
@@ -27,6 +27,9 @@ public static class ServiceCollectionExtensions
 
         // Register Outbox Publisher background service
         services.AddHostedService<OutboxPublisherService>();
+
+        // Register CorrelationContext as scoped — populated per request by CorrelationIdMiddleware
+        services.AddScoped<CorrelationContext>();
 
         return services;
     }

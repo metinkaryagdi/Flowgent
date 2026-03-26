@@ -25,7 +25,6 @@ public sealed class IssueBoardItem
         Status = issue.Status;
         Priority = issue.Priority;
         AssigneeUserId = issue.AssigneeUserId;
-        SprintId = issue.SprintId;
         CreatedAt = issue.CreatedAt;
         UpdatedAt = issue.UpdatedAt;
         Version = issue.Version;
@@ -37,8 +36,25 @@ public sealed class IssueBoardItem
         Status = issue.Status;
         Priority = issue.Priority;
         AssigneeUserId = issue.AssigneeUserId;
-        SprintId = issue.SprintId;
         UpdatedAt = issue.UpdatedAt ?? DateTime.UtcNow;
         Version = issue.Version;
+    }
+
+    public void AssignToSprint(Guid sprintId)
+    {
+        if (SprintId == sprintId)
+            return;
+
+        SprintId = sprintId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RemoveFromSprint()
+    {
+        if (!SprintId.HasValue)
+            return;
+
+        SprintId = null;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

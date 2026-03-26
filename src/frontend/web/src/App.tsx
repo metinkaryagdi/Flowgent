@@ -11,6 +11,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import ProjectsPage from './features/projects/ProjectsPage';
+import ProjectDetailPage from './features/projects/ProjectDetailPage';
 import BoardPage from './features/board/BoardPage';
 import SprintPage from './features/sprints/SprintPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
@@ -21,20 +22,6 @@ export default function App() {
   const theme = useThemeStore((s) => s.theme);
 
   useEffect(() => {
-    // 🔧 DEV ONLY: Backend olmadan test için otomatik mock login
-    // Prodüksiyon öncesi bu bloğu kaldırın!
-    const disableMockAuth = String(import.meta.env.VITE_DISABLE_MOCK_AUTH).toLowerCase() === 'true';
-    if (import.meta.env.DEV && !disableMockAuth && !localStorage.getItem('accessToken')) {
-      localStorage.setItem('accessToken', 'dev-mock-token');
-      localStorage.setItem('user', JSON.stringify({
-        id: 'dev-user-1',
-        userName: 'TestKullanıcı',
-        email: 'test@bitirme.dev',
-        isActive: true,
-        createdAt: '2024-01-01T00:00:00Z',
-      }));
-      localStorage.setItem('roles', JSON.stringify(['Admin']));
-    }
     hydrate();
   }, [hydrate]);
 
@@ -60,6 +47,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
               <Route path="/projects/:projectId/board" element={<BoardPage />} />
               <Route path="/projects/:projectId/sprints" element={<SprintPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />

@@ -19,6 +19,12 @@ public sealed class ProjectMemberRepository : IProjectMemberRepository
         return await _dbContext.ProjectMembers.AnyAsync(x => x.ProjectId == projectId && x.UserId == userId, cancellationToken);
     }
 
+    public async Task<ProjectMember?> GetAsync(Guid projectId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.ProjectMembers
+            .FirstOrDefaultAsync(x => x.ProjectId == projectId && x.UserId == userId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ProjectMember>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.ProjectMembers
