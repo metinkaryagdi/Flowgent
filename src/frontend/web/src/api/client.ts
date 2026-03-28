@@ -16,24 +16,65 @@ apiClient.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// ── Response interceptor: handle 401 & 409 ──
+// ── Response interceptor: 401 → refresh → retry, sonra logout ──
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void }> = [];
+
+const processQueue = (error: unknown) => {
+    failedQueue.forEach((prom) => {
+        if (error) prom.reject(error);
+        else prom.resolve(null);
+    });
+    failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
     (response) => response,
-    (error) => {
-        // Sadece gerçek 401 yanıtlarında login'e yönlendir
-        // Login/register sayfalarında ise yönlendirme yapma (sonsuz döngü önlemi)
-        if (error.response && error.response.status === 401) {
-            const currentPath = window.location.pathname;
-            const isAuthPage = currentPath === '/login' || currentPath === '/register';
+    async (error) => {
+        const originalRequest = error.config;
 
-            if (!isAuthPage) {
-                localStorage.removeItem('user');
-                localStorage.removeItem('roles');
-                window.location.href = '/login';
-            }
+        if (error.response?.status !== 401) {
+            return Promise.reject(error);
         }
-        // 409 Conflict durumu çağrıda handle edilecek
-        return Promise.reject(error);
+
+        const currentPath = window.location.pathname;
+        const isAuthPage = currentPath === '/login' || currentPath === '/register';
+        const isRefreshEndpoint = originalRequest?.url?.includes('/api/v1/identity/refresh');
+
+        // Auth sayfasında veya refresh isteğinin kendisi başarısız olduysa → logout
+        if (isAuthPage || isRefreshEndpoint || originalRequest?._retry) {
+            localStorage.removeItem('user');
+            localStorage.removeItem('roles');
+            if (!isAuthPage) window.location.href = '/login';
+            return Promise.reject(error);
+        }
+
+        // Zaten refresh yapılıyorsa kuyruğa al
+        if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject });
+            })
+                .then(() => apiClient(originalRequest))
+                .catch((err) => Promise.reject(err));
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+            // refreshToken cookie otomatik gönderilir (withCredentials: true)
+            await apiClient.post('/api/v1/identity/refresh');
+            processQueue(null);
+            return apiClient(originalRequest);
+        } catch (refreshError) {
+            processQueue(refreshError);
+            localStorage.removeItem('user');
+            localStorage.removeItem('roles');
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+        } finally {
+            isRefreshing = false;
+        }
     }
 );
 

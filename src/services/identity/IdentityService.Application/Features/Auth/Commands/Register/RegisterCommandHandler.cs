@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Common;
@@ -7,6 +8,8 @@ using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Options;
+using Shared.Abstractions.Messaging;
+using Shared.Contracts.Events;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
 
@@ -18,6 +21,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRoleRepository _roleRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
     private readonly JwtOptions _jwtOptions;
 
@@ -28,6 +32,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
         IJwtTokenGenerator jwtTokenGenerator,
         IRoleRepository roleRepository,
         IRefreshTokenRepository refreshTokenRepository,
+        IOutboxRepository outboxRepository,
         IMapper mapper,
         IOptions<JwtOptions> options)
     {
@@ -37,6 +42,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
         _jwtTokenGenerator = jwtTokenGenerator;
         _roleRepository = roleRepository;
         _refreshTokenRepository = refreshTokenRepository;
+        _outboxRepository = outboxRepository;
         _mapper = mapper;
         _jwtOptions = options.Value;
     }
@@ -79,6 +85,15 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
             DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays));
 
         await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
+
+        var evt = new UserCreatedEvent(user.Id, user.UserName, user.Email, Guid.Empty);
+        await _outboxRepository.AddAsync(new OutboxMessage
+        {
+            EventType = evt.GetType().Name,
+            Payload = JsonSerializer.Serialize(evt),
+            OccurredOn = evt.OccurredOn
+        }, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AuthResponseDto

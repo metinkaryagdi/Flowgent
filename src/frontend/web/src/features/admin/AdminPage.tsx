@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '../../api/admin';
+import { useToastStore } from '../../store/toastStore';
 import type { UserDto, RoleDto } from '../../types';
 import styles from './Admin.module.css';
 
@@ -12,12 +13,7 @@ export default function AdminPage() {
     const [userRolesMap, setUserRolesMap] = useState<Record<string, string[]>>({});
     const [loading, setLoading] = useState(true);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
+    const { addToast: showToast } = useToastStore();
 
     useEffect(() => {
         loadData();
@@ -225,12 +221,6 @@ export default function AdminPage() {
                 </div>
             )}
 
-            {/* ── Toast ─────────────── */}
-            {toast && (
-                <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-                    {toast.message}
-                </div>
-            )}
         </div>
     );
 }

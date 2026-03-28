@@ -1,12 +1,13 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { sprintsApi } from '../../api/sprints';
+import { useToastStore } from '../../store/toastStore';
 import { issuesApi } from '../../api/issues';
 import { IssuePriority, SprintStatus } from '../../types';
 import type { SprintDto, IssueBoardItemDto } from '../../types';
 import styles from './Sprint.module.css';
 
-const priorityDot: Record<number, string> = {
+const priorityDot: Record<string, string> = {
     [IssuePriority.Low]: styles.dotLow,
     [IssuePriority.Medium]: styles.dotMedium,
     [IssuePriority.High]: styles.dotHigh,
@@ -30,13 +31,9 @@ export default function SprintPage() {
     const [sprintIssues, setSprintIssues] = useState<Record<string, { items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>>({});
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const pageSize = 20;
 
-    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
+    const { addToast: showToast } = useToastStore();
 
     useEffect(() => {
         loadData();
@@ -401,12 +398,6 @@ export default function SprintPage() {
                 />
             )}
 
-            {/* â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            {toast && (
-                <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-                    {toast.message}
-                </div>
-            )}
         </div>
     );
 }

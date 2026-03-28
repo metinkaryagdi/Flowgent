@@ -34,7 +34,11 @@ public sealed class IssueRemovedFromSprintEventHandler : IEventHandler<IssueRemo
         if (boardItem.ProjectId != @event.ProjectId)
             throw new BusinessRuleException("Issue project mismatch for sprint removal.");
 
-        boardItem.RemoveFromSprint();
+        if (boardItem.SprintId.HasValue)
+        {
+            boardItem.SprintId = null;
+            boardItem.UpdatedAt = DateTime.UtcNow;
+        }
         await _boardRepository.UpdateAsync(boardItem, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

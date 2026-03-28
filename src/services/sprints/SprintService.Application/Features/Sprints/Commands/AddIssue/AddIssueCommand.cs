@@ -7,4 +7,5 @@ public sealed record AddIssueCommand(
     Guid SprintId,
     Guid IssueId,
     Guid AddedByUserId,
-    Guid? CorrelationId) : IRequest<SprintIssueDto>;
+    Guid? CorrelationId,
+    string? BearerToken = null) : IRequest<SprintIssueDto>;

@@ -28,6 +28,19 @@ public sealed class NotificationRepository : INotificationRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Notification>> GetPendingDeliveriesAsync(
+        int batchSize,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Notifications
+            .Where(n => (n.Status == NotificationStatus.Queued || n.Status == NotificationStatus.Failed)
+                && (!n.NextDeliveryAttemptAt.HasValue || n.NextDeliveryAttemptAt <= utcNow))
+            .OrderBy(n => n.CreatedAt)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Notifications.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
@@ -36,6 +49,11 @@ public sealed class NotificationRepository : INotificationRepository
     public async Task<Notification?> GetByExternalEventIdAsync(Guid externalEventId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Notifications.FirstOrDefaultAsync(n => n.ExternalEventId == externalEventId, cancellationToken);
+    }
+
+    public async Task<int> GetFailedDeliveryCountAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Notifications.CountAsync(n => n.Status == NotificationStatus.Failed, cancellationToken);
     }
 
     public Task UpdateAsync(Notification notification, CancellationToken cancellationToken = default)

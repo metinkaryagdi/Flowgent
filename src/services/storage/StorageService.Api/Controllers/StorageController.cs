@@ -1,6 +1,7 @@
 using BitirmeProject.StorageService.Application.Abstractions;
 using BitirmeProject.StorageService.Application.DTOs;
 using BitirmeProject.StorageService.Application.Features.Files.Commands.DeleteFile;
+using BitirmeProject.StorageService.Application.Features.Files.Commands.FinalizeFile;
 using BitirmeProject.StorageService.Application.Features.Files.Commands.UploadFile;
 using BitirmeProject.StorageService.Application.Features.Files.Queries.GetFileById;
 using MediatR;
@@ -11,6 +12,23 @@ using Shared.Common.Extensions;
 
 namespace BitirmeProject.StorageService.Api.Controllers;
 
+/// <summary>
+/// Manages file uploads, finalization, metadata retrieval, and deletion.
+///
+/// AUTHORIZATION BOUNDARY:
+/// StorageService enforces ownership-only authorization:
+///   - Upload:   any authenticated user may upload; UploadedByUserId is derived from Claims.
+///   - Finalize: only the uploader or an Admin may finalize.
+///   - GetById:  any authenticated user may read file metadata (needed by IssueService HTTP client).
+///   - Download: only the uploader or an Admin may stream file content.
+///   - Delete:   only the uploader or an Admin may delete.
+///
+/// Parent-entity authorization (e.g. "is this user a member of the project that owns this issue?")
+/// is NOT enforced here. That responsibility belongs to IssueService:
+///   - IssueService.AttachFileCommandHandler verifies file ownership before attaching.
+///   - Download access for issue members must be mediated through IssueService, which
+///     confirms project membership before proxying or redirecting to this endpoint.
+/// </summary>
 [ApiController]
 [Route("api/v1/storage")]
 [Authorize]
@@ -40,7 +58,7 @@ public sealed class StorageController : ControllerBase
         var uploadedByUserId = User.GetUserId();
 
         await using var stream = file.OpenReadStream();
-        var storagePath = await _fileStorage.SaveAsync(stream, file.FileName, cancellationToken);
+        var storagePath = await _fileStorage.SaveTemporaryAsync(stream, file.FileName, cancellationToken);
 
         var result = await _mediator.Send(new UploadFileCommand(
             file.FileName,
@@ -49,6 +67,21 @@ public sealed class StorageController : ControllerBase
             storagePath,
             uploadedByUserId), cancellationToken);
 
+        return Ok(result);
+    }
+
+    [HttpPost("files/{id:guid}/finalize")]
+    public async Task<ActionResult<StoredFileDto>> Finalize(Guid id, CancellationToken cancellationToken)
+    {
+        var file = await _repository.GetByIdAsync(id, cancellationToken);
+        if (file is null)
+            return NotFound();
+
+        var requesterId = User.TryGetUserId();
+        if (!User.HasRole("Admin") && file.UploadedByUserId != requesterId)
+            return Forbid();
+
+        var result = await _mediator.Send(new FinalizeFileCommand(id), cancellationToken);
         return Ok(result);
     }
 

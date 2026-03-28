@@ -21,7 +21,7 @@ public sealed class GetProjectsByUserPagedQueryHandler : IRequestHandler<GetProj
 
     public async Task<PagedResult<ProjectDto>> Handle(GetProjectsByUserPagedQuery request, CancellationToken cancellationToken)
     {
-        var (items, totalCount) = await _repository.GetByOwnerUserIdPagedAsync(
+        var (items, totalCount) = await _repository.GetByMemberUserIdPagedAsync(
             request.UserId,
             request.Page,
             request.PageSize,

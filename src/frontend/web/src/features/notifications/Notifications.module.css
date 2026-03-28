@@ -60,6 +60,19 @@
     background: var(--color-primary-50);
 }
 
+.itemClickable {
+    cursor: pointer;
+}
+
+.itemClickable::after {
+    content: ' →';
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
+}
+
 .dot {
     width: 10px;
     height: 10px;
@@ -165,6 +178,45 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ── Pagination ─────────────── */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-4);
+    margin-top: var(--spacing-5);
+    padding-top: var(--spacing-4);
+    border-top: 1px solid var(--border-color);
+}
+
+.pageBtn {
+    padding: var(--spacing-2) var(--spacing-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.pageBtn:hover:not(:disabled) {
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.pageBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pageInfo {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 /* ── SignalR Status ──────────── */

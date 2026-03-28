@@ -21,8 +21,8 @@ public sealed class GetIssueAttachmentsQueryHandlerTests
         var issue = new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Low, Guid.NewGuid());
         var items = new List<IssueAttachment>
         {
-            new IssueAttachment(issueId, "file1.txt", "text/plain", 100),
-            new IssueAttachment(issueId, "file2.txt", "text/plain", 200)
+            new IssueAttachment(issueId, Guid.NewGuid(), "file1.txt", "text/plain", 100, Guid.NewGuid()),
+            new IssueAttachment(issueId, Guid.NewGuid(), "file2.txt", "text/plain", 200, Guid.NewGuid())
         };
         repository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
 

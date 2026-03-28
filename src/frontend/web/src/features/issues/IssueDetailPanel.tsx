@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { issuesApi } from '../../api/issues';
 import { useAuthStore } from '../../store/authStore';
 import { IssueStatus, IssuePriority } from '../../types';
@@ -8,26 +8,26 @@ import styles from './IssueDetail.module.css';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // ── Helpers ─────────────────────
-const statusLabel: Record<number, string> = {
+const statusLabel: Record<string, string> = {
     [IssueStatus.Open]: 'Açık',
     [IssueStatus.InProgress]: 'Devam Ediyor',
     [IssueStatus.Done]: 'Tamamlandı',
 };
 
-const statusClass: Record<number, string> = {
+const statusClass: Record<string, string> = {
     [IssueStatus.Open]: styles.statusOpen,
     [IssueStatus.InProgress]: styles.statusInProgress,
     [IssueStatus.Done]: styles.statusDone,
 };
 
-const priorityLabel: Record<number, string> = {
+const priorityLabel: Record<string, string> = {
     [IssuePriority.Low]: 'Düşük',
     [IssuePriority.Medium]: 'Orta',
     [IssuePriority.High]: 'Yüksek',
     [IssuePriority.Critical]: 'Kritik',
 };
 
-const priorityClass: Record<number, string> = {
+const priorityClass: Record<string, string> = {
     [IssuePriority.Low]: styles.priorityLow,
     [IssuePriority.Medium]: styles.priorityMedium,
     [IssuePriority.High]: styles.priorityHigh,
@@ -51,7 +51,7 @@ type Tab = 'details' | 'comments' | 'attachments' | 'history';
 export default function IssueDetailPanel({
     issueId,
     onClose,
-    onUpdated: _onUpdated,
+    onUpdated,
 }: {
     issueId: string;
     onClose: () => void;
@@ -85,11 +85,8 @@ export default function IssueDetailPanel({
 
     const loadComments = async () => {
         try {
-            // Comments endpoint returns list through issue detail or separate endpoint
-            // For now, we use the getById which doesn't include comments directly
-            // We'll fetch separately if there's a dedicated comments endpoint
-            const data = await issuesApi.getHistory(issueId); // reuse for now
-            void data;
+            const data = await issuesApi.getComments(issueId);
+            setComments(data);
         } catch { /* ignore */ }
     };
 
@@ -163,7 +160,7 @@ export default function IssueDetailPanel({
                             </span>
                         </div>
                     </div>
-                    <button className={styles.closeBtn} onClick={onClose} title="Kapat">✕</button>
+                    <button className={styles.closeBtn} onClick={onClose} title="Kapat" aria-label="Paneli kapat">✕</button>
                 </div>
 
                 {/* ── Tabs ──────────────── */}
@@ -185,7 +182,7 @@ export default function IssueDetailPanel({
                 {/* ── Body ──────────────── */}
                 <div className={styles.panelBody}>
                     {activeTab === 'details' && (
-                        <DetailsTab issue={issue} flags={flags} />
+                        <DetailsTab issue={issue} flags={flags} onUpdated={(updated) => { setIssue(updated); onUpdated?.(); }} />
                     )}
                     {activeTab === 'comments' && (
                         <CommentsTab
@@ -217,23 +214,172 @@ export default function IssueDetailPanel({
 function DetailsTab({
     issue,
     flags,
+    onUpdated,
 }: {
     issue: IssueDto;
-    flags: { canAssignIssues?: boolean } | null;
+    flags: { canEditIssues?: boolean; canChangeStatus?: boolean; canAssignIssues?: boolean } | null;
+    onUpdated: (updated: IssueDto) => void;
 }) {
+    const [editing, setEditing] = useState(false);
+    const [title, setTitle] = useState(issue.title);
+    const [description, setDescription] = useState(issue.description ?? '');
+    const [priority, setPriority] = useState<IssuePriority>(issue.priority);
+    const [saving, setSaving] = useState(false);
+    const [statusChanging, setStatusChanging] = useState(false);
+    const [assigneeInput, setAssigneeInput] = useState('');
+    const [assigning, setAssigning] = useState(false);
+    const [showAssignInput, setShowAssignInput] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+
+    const canEdit = flags?.canEditIssues !== false;
+    const canChangeStatus = flags?.canChangeStatus !== false;
+    const canAssign = flags?.canAssignIssues !== false;
+
+    const handleSave = async () => {
+        if (!title.trim()) return;
+        setSaving(true);
+        setErrorMsg('');
+        try {
+            const updated = await issuesApi.update(issue.id, {
+                title: title.trim(),
+                description: description.trim() || undefined,
+                priority,
+                expectedVersion: issue.version,
+            });
+            onUpdated(updated);
+            setEditing(false);
+        } catch {
+            setErrorMsg('Kaydetme başarısız. Sayfa yenilenmiş olabilir — tekrar deneyin.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        setTitle(issue.title);
+        setDescription(issue.description ?? '');
+        setPriority(issue.priority);
+        setEditing(false);
+        setErrorMsg('');
+    };
+
+    const handleStatusChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+        const newStatus = e.target.value as IssueStatus;
+        if (newStatus === issue.status) return;
+        setStatusChanging(true);
+        setErrorMsg('');
+        try {
+            const updated = await issuesApi.changeStatus(issue.id, {
+                newStatus,
+                expectedVersion: issue.version,
+            });
+            onUpdated(updated);
+        } catch {
+            setErrorMsg('Durum değiştirme başarısız.');
+        } finally {
+            setStatusChanging(false);
+        }
+    };
+
+    const handleAssign = async () => {
+        const trimmed = assigneeInput.trim();
+        if (!trimmed) return;
+        setAssigning(true);
+        setErrorMsg('');
+        try {
+            const updated = await issuesApi.assign(issue.id, {
+                assigneeUserId: trimmed,
+                expectedVersion: issue.version,
+            });
+            onUpdated(updated);
+            setShowAssignInput(false);
+            setAssigneeInput('');
+        } catch {
+            setErrorMsg('Atama başarısız.');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     return (
         <>
-            {/* Description */}
+            {/* ── Başlık & Öncelik Edit ── */}
             <div className={styles.section}>
-                <h3 className={styles.sectionTitle}>Açıklama</h3>
-                {issue.description ? (
-                    <p className={styles.description}>{issue.description}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Detaylar</h3>
+                    {canEdit && !editing && (
+                        <button className={styles.assignBtn} onClick={() => setEditing(true)}>Düzenle</button>
+                    )}
+                </div>
+
+                {editing ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <input
+                            className={styles.editInput}
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Başlık"
+                        />
+                        <textarea
+                            className={styles.editTextarea}
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Açıklama (isteğe bağlı)"
+                            rows={4}
+                        />
+                        <select
+                            className={styles.editSelect}
+                            value={priority}
+                            onChange={(e) => setPriority(e.target.value as IssuePriority)}
+                        >
+                            <option value={IssuePriority.Low}>Düşük</option>
+                            <option value={IssuePriority.Medium}>Orta</option>
+                            <option value={IssuePriority.High}>Yüksek</option>
+                            <option value={IssuePriority.Critical}>Kritik</option>
+                        </select>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className={styles.assignBtn} onClick={handleSave} disabled={saving || !title.trim()}>
+                                {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                            </button>
+                            <button className={styles.assignBtn} onClick={handleCancel} disabled={saving}
+                                style={{ background: 'var(--bg-surface-hover)' }}>
+                                İptal
+                            </button>
+                        </div>
+                    </div>
                 ) : (
-                    <p className={styles.noDescription}>Açıklama eklenmemiş.</p>
+                    <>
+                        <div className={styles.section}>
+                            <h3 className={styles.sectionTitle}>Açıklama</h3>
+                            {issue.description ? (
+                                <p className={styles.description}>{issue.description}</p>
+                            ) : (
+                                <p className={styles.noDescription}>Açıklama eklenmemiş.</p>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* Assignee */}
+            {/* ── Durum ── */}
+            {canChangeStatus && (
+                <div className={styles.section}>
+                    <h3 className={styles.sectionTitle}>Durum</h3>
+                    <select
+                        className={styles.editSelect}
+                        value={issue.status}
+                        onChange={handleStatusChange}
+                        disabled={statusChanging}
+                    >
+                        <option value={IssueStatus.Open}>Açık</option>
+                        <option value={IssueStatus.InProgress}>Devam Ediyor</option>
+                        <option value={IssueStatus.Done}>Tamamlandı</option>
+                    </select>
+                    {statusChanging && <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 4 }}>Güncelleniyor...</span>}
+                </div>
+            )}
+
+            {/* ── Atanan Kişi ── */}
             <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Atanan Kişi</h3>
                 <div className={styles.assigneeRow}>
@@ -245,20 +391,48 @@ function DetailsTab({
                             <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>
                                 {issue.assigneeUserId}
                             </span>
+                            {canAssign && (
+                                <button className={styles.assignBtn} onClick={() => setShowAssignInput((v) => !v)}>
+                                    Değiştir
+                                </button>
+                            )}
                         </>
                     ) : (
                         <>
                             <div className={styles.assigneeAvatar} style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}>?</div>
                             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>Atanmamış</span>
-                            {flags?.canAssignIssues !== false && (
-                                <button className={styles.assignBtn}>Ata</button>
+                            {canAssign && (
+                                <button className={styles.assignBtn} onClick={() => setShowAssignInput((v) => !v)}>Ata</button>
                             )}
                         </>
                     )}
                 </div>
+                {showAssignInput && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <input
+                            className={styles.editInput}
+                            style={{ flex: 1 }}
+                            placeholder="Kullanıcı ID'si"
+                            value={assigneeInput}
+                            onChange={(e) => setAssigneeInput(e.target.value)}
+                        />
+                        <button className={styles.assignBtn} onClick={handleAssign} disabled={assigning || !assigneeInput.trim()}>
+                            {assigning ? '...' : 'Ata'}
+                        </button>
+                        <button className={styles.assignBtn} onClick={() => { setShowAssignInput(false); setAssigneeInput(''); }}
+                            style={{ background: 'var(--bg-surface-hover)' }}>
+                            İptal
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Info Grid */}
+            {/* ── Hata mesajı ── */}
+            {errorMsg && (
+                <p style={{ color: 'var(--color-error, #ef4444)', fontSize: '0.8rem', margin: '0 0 8px' }}>{errorMsg}</p>
+            )}
+
+            {/* ── Bilgiler ── */}
             <div className={styles.section}>
                 <h3 className={styles.sectionTitle}>Bilgiler</h3>
                 <div className={styles.infoGrid}>
@@ -385,26 +559,32 @@ function AttachmentsTab({
         formData.append('file', file);
 
         try {
-            // 1. Upload to storage
-            const response = await fetch(`${API_BASE}/api/v1/storage/files`, {
+            // 1. Upload file to StorageService (temporary)
+            const uploadResponse = await fetch(`${API_BASE}/api/v1/storage/files`, {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-                },
+                credentials: 'include',
                 body: formData,
             });
-            if (!response.ok) throw new Error('Upload failed');
-            const stored = await response.json();
+            if (!uploadResponse.ok) throw new Error('Upload failed');
+            const stored = await uploadResponse.json();
 
-            // 2. Link to issue
-            await fetch(`${API_BASE}/api/v1/issues/${issueId}/attachments`, {
+            // 2. Finalize the file so IssueService can validate it server-side
+            const finalizeResponse = await fetch(`${API_BASE}/api/v1/storage/files/${stored.id}/finalize`, {
                 method: 'POST',
+                credentials: 'include',
+            });
+            if (!finalizeResponse.ok) throw new Error('Finalize failed');
+
+            // 3. Attach to issue — only fileId is sent; metadata is resolved server-side
+            const attachResponse = await fetch(`${API_BASE}/api/v1/issues/${issueId}/attachments`, {
+                method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
                 },
                 body: JSON.stringify({ fileId: stored.id }),
             });
+            if (!attachResponse.ok) throw new Error('Attach failed');
 
             onReload();
         } catch {

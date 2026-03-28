@@ -2,6 +2,7 @@ using System.Text.Json;
 using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
 using BitirmeProject.SprintService.Domain.Enums;
 using MediatR;
@@ -15,6 +16,7 @@ public sealed class CompleteSprintCommandHandler : IRequestHandler<CompleteSprin
 {
     private readonly ISprintRepository _repository;
     private readonly ISprintIssueRepository _issueRepository;
+    private readonly ISprintSummaryRepository _summaryRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
@@ -22,12 +24,14 @@ public sealed class CompleteSprintCommandHandler : IRequestHandler<CompleteSprin
     public CompleteSprintCommandHandler(
         ISprintRepository repository,
         ISprintIssueRepository issueRepository,
+        ISprintSummaryRepository summaryRepository,
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper)
     {
         _repository = repository;
         _issueRepository = issueRepository;
+        _summaryRepository = summaryRepository;
         _unitOfWork = unitOfWork;
         _outboxRepository = outboxRepository;
         _mapper = mapper;
@@ -58,8 +62,15 @@ public sealed class CompleteSprintCommandHandler : IRequestHandler<CompleteSprin
                 break;
         }
 
+        // Snapshot counts from the pre-carry-over state (sprintIssues captured above)
+        var totalIssues = sprintIssues.Count;
+        var completedIssues = sprintIssues.Count(i => string.Equals(i.Status, "Done", StringComparison.OrdinalIgnoreCase));
+
         sprint.Complete();
         await _repository.UpdateAsync(sprint, cancellationToken);
+
+        var summary = new SprintSummary(sprint.Id, totalIssues, completedIssues, sprint.CompletedAt ?? DateTime.UtcNow);
+        await _summaryRepository.AddAsync(summary, cancellationToken);
 
         var evt = new SprintCompletedEvent(sprint.Id, sprint.ProjectId, sprint.CompletedAt ?? DateTime.UtcNow, request.CompletedByUserId, request.CorrelationId ?? Guid.Empty);
         await _outboxRepository.AddAsync(CreateOutboxMessage(evt), cancellationToken);
@@ -77,7 +88,8 @@ public sealed class CompleteSprintCommandHandler : IRequestHandler<CompleteSprin
     {
         foreach (var issue in issues)
         {
-            issue.RemoveFromSprint();
+            issue.SprintId = null;
+            issue.UpdatedAt = DateTime.UtcNow;
             await _issueRepository.UpdateAsync(issue, cancellationToken);
 
             var removedEvent = new IssueRemovedFromSprintEvent(
@@ -115,7 +127,8 @@ public sealed class CompleteSprintCommandHandler : IRequestHandler<CompleteSprin
 
         foreach (var issue in issues)
         {
-            issue.AssignToSprint(nextSprint.Id);
+            issue.SprintId = nextSprint.Id;
+            issue.UpdatedAt = DateTime.UtcNow;
             await _issueRepository.UpdateAsync(issue, cancellationToken);
 
             var removedEvent = new IssueRemovedFromSprintEvent(

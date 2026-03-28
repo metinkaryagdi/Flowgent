@@ -4,6 +4,7 @@ using System.Diagnostics;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.Common.Mappings;
 using BitirmeProject.IssueService.Application.DTOs;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using MediatR;
@@ -61,7 +62,7 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
             return IssueDtoFactory.Create(issue, currentBoardItem?.SprintId);
         }
 
-        var statusEvent = new IssueStatusChangedEvent(issue.Id, issue.ProjectId, oldStatus.ToString(), request.NewStatus.ToString(), request.ChangedByUserId, request.CorrelationId ?? Guid.Empty);
+        var statusEvent = new IssueStatusChangedEvent(issue.Id, issue.ProjectId, oldStatus.ToString(), request.NewStatus.ToString(), request.ChangedByUserId, issue.Title, issue.CreatedByUserId, issue.AssigneeUserId, request.CorrelationId ?? Guid.Empty);
         var statusOutbox = new OutboxMessage
         {
             EventType = statusEvent.GetType().Name,
@@ -81,7 +82,12 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
         }
         else
         {
-            boardItem.ApplyFrom(issue);
+            boardItem.Title = issue.Title;
+            boardItem.Status = issue.Status;
+            boardItem.Priority = issue.Priority;
+            boardItem.AssigneeUserId = issue.AssigneeUserId;
+            boardItem.UpdatedAt = issue.UpdatedAt ?? DateTime.UtcNow;
+            boardItem.Version = issue.Version;
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

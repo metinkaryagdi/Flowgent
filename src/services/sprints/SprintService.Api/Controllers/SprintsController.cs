@@ -52,7 +52,8 @@ public sealed class SprintsController : ControllerBase
     [HttpPost("{id:guid}/issues")]
     public async Task<ActionResult<SprintIssueDto>> AddIssue(Guid id, [FromBody] AddIssueCommand command)
     {
-        var updated = command with { SprintId = id };
+        var token = Request.Cookies["accessToken"];
+        var updated = command with { SprintId = id, BearerToken = string.IsNullOrWhiteSpace(token) ? null : token };
         var result = await _mediator.Send(updated);
         return Ok(result);
     }

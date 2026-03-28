@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using BitirmeProject.NotificationService.Api.Models;
 using BitirmeProject.NotificationService.Application.Features.Notifications.Commands.CreateNotification;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -12,35 +10,38 @@ public sealed class CommentAddedEventHandler : IEventHandler<CommentAddedEvent>
 {
     private readonly ILogger<CommentAddedEventHandler> _logger;
     private readonly IMediator _mediator;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public CommentAddedEventHandler(
         ILogger<CommentAddedEventHandler> logger,
-        IMediator mediator,
-        IHttpClientFactory httpClientFactory)
+        IMediator mediator)
     {
         _logger = logger;
         _mediator = mediator;
-        _httpClientFactory = httpClientFactory;
     }
 
     public async Task HandleAsync(CommentAddedEvent @event, CancellationToken cancellationToken = default)
     {
-        var issue = await TryGetIssueAsync(@event.IssueId, cancellationToken);
-        if (issue is null)
+        Guid recipient;
+        if (@event.AssigneeUserId.HasValue
+            && @event.AssigneeUserId.Value != Guid.Empty
+            && @event.AssigneeUserId.Value != @event.AuthorUserId)
         {
-            _logger.LogWarning("CommentAddedEvent: Issue not found. IssueId={IssueId}", @event.IssueId);
+            recipient = @event.AssigneeUserId.Value;
+        }
+        else if (@event.CreatedByUserId != Guid.Empty
+                 && @event.CreatedByUserId != @event.AuthorUserId)
+        {
+            recipient = @event.CreatedByUserId;
+        }
+        else
+        {
             return;
         }
-
-        var recipient = issue.AssigneeUserId ?? issue.CreatedByUserId;
-        if (recipient == Guid.Empty || recipient == @event.AuthorUserId)
-            return;
 
         var command = new CreateNotificationCommand(
             recipient,
             "New comment",
-            $"A new comment was added to issue {@event.IssueId}.",
+            $"A new comment was added to issue \"{@event.IssueTitle}\".",
             "InApp",
             "Issue",
             @event.IssueId,
@@ -50,15 +51,5 @@ public sealed class CommentAddedEventHandler : IEventHandler<CommentAddedEvent>
         await _mediator.Send(command, cancellationToken);
 
         _logger.LogInformation("CommentAddedEvent handled. IssueId={IssueId}", @event.IssueId);
-    }
-
-    private async Task<IssueDto?> TryGetIssueAsync(Guid issueId, CancellationToken cancellationToken)
-    {
-        var client = _httpClientFactory.CreateClient("IssueService");
-        var response = await client.GetAsync($"/api/v1/issues/{issueId}", cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        return await response.Content.ReadFromJsonAsync<IssueDto>(cancellationToken: cancellationToken);
     }
 }

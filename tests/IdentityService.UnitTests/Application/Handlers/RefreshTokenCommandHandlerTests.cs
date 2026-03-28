@@ -3,7 +3,9 @@ using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
+using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
+using BitirmeProject.IdentityService.Domain.Enums;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -46,7 +48,7 @@ public sealed class RefreshTokenCommandHandlerTests
         refreshRepo.GetByTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(token);
 
         var user = new User("user", "user@example.com", "hash");
-        user.Deactivate();
+        user.ChangeStatus(UserStatus.Deactivated);
         userRepo.GetByIdAsync(token.UserId, Arg.Any<CancellationToken>()).Returns(user);
 
         var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);
@@ -73,7 +75,7 @@ public sealed class RefreshTokenCommandHandlerTests
         var user = new User("user", "user@example.com", "hash");
         userRepo.GetByIdAsync(token.UserId, Arg.Any<CancellationToken>()).Returns(user);
 
-        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtToken("access", DateTime.UtcNow.AddHours(1)));
+        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
         mapper.Map<UserDto>(user).Returns(new UserDto { Id = user.Id, Email = user.Email });
 
         var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);

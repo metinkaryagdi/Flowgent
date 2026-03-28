@@ -41,7 +41,7 @@ public sealed class AddCommentCommandHandler : IRequestHandler<AddCommentCommand
         var comment = new IssueComment(request.IssueId, request.AuthorUserId, request.Content);
         await _commentRepository.AddAsync(comment, cancellationToken);
 
-        var evt = new CommentAddedEvent(comment.Id, issue.Id, issue.ProjectId, request.AuthorUserId, request.CorrelationId ?? Guid.Empty);
+        var evt = new CommentAddedEvent(comment.Id, issue.Id, issue.ProjectId, request.AuthorUserId, issue.Title, issue.CreatedByUserId, issue.AssigneeUserId, request.CorrelationId ?? Guid.Empty);
         var outbox = new OutboxMessage
         {
             EventType = evt.GetType().Name,

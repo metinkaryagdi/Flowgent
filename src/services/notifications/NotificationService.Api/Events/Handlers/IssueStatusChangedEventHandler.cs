@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-using BitirmeProject.NotificationService.Api.Models;
 using BitirmeProject.NotificationService.Application.Features.Notifications.Commands.CreateNotification;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -12,35 +10,25 @@ public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusCh
 {
     private readonly ILogger<IssueStatusChangedEventHandler> _logger;
     private readonly IMediator _mediator;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public IssueStatusChangedEventHandler(
         ILogger<IssueStatusChangedEventHandler> logger,
-        IMediator mediator,
-        IHttpClientFactory httpClientFactory)
+        IMediator mediator)
     {
         _logger = logger;
         _mediator = mediator;
-        _httpClientFactory = httpClientFactory;
     }
 
     public async Task HandleAsync(IssueStatusChangedEvent @event, CancellationToken cancellationToken = default)
     {
-        var issue = await TryGetIssueAsync(@event.IssueId, cancellationToken);
-        if (issue is null)
-        {
-            _logger.LogWarning("IssueStatusChangedEvent: Issue not found. IssueId={IssueId}", @event.IssueId);
-            return;
-        }
-
-        var recipient = ResolveRecipient(issue, @event.ChangedByUserId);
+        var recipient = ResolveRecipient(@event);
         if (recipient == Guid.Empty)
             return;
 
         var command = new CreateNotificationCommand(
             recipient,
             "Issue status changed",
-            $"Issue {@event.IssueId} status changed from {@event.OldStatus} to {@event.NewStatus}.",
+            $"Issue \"{@event.IssueTitle}\" status changed from {@event.OldStatus} to {@event.NewStatus}.",
             "InApp",
             "Issue",
             @event.IssueId,
@@ -55,24 +43,14 @@ public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusCh
             recipient);
     }
 
-    private static Guid ResolveRecipient(IssueDto issue, Guid actorUserId)
+    private static Guid ResolveRecipient(IssueStatusChangedEvent @event)
     {
-        if (issue.AssigneeUserId.HasValue && issue.AssigneeUserId.Value != actorUserId)
-            return issue.AssigneeUserId.Value;
+        if (@event.AssigneeUserId.HasValue && @event.AssigneeUserId.Value != @event.ChangedByUserId)
+            return @event.AssigneeUserId.Value;
 
-        if (issue.CreatedByUserId != actorUserId)
-            return issue.CreatedByUserId;
+        if (@event.CreatedByUserId != @event.ChangedByUserId)
+            return @event.CreatedByUserId;
 
         return Guid.Empty;
-    }
-
-    private async Task<IssueDto?> TryGetIssueAsync(Guid issueId, CancellationToken cancellationToken)
-    {
-        var client = _httpClientFactory.CreateClient("IssueService");
-        var response = await client.GetAsync($"/api/v1/issues/{issueId}", cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        return await response.Content.ReadFromJsonAsync<IssueDto>(cancellationToken: cancellationToken);
     }
 }

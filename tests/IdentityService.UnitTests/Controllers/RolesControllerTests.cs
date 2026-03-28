@@ -15,7 +15,7 @@ public sealed class RolesControllerTests
     {
         var mediator = Substitute.For<IMediator>();
         var controller = new RolesController(mediator);
-        var command = new CreateRoleCommand("Admin");
+        var command = new CreateRoleCommand("Admin", null);
         var dto = new RoleDto { Id = Guid.NewGuid(), Name = command.Name };
         mediator.Send(command).Returns(dto);
 

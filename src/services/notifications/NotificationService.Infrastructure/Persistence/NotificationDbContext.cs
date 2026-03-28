@@ -26,10 +26,17 @@ public sealed class NotificationDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Channel).HasConversion<int>();
             entity.Property(x => x.Status).HasConversion<int>();
             entity.Property(x => x.IsRead).IsRequired();
+            entity.Property(x => x.DeliveryAttemptCount).IsRequired();
+            entity.Property(x => x.LastDeliveryAttemptAt);
+            entity.Property(x => x.NextDeliveryAttemptAt);
+            entity.Property(x => x.DeliveredAt);
+            entity.Property(x => x.LastFailureReason).HasMaxLength(2000);
             entity.Property(x => x.EntityType).HasMaxLength(100);
             entity.Property(x => x.ExternalEventId);
             entity.HasIndex(x => x.UserId);
             entity.HasIndex(x => x.ExternalEventId);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.NextDeliveryAttemptAt);
         });
 
         modelBuilder.Entity<OutboxMessage>(entity =>

@@ -32,7 +32,11 @@ public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusCh
             return;
         }
 
-        sprintIssue.UpdateStatus(@event.NewStatus);
+        if (!string.IsNullOrWhiteSpace(@event.NewStatus))
+        {
+            sprintIssue.Status = @event.NewStatus.Trim();
+            sprintIssue.UpdatedAt = DateTime.UtcNow;
+        }
         await _issueRepository.UpdateAsync(sprintIssue, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -83,7 +83,7 @@ public sealed class UpdateProjectCommandHandlerTests
 
         await repository.Received(1).UpdateAsync(project, Arg.Any<CancellationToken>());
         await outboxRepository.Received(2).AddAsync(Arg.Is<OutboxMessage>(m =>
-            m.EventType is "ProjectUpdatedEvent" or "ProjectSettingsUpdatedEvent" &&
+            (m.EventType == "ProjectUpdatedEvent" || m.EventType == "ProjectSettingsUpdatedEvent") &&
             !string.IsNullOrWhiteSpace(m.Payload)), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     DndContext,
     DragOverlay,
@@ -19,6 +19,7 @@ import { bffApi } from '../../api/bff';
 import { issuesApi } from '../../api/issues';
 import { sprintsApi } from '../../api/sprints';
 import { useAuthStore } from '../../store/authStore';
+import { useToastStore } from '../../store/toastStore';
 import { IssueStatus, IssuePriority } from '../../types';
 import type { IssueBoardItemDto, BoardColumn, BoardResponse, SprintDto } from '../../types';
 import IssueDetailPanel from '../issues/IssueDetailPanel';
@@ -28,14 +29,14 @@ import styles from './Board.module.css';
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 // Priority helpers
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-const priorityLabel: Record<number, string> = {
+const priorityLabel: Record<string, string> = {
     [IssuePriority.Low]: 'DÃƒÂ¼Ã…Å¸ÃƒÂ¼k',
     [IssuePriority.Medium]: 'Orta',
     [IssuePriority.High]: 'YÃƒÂ¼ksek',
     [IssuePriority.Critical]: 'Kritik',
 };
 
-const priorityClass: Record<number, string> = {
+const priorityClass: Record<string, string> = {
     [IssuePriority.Low]: styles.priorityLow,
     [IssuePriority.Medium]: styles.priorityMedium,
     [IssuePriority.High]: styles.priorityHigh,
@@ -246,6 +247,7 @@ function DroppableColumn({
 export default function BoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { flags } = useAuthStore();
 
     const [board, setBoard] = useState<BoardResponse | null>(null);
@@ -255,17 +257,13 @@ export default function BoardPage() {
     const [activeItem, setActiveItem] = useState<IssueBoardItemDto | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [priorityFilter, setPriorityFilter] = useState<'all' | '0' | '1' | '2' | '3'>('all');
+    const [priorityFilter, setPriorityFilter] = useState<'all' | IssuePriority>('all');
     const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'unassigned' | string>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'inprogress' | 'done'>('all');
     const [itemsPerColumn, setItemsPerColumn] = useState(50);
 
-    const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3500);
-    };
+    const { addToast: showToast } = useToastStore();
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -293,6 +291,39 @@ export default function BoardPage() {
         loadBoard();
     }, [loadBoard]);
 
+    // ── Klavye kısayolları ────────
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            // Input/textarea odaklıyken kısayolları engelle
+            const tag = (e.target as HTMLElement).tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+            if (e.key === 'n' || e.key === 'N') {
+                if (flags?.canEditIssues !== false) {
+                    e.preventDefault();
+                    setShowCreateModal(true);
+                }
+            }
+            if (e.key === '/') {
+                e.preventDefault();
+                const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="ara"]');
+                searchInput?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [flags]);
+
+    // Notification deep-link: router state'den gelen openIssueId'yi aç
+    useEffect(() => {
+        const openIssueId = (location.state as { openIssueId?: string } | null)?.openIssueId;
+        if (openIssueId) {
+            setSelectedIssueId(openIssueId);
+            // State'i temizle (sayfa yenilenince tekrar açılmasın)
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [location.state]);
+
     const assigneeIds = useMemo(
         () => (board?.items || []).map((item) => item.assigneeUserId).filter(Boolean) as string[],
         [board]
@@ -310,7 +341,7 @@ export default function BoardPage() {
     const searchLower = searchTerm.trim().toLowerCase();
     const matchesFilters = (item: IssueBoardItemDto) => {
         if (searchLower && !item.title.toLowerCase().includes(searchLower)) return false;
-        if (priorityFilter !== 'all' && item.priority !== Number(priorityFilter)) return false;
+        if (priorityFilter !== 'all' && item.priority !== priorityFilter) return false;
         if (assigneeFilter !== 'all') {
             if (assigneeFilter === 'unassigned' && item.assigneeUserId) return false;
             if (assigneeFilter !== 'unassigned' && item.assigneeUserId !== assigneeFilter) return false;
@@ -419,14 +450,11 @@ export default function BoardPage() {
     // Ã¢â€â‚¬Ã¢â€â‚¬ Create issue Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleCreateIssue = async (title: string, description: string, priority: IssuePriority) => {
         if (!projectId) return;
-        try {
-            await issuesApi.create({ projectId, title, description, priority });
-            showToast('Issue oluÃ…Å¸turuldu!');
-            setShowCreateModal(false);
-            await loadBoard();
-        } catch {
-            showToast('Issue oluÃ…Å¸turulurken hata oluÃ…Å¸tu.', 'error');
-        }
+        // Hata fırlatılırsa modal yakalar, başarıda board yenilenir
+        await issuesApi.create({ projectId, title, description, priority });
+        showToast('Issue oluşturuldu!');
+        setShowCreateModal(false);
+        await loadBoard();
     };
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ Assign Sprint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -511,7 +539,7 @@ export default function BoardPage() {
                         ÄŸÅ¸â€œÅ  Sprint'ler
                     </button>
                     {flags?.canEditIssues !== false && (
-                        <button className={styles.addIssueBtn} data-testid="issue-create-open" onClick={() => setShowCreateModal(true)}>
+                        <button className={styles.addIssueBtn} data-testid="issue-create-open" onClick={() => setShowCreateModal(true)} aria-label="Yeni issue oluştur (N)">
                             <span>+</span> Yeni Issue
                         </button>
                     )}
@@ -526,11 +554,12 @@ export default function BoardPage() {
                     placeholder="Issue ara..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    aria-label="Issue ara (/ kısayolu)"
                 />
                 <select
                     className={styles.filterSelect}
                     value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value as 'all' | '0' | '1' | '2' | '3')}
+                    onChange={(e) => setPriorityFilter(e.target.value as 'all' | IssuePriority)}
                 >
                     <option value="all">TÃ¼m Ã–ncelikler</option>
                     <option value={IssuePriority.Low}>DÃ¼ÅŸÃ¼k</option>
@@ -624,20 +653,6 @@ export default function BoardPage() {
                 />
             )}
 
-            {/* Ã¢â€â‚¬Ã¢â€â‚¬ Toast Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-            {toast && (
-                <div
-                    className={`${styles.toast} ${toast.type === 'success'
-                        ? styles.toastSuccess
-                        : toast.type === 'error'
-                            ? styles.toastError
-                            : styles.toastWarning
-                        }`}
-                >
-                    {toast.message}
-                </div>
-            )}
-
             {/* Ã¢â€â‚¬Ã¢â€â‚¬ Issue Detail Panel Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {selectedIssueId && (
                 <IssueDetailPanel
@@ -664,13 +679,28 @@ function CreateIssueModal({
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState<IssuePriority>(IssuePriority.Medium);
     const [submitting, setSubmitting] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!title.trim()) return;
         setSubmitting(true);
+        setErrorMsg('');
         try {
             await onSubmit(title.trim(), description.trim(), priority);
+        } catch (err: unknown) {
+            if (err && typeof err === 'object' && 'response' in err) {
+                const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+                const msgs = axiosErr.response?.data?.errors;
+                if (msgs) {
+                    const first = Object.values(msgs)[0]?.[0];
+                    setErrorMsg(first || 'Doğrulama hatası.');
+                } else {
+                    setErrorMsg(axiosErr.response?.data?.message || 'Issue oluşturulurken hata oluştu.');
+                }
+            } else {
+                setErrorMsg('Issue oluşturulurken hata oluştu.');
+            }
         } finally {
             setSubmitting(false);
         }
@@ -712,7 +742,7 @@ function CreateIssueModal({
                             data-testid="issue-priority"
                             className={styles.formSelect}
                             value={priority}
-                            onChange={(e) => setPriority(Number(e.target.value) as IssuePriority)}
+                            onChange={(e) => setPriority(e.target.value as IssuePriority)}
                         >
                             <option value={IssuePriority.Low}>DÃƒÂ¼Ã…Å¸ÃƒÂ¼k</option>
                             <option value={IssuePriority.Medium}>Orta</option>
@@ -720,6 +750,9 @@ function CreateIssueModal({
                             <option value={IssuePriority.Critical}>Kritik</option>
                         </select>
                     </div>
+                    {errorMsg && (
+                        <p style={{ color: 'var(--color-error, #ef4444)', fontSize: '0.8rem', margin: '0 0 12px' }}>{errorMsg}</p>
+                    )}
                     <div className={styles.modalFooter}>
                         <button type="button" className={styles.btnSecondary} onClick={onClose}>Ã„Â°ptal</button>
                         <button

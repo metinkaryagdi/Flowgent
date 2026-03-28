@@ -6,6 +6,7 @@ using BitirmeProject.IdentityService.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Shared.Abstractions.Messaging;
 
 namespace BitirmeProject.IdentityService.Infrastructure.DependencyInjection;
 
@@ -35,6 +36,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        // Outbox
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
 
         return services;
     }

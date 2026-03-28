@@ -10,6 +10,7 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
 
     const { setAuth, setFlags } = useAuthStore();
@@ -18,6 +19,7 @@ export default function RegisterPage() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError('');
+        setFieldErrors({});
 
         if (!userName.trim() || !email.trim() || !password.trim()) {
             setError('Lütfen tüm alanları doldurun.');
@@ -51,8 +53,18 @@ export default function RegisterPage() {
             navigate('/projects');
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
-                const axiosErr = err as { response?: { data?: { message?: string } } };
-                setError(axiosErr.response?.data?.message || 'Kayıt olurken bir hata oluştu.');
+                const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+                const backendErrors = axiosErr.response?.data?.errors;
+                if (backendErrors) {
+                    const mapped: Record<string, string> = {};
+                    for (const [key, msgs] of Object.entries(backendErrors)) {
+                        mapped[key.toLowerCase()] = msgs[0];
+                    }
+                    setFieldErrors(mapped);
+                    setError('');
+                } else {
+                    setError(axiosErr.response?.data?.message || 'Kayıt olurken bir hata oluştu.');
+                }
             } else {
                 setError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
             }
@@ -84,7 +96,7 @@ export default function RegisterPage() {
                     <input
                         id="userName"
                         type="text"
-                        className={styles.formInput}
+                        className={`${styles.formInput} ${fieldErrors['username'] ? styles.formInputError : ''}`}
                         placeholder="kullaniciadi"
                         value={userName}
                         onChange={(e) => setUserName(e.target.value)}
@@ -92,6 +104,7 @@ export default function RegisterPage() {
                         autoFocus
                         data-testid="register-username"
                     />
+                    {fieldErrors['username'] && <p className={styles.formError}>{fieldErrors['username']}</p>}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -101,13 +114,14 @@ export default function RegisterPage() {
                     <input
                         id="email"
                         type="email"
-                        className={styles.formInput}
+                        className={`${styles.formInput} ${fieldErrors['email'] ? styles.formInputError : ''}`}
                         placeholder="ornek@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
                         data-testid="register-email"
                     />
+                    {fieldErrors['email'] && <p className={styles.formError}>{fieldErrors['email']}</p>}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -117,13 +131,14 @@ export default function RegisterPage() {
                     <input
                         id="password"
                         type="password"
-                        className={styles.formInput}
+                        className={`${styles.formInput} ${fieldErrors['password'] ? styles.formInputError : ''}`}
                         placeholder="En az 6 karakter"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
                         data-testid="register-password"
                     />
+                    {fieldErrors['password'] && <p className={styles.formError}>{fieldErrors['password']}</p>}
                 </div>
 
                 <div className={styles.formGroup}>

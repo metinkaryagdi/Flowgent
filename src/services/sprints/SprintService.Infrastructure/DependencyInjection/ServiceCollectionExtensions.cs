@@ -1,4 +1,5 @@
 using BitirmeProject.SprintService.Application.Abstractions;
+using BitirmeProject.SprintService.Infrastructure.Clients;
 using BitirmeProject.SprintService.Infrastructure.Persistence;
 using BitirmeProject.SprintService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -22,8 +23,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SprintDbContext>());
         services.AddScoped<ISprintRepository, SprintRepository>();
         services.AddScoped<ISprintIssueRepository, SprintIssueRepository>();
+        services.AddScoped<ISprintSummaryRepository, SprintSummaryRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IIssueServiceClient, IssueServiceClient>();
+
+        var issueServiceUrl = configuration["IssueService:BaseUrl"] ?? "http://issue-service:8080/";
+        services.AddHttpClient("IssueService", client =>
+        {
+            client.BaseAddress = new Uri(issueServiceUrl);
+        });
 
         return services;
     }

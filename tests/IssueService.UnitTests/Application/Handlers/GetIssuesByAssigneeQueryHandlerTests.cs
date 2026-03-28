@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByAssignee;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;

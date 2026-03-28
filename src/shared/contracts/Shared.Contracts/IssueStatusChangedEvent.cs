@@ -7,10 +7,13 @@ public sealed record IssueStatusChangedEvent : IntegrationEvent
     public string OldStatus { get; init; } = string.Empty;
     public string NewStatus { get; init; } = string.Empty;
     public Guid ChangedByUserId { get; init; }
+    public string IssueTitle { get; init; } = string.Empty;
+    public Guid CreatedByUserId { get; init; }
+    public Guid? AssigneeUserId { get; init; }
 
     public IssueStatusChangedEvent() { }
 
-    public IssueStatusChangedEvent(Guid issueId, Guid projectId, string oldStatus, string newStatus, Guid changedByUserId, Guid correlationId)
+    public IssueStatusChangedEvent(Guid issueId, Guid projectId, string oldStatus, string newStatus, Guid changedByUserId, string issueTitle, Guid createdByUserId, Guid? assigneeUserId, Guid correlationId)
         : base(correlationId)
     {
         IssueId = issueId;
@@ -18,5 +21,8 @@ public sealed record IssueStatusChangedEvent : IntegrationEvent
         OldStatus = oldStatus;
         NewStatus = newStatus;
         ChangedByUserId = changedByUserId;
+        IssueTitle = issueTitle;
+        CreatedByUserId = createdByUserId;
+        AssigneeUserId = assigneeUserId;
     }
 }

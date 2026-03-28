@@ -7,6 +7,7 @@ public abstract record IntegrationEvent : IIntegrationEvent
     public Guid EventId { get; init; } = Guid.NewGuid();
     public DateTime OccurredOn { get; init; } = DateTime.UtcNow;
     public Guid CorrelationId { get; init; } = Guid.Empty;
+    public int EventVersion { get; init; } = 1;
 
     protected IntegrationEvent() { }
 

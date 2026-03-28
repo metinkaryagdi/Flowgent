@@ -23,7 +23,9 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddScoped<IEventHandler<IssueAddedToSprintEvent>, IssueAddedToSprintEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueRemovedFromSprintEvent>, IssueRemovedFromSprintEventHandler>();
 builder.Services.AddHostedService<SprintEventsConsumer>();
@@ -45,6 +47,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                ctx.Token = ctx.Request.Cookies["accessToken"];
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -57,6 +67,13 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddIssueApplication();
 builder.Services.AddIssueInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMQ(builder.Configuration);
+
+// HttpClient for service-to-service calls
+builder.Services.AddHttpClient("StorageService", client =>
+{
+    var baseUrl = builder.Configuration["Services:StorageService"] ?? "http://storage-service:8080";
+    client.BaseAddress = new Uri(baseUrl);
+});
 
 var app = builder.Build();
 

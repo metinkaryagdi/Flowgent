@@ -5,17 +5,17 @@
 
 // ─── Enums ───────────────────────────
 export const IssueStatus = {
-  Open: 0,
-  InProgress: 1,
-  Done: 2,
+  Open: 'Open',
+  InProgress: 'InProgress',
+  Done: 'Done',
 } as const;
 export type IssueStatus = typeof IssueStatus[keyof typeof IssueStatus];
 
 export const IssuePriority = {
-  Low: 0,
-  Medium: 1,
-  High: 2,
-  Critical: 3,
+  Low: 'Low',
+  Medium: 'Medium',
+  High: 'High',
+  Critical: 'Critical',
 } as const;
 export type IssuePriority = typeof IssuePriority[keyof typeof IssuePriority];
 
@@ -27,8 +27,10 @@ export const SprintStatus = {
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus];
 
 export const NotificationStatus = {
-  Unread: 0,
-  Read: 1,
+  Queued: 0,
+  Sent: 1,
+  Failed: 2,
+  Delivered: 3,
 } as const;
 export type NotificationStatus = typeof NotificationStatus[keyof typeof NotificationStatus];
 
@@ -257,6 +259,13 @@ export interface NotificationDto {
   message: string;
   channel: NotificationChannel;
   status: NotificationStatus;
+  isRead: boolean;
+  readAt: string | null;
+  deliveryAttemptCount: number;
+  lastDeliveryAttemptAt: string | null;
+  nextDeliveryAttemptAt: string | null;
+  deliveredAt: string | null;
+  lastFailureReason: string | null;
   entityType: string | null;
   entityId: string | null;
   createdAt: string;

@@ -5,9 +5,9 @@ namespace BitirmeProject.ProjectService.Application.Abstractions;
 public interface IProjectRepository
 {
     Task<Project?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Project>> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
-    Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByOwnerUserIdPagedAsync(
-        Guid ownerUserId,
+    Task<IReadOnlyList<Project>> GetByMemberUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByMemberUserIdPagedAsync(
+        Guid userId,
         int page,
         int pageSize,
         string? search,

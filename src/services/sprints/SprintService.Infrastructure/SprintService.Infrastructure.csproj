@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\shared\abstractions\Shared.Abstractions\Shared.Abstractions.csproj" />
     <ProjectReference Include="..\SprintService.Application\SprintService.Application.csproj" />
     <ProjectReference Include="..\SprintService.Domain\SprintService.Domain.csproj" />

@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.ChangeIssueStatus;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
@@ -53,7 +54,7 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
 
         var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), expectedVersion: 99, null);
+        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), ExpectedVersion: 99, null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -81,7 +82,7 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
         var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.Open, Guid.NewGuid(), expectedVersion: issue.Version, null);
+        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.Open, Guid.NewGuid(), ExpectedVersion: issue.Version, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -108,7 +109,7 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns((IssueBoardItem?)null);
 
         var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), expectedVersion: issue.Version, Guid.NewGuid());
+        var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), ExpectedVersion: issue.Version, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 

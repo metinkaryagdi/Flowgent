@@ -34,6 +34,12 @@ namespace NotificationService.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("DeliveryAttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid");
 
@@ -47,10 +53,20 @@ namespace NotificationService.Infrastructure.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastDeliveryAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastFailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("NextDeliveryAttemptAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
@@ -72,6 +88,10 @@ namespace NotificationService.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ExternalEventId");
+
+                    b.HasIndex("NextDeliveryAttemptAt");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("UserId");
 
@@ -106,12 +126,30 @@ namespace NotificationService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Error")
+                    b.Property<string>("ActorId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ClaimedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CorrelationId")
                         .HasColumnType("text");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastAttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("LockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("OccurredOn")
                         .HasColumnType("timestamp with time zone");
@@ -120,7 +158,7 @@ namespace NotificationService.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("ProcessedOn")
+                    b.Property<DateTime?>("PublishedOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("RetryCount")

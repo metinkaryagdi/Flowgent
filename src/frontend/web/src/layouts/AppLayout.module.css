@@ -382,10 +382,52 @@
     padding: var(--spacing-6);
 }
 
+/* ── Hamburger button (mobile only) ─ */
+.hamburgerBtn {
+    display: none;
+    background: none;
+    border: none;
+    padding: var(--spacing-2);
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    line-height: 1;
+    border-radius: var(--border-radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.hamburgerBtn:hover {
+    background: var(--bg-surface-hover);
+}
+
+/* Sidebar overlay (mobile) */
+.sidebarOverlay {
+    display: none;
+}
+
 /* ── Responsive ───────────────── */
 @media (max-width: 768px) {
+    .hamburgerBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebarOverlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 99;
+    }
+
     .sidebar {
         transform: translateX(-100%);
+        z-index: 100;
+    }
+
+    .sidebarOpen {
+        transform: translateX(0);
     }
 
     .main {

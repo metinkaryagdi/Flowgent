@@ -1,6 +1,8 @@
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
+using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
+using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Revoke;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,10 +38,27 @@ public sealed class AuthController : ControllerBase
         return Ok(StripTokens(result));
     }
 
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AuthResponseDto>> Refresh(CancellationToken cancellationToken)
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Unauthorized("Refresh token cookie is missing.");
+
+        var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), cancellationToken);
+        SetTokenCookies(result);
+        return Ok(StripTokens(result));
+    }
+
     [Authorize]
     [HttpPost("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+            await _mediator.Send(new RevokeTokenCommand(refreshToken), cancellationToken);
+
         Response.Cookies.Delete("accessToken");
         Response.Cookies.Delete("refreshToken");
         return NoContent();

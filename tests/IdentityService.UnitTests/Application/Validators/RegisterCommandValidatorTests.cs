@@ -9,7 +9,7 @@ public sealed class RegisterCommandValidatorTests
     public void Validate_Fails_WhenUserNameMissing()
     {
         var validator = new RegisterCommandValidator();
-        var command = new RegisterCommand("", "user@example.com", "Pass123!", "User", "Name");
+        var command = new RegisterCommand("", "user@example.com", "Pass123!");
 
         var result = validator.Validate(command);
 
@@ -20,7 +20,7 @@ public sealed class RegisterCommandValidatorTests
     public void Validate_Fails_WhenEmailMissing()
     {
         var validator = new RegisterCommandValidator();
-        var command = new RegisterCommand("user", "", "Pass123!", "User", "Name");
+        var command = new RegisterCommand("user", "", "Pass123!");
 
         var result = validator.Validate(command);
 
@@ -31,7 +31,7 @@ public sealed class RegisterCommandValidatorTests
     public void Validate_Fails_WhenPasswordMissing()
     {
         var validator = new RegisterCommandValidator();
-        var command = new RegisterCommand("user", "user@example.com", "", "User", "Name");
+        var command = new RegisterCommand("user", "user@example.com", "");
 
         var result = validator.Validate(command);
 
@@ -42,7 +42,7 @@ public sealed class RegisterCommandValidatorTests
     public void Validate_Passes_WhenValid()
     {
         var validator = new RegisterCommandValidator();
-        var command = new RegisterCommand("user", "user@example.com", "Pass123!", "User", "Name");
+        var command = new RegisterCommand("user", "user@example.com", "Pass123!");
 
         var result = validator.Validate(command);
 

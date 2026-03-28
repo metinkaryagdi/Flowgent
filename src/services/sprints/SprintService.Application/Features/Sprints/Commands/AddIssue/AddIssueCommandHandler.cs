@@ -2,6 +2,7 @@ using AutoMapper;
 using System.Text.Json;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Enums;
 using MediatR;
 using Shared.Abstractions.Exceptions;
@@ -14,6 +15,7 @@ public sealed class AddIssueCommandHandler : IRequestHandler<AddIssueCommand, Sp
 {
     private readonly ISprintRepository _sprintRepository;
     private readonly ISprintIssueRepository _issueRepository;
+    private readonly IIssueServiceClient _issueServiceClient;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
@@ -21,12 +23,14 @@ public sealed class AddIssueCommandHandler : IRequestHandler<AddIssueCommand, Sp
     public AddIssueCommandHandler(
         ISprintRepository sprintRepository,
         ISprintIssueRepository issueRepository,
+        IIssueServiceClient issueServiceClient,
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper)
     {
         _sprintRepository = sprintRepository;
         _issueRepository = issueRepository;
+        _issueServiceClient = issueServiceClient;
         _unitOfWork = unitOfWork;
         _outboxRepository = outboxRepository;
         _mapper = mapper;
@@ -43,7 +47,23 @@ public sealed class AddIssueCommandHandler : IRequestHandler<AddIssueCommand, Sp
 
         var sprintIssue = await _issueRepository.GetByIssueIdAsync(request.IssueId, cancellationToken);
         if (sprintIssue is null)
-            throw new NotFoundException("SprintIssue", request.IssueId);
+        {
+            // Race condition guard: IssueCreatedEvent may not have been processed yet.
+            // Verify via IssueService and create projection on-the-fly.
+            var metadata = await _issueServiceClient.GetIssueAsync(request.IssueId, request.BearerToken, cancellationToken);
+            if (metadata is null)
+                throw new NotFoundException("Issue", request.IssueId);
+
+            sprintIssue = new SprintIssue(
+                metadata.Id,
+                metadata.ProjectId,
+                metadata.Title,
+                "Task",
+                metadata.Priority,
+                metadata.Status,
+                metadata.CreatedByUserId);
+            await _issueRepository.AddAsync(sprintIssue, cancellationToken);
+        }
 
         if (sprintIssue.ProjectId != sprint.ProjectId)
             throw new BusinessRuleException("Issue belongs to a different project.");
@@ -53,7 +73,8 @@ public sealed class AddIssueCommandHandler : IRequestHandler<AddIssueCommand, Sp
 
         if (sprintIssue.SprintId != sprint.Id)
         {
-            sprintIssue.AssignToSprint(sprint.Id);
+            sprintIssue.SprintId = sprint.Id;
+            sprintIssue.UpdatedAt = DateTime.UtcNow;
             await _issueRepository.UpdateAsync(sprintIssue, cancellationToken);
 
             var evt = new IssueAddedToSprintEvent(

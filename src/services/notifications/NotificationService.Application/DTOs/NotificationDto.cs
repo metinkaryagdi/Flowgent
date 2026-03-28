@@ -12,6 +12,11 @@ public sealed class NotificationDto
     public NotificationStatus Status { get; init; }
     public bool IsRead { get; init; }
     public DateTime? ReadAt { get; init; }
+    public int DeliveryAttemptCount { get; init; }
+    public DateTime? LastDeliveryAttemptAt { get; init; }
+    public DateTime? NextDeliveryAttemptAt { get; init; }
+    public DateTime? DeliveredAt { get; init; }
+    public string? LastFailureReason { get; init; }
     public string? EntityType { get; init; }
     public Guid? EntityId { get; init; }
     public DateTime CreatedAt { get; init; }

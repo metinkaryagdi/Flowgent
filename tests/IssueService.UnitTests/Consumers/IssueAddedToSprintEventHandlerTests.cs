@@ -1,5 +1,6 @@
 using BitirmeProject.IssueService.Api.Events.Handlers;
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;

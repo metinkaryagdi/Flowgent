@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../../api/notifications';
+import { issuesApi } from '../../api/issues';
+import { useToastStore } from '../../store/toastStore';
 import { useSignalR } from '../../hooks/useSignalR';
-import { NotificationStatus } from '../../types';
 import type { NotificationDto } from '../../types';
 import styles from './Notifications.module.css';
 
@@ -20,15 +22,14 @@ const formatDate = (d: string) => {
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
 };
 
+const PAGE_SIZE = 20;
+
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(true);
-    const [toast, setToast] = useState<string | null>(null);
-
-    const showToast = (msg: string) => {
-        setToast(msg);
-        setTimeout(() => setToast(null), 3000);
-    };
+    const [page, setPage] = useState(1);
+    const { addToast: showToast } = useToastStore();
+    const navigate = useNavigate();
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -58,22 +59,40 @@ export default function NotificationsPage() {
         try {
             await notificationsApi.markAsRead(id);
             setNotifications((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, status: NotificationStatus.Read } : n))
+                prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
             );
         } catch { /* ignore */ }
     };
+
+    const handleNotificationClick = useCallback(async (notif: NotificationDto) => {
+        if (!notif.isRead) {
+            handleMarkAsRead(notif.id);
+        }
+        if (notif.entityType === 'Issue' && notif.entityId) {
+            try {
+                const issue = await issuesApi.getById(notif.entityId);
+                navigate(`/projects/${issue.projectId}/board`, {
+                    state: { openIssueId: notif.entityId },
+                });
+            } catch {
+                showToast('Issue bulunamadı.', 'error');
+            }
+        }
+    }, [navigate, showToast]);
 
     const handleMarkAllAsRead = async () => {
         try {
             await notificationsApi.markAllAsRead();
             setNotifications((prev) =>
-                prev.map((n) => ({ ...n, status: NotificationStatus.Read }))
+                prev.map((n) => ({ ...n, isRead: true, readAt: new Date().toISOString() }))
             );
             showToast('Tümü okundu olarak işaretlendi.');
         } catch { /* ignore */ }
     };
 
-    const unreadCount = notifications.filter((n) => n.status === NotificationStatus.Unread).length;
+    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const totalPages = Math.max(1, Math.ceil(notifications.length / PAGE_SIZE));
+    const pagedNotifications = notifications.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
     if (loading) {
         return (
@@ -116,30 +135,54 @@ export default function NotificationsPage() {
                     <p className={styles.emptyText}>Henüz bildirim yok.</p>
                 </div>
             ) : (
-                <div className={styles.list} data-testid="notifications-list">
-                    {notifications.map((notif) => {
-                        const isUnread = notif.status === NotificationStatus.Unread;
-                        return (
-                            <div
-                                key={notif.id}
-                                className={`${styles.item} ${isUnread ? styles.itemUnread : ''}`}
-                                data-testid="notification-item"
-                                onClick={() => isUnread && handleMarkAsRead(notif.id)}
-                            >
-                                <span className={`${styles.dot} ${!isUnread ? styles.dotRead : ''}`} />
-                                <div className={styles.itemContent}>
-                                    <div className={styles.itemTitle}>{notif.title}</div>
-                                    <div className={styles.itemMessage}>{notif.message}</div>
+                <>
+                    <div className={styles.list} data-testid="notifications-list">
+                        {pagedNotifications.map((notif) => {
+                            const isUnread = !notif.isRead;
+                            return (
+                                <div
+                                    key={notif.id}
+                                    className={`${styles.item} ${isUnread ? styles.itemUnread : ''} ${notif.entityType === 'Issue' && notif.entityId ? styles.itemClickable : ''}`}
+                                    data-testid="notification-item"
+                                    onClick={() => handleNotificationClick(notif)}
+                                >
+                                    <span className={`${styles.dot} ${!isUnread ? styles.dotRead : ''}`} />
+                                    <div className={styles.itemContent}>
+                                        <div className={styles.itemTitle}>{notif.title}</div>
+                                        <div className={styles.itemMessage}>{notif.message}</div>
+                                    </div>
+                                    <span className={styles.itemDate}>{formatDate(notif.createdAt)}</span>
                                 </div>
-                                <span className={styles.itemDate}>{formatDate(notif.createdAt)}</span>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className={styles.pagination}>
+                            <button
+                                className={styles.pageBtn}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                aria-label="Önceki sayfa"
+                            >
+                                ← Önceki
+                            </button>
+                            <span className={styles.pageInfo}>
+                                {page} / {totalPages} <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>({notifications.length} bildirim)</span>
+                            </span>
+                            <button
+                                className={styles.pageBtn}
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                aria-label="Sonraki sayfa"
+                            >
+                                Sonraki →
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
 
-            {/* ── Toast ─────────────── */}
-            {toast && <div className={styles.toast}>{toast}</div>}
         </div>
     );
 }

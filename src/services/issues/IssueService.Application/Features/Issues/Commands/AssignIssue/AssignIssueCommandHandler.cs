@@ -4,6 +4,7 @@ using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.Common.Mappings;
 using BitirmeProject.IssueService.Application.DTOs;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -74,7 +75,12 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
         }
         else
         {
-            boardItem.ApplyFrom(issue);
+            boardItem.Title = issue.Title;
+            boardItem.Status = issue.Status;
+            boardItem.Priority = issue.Priority;
+            boardItem.AssigneeUserId = issue.AssigneeUserId;
+            boardItem.UpdatedAt = issue.UpdatedAt ?? DateTime.UtcNow;
+            boardItem.Version = issue.Version;
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

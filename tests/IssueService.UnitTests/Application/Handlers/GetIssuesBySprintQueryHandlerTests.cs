@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesBySprint;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
@@ -29,7 +30,7 @@ public sealed class GetIssuesBySprintQueryHandlerTests
             .Returns(items.Select(i =>
             {
                 var boardItem = new IssueBoardItem(i);
-                boardItem.AssignToSprint(sprintId);
+                boardItem.SprintId = sprintId;
                 return boardItem;
             }).ToList());
 

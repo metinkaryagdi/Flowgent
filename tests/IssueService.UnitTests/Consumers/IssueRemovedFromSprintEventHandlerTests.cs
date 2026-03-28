@@ -1,5 +1,6 @@
 using BitirmeProject.IssueService.Api.Events.Handlers;
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
@@ -59,7 +60,7 @@ public sealed class IssueRemovedFromSprintEventHandlerTests
 
         var issue = new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Low, Guid.NewGuid());
         var boardItem = new IssueBoardItem(issue);
-        boardItem.AssignToSprint(Guid.NewGuid());
+        boardItem.SprintId = Guid.NewGuid();
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
         var handler = new IssueRemovedFromSprintEventHandler(boardRepository, unitOfWork, logger);
