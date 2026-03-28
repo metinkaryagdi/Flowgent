@@ -1,17 +1,16 @@
 using System.Text;
+using BitirmeProject.NotificationService.Api.Background;
 using BitirmeProject.NotificationService.Api.Events;
 using BitirmeProject.NotificationService.Api.Events.Handlers;
+using BitirmeProject.NotificationService.Api.Health;
 using BitirmeProject.NotificationService.Api.Hubs;
 using BitirmeProject.NotificationService.Api.Middleware;
-using BitirmeProject.NotificationService.Api.Models;
 using BitirmeProject.NotificationService.Application.DependencyInjection;
 using BitirmeProject.NotificationService.Infrastructure.DependencyInjection;
 using BitirmeProject.NotificationService.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Polly;
-using Polly.Extensions.Http;
 using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
@@ -30,25 +29,13 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-builder.Services.Configure<ServiceEndpoints>(builder.Configuration.GetSection("ServiceEndpoints"));
-static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-{
-    return HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromMilliseconds(200 * retryAttempt));
-}
-
-builder.Services.AddHttpClient("IssueService", (sp, client) =>
-{
-    var endpoints = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ServiceEndpoints>>().Value;
-    client.BaseAddress = new Uri(endpoints.IssueService);
-}).AddPolicyHandler(GetRetryPolicy());
-
 builder.Services.AddScoped<IEventHandler<IssueAssignedEvent>, IssueAssignedEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusChangedEventHandler>();
 builder.Services.AddScoped<IEventHandler<CommentAddedEvent>, CommentAddedEventHandler>();
 builder.Services.AddScoped<IEventHandler<MemberAddedEvent>, MemberAddedEventHandler>();
 builder.Services.AddHostedService<NotificationEventsConsumer>();
+builder.Services.AddHostedService<NotificationDeliveryWorker>();
+builder.Services.AddSingleton<NotificationDeliveryMonitor>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -67,10 +54,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                ctx.Token = ctx.Request.Cookies["accessToken"];
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<NotificationDeliveryHealthCheck>("notification_delivery_worker")
+    .AddCheck<NotificationDlqHealthCheck>("notification_dlq");
 
 builder.Services.AddNotificationApplication();
 builder.Services.AddNotificationInfrastructure(builder.Configuration);

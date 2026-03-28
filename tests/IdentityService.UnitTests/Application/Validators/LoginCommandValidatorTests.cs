@@ -31,7 +31,7 @@ public sealed class LoginCommandValidatorTests
     public void Validate_Passes_WhenValid()
     {
         var validator = new LoginCommandValidator();
-        var command = new LoginCommand("user", "pass");
+        var command = new LoginCommand("user", "password123");
 
         var result = validator.Validate(command);
 

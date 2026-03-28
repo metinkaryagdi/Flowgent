@@ -2,7 +2,7 @@ using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetBacklog;
-using BitirmeProject.SprintService.Domain.Entities;
+using BitirmeProject.SprintService.Application.ReadModels;
 using FluentAssertions;
 using NSubstitute;
 

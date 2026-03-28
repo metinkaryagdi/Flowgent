@@ -1,5 +1,6 @@
 using BitirmeProject.StorageService.Application.Abstractions;
 using BitirmeProject.StorageService.Domain.Entities;
+using BitirmeProject.StorageService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BitirmeProject.StorageService.Infrastructure.Persistence;
@@ -21,7 +22,12 @@ public sealed class StorageDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.ContentType).IsRequired().HasMaxLength(200);
             entity.Property(x => x.StoragePath).IsRequired().HasMaxLength(500);
             entity.Property(x => x.SizeBytes).IsRequired();
+            entity.Property(x => x.Status).HasConversion<int>().IsRequired();
+            entity.Property(x => x.ExpiresAt);
+            entity.Property(x => x.FinalizedAt);
             entity.HasIndex(x => x.UploadedByUserId);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.ExpiresAt);
         });
     }
 

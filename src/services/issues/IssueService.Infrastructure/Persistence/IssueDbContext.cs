@@ -1,4 +1,5 @@
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,8 @@ public sealed class IssueDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.SizeBytes).IsRequired();
             entity.HasIndex(x => x.IssueId);
             entity.HasIndex(x => x.FileId);
+            // Prevent the same file from being attached to the same issue twice
+            entity.HasIndex(x => new { x.IssueId, x.FileId }).IsUnique();
         });
 
         modelBuilder.Entity<IssueAudit>(entity =>

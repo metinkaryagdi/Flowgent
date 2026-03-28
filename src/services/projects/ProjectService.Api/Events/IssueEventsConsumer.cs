@@ -9,6 +9,7 @@ using RabbitMQ.Client.Events;
 using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Domain.Entities;
 using Shared.Abstractions.Messaging;
+using Shared.Common.Logging;
 using Shared.Contracts.Events;
 
 namespace BitirmeProject.ProjectService.Api.Events;
@@ -99,11 +100,9 @@ public sealed class IssueEventsConsumer : BackgroundService
                 {
                     var evt = JsonSerializer.Deserialize<IssueCreatedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueCreatedEvent payload");
+                    using var logScope = _logger.BeginIntegrationEventScope(evt, $"{ServiceName}.{eventType}", evt.IssueId, evt.CreatedByUserId);
 
-                    _logger.LogInformation(
-                        "IssueCreatedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
-                        evt.EventId,
-                        evt.CorrelationId);
+                    _logger.LogInformation("IssueCreatedEvent received.");
 
                     if (await processedRepo.ExistsAsync(evt.EventId))
                     {
@@ -122,11 +121,9 @@ public sealed class IssueEventsConsumer : BackgroundService
                 {
                     var evt = JsonSerializer.Deserialize<IssueStatusChangedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueStatusChangedEvent payload");
+                    using var logScope = _logger.BeginIntegrationEventScope(evt, $"{ServiceName}.{eventType}", evt.IssueId, evt.ChangedByUserId);
 
-                    _logger.LogInformation(
-                        "IssueStatusChangedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
-                        evt.EventId,
-                        evt.CorrelationId);
+                    _logger.LogInformation("IssueStatusChangedEvent received.");
 
                     if (await processedRepo.ExistsAsync(evt.EventId))
                     {
@@ -145,11 +142,9 @@ public sealed class IssueEventsConsumer : BackgroundService
                 {
                     var evt = JsonSerializer.Deserialize<IssueAssignedEvent>(message);
                     if (evt is null) throw new InvalidOperationException("Invalid IssueAssignedEvent payload");
+                    using var logScope = _logger.BeginIntegrationEventScope(evt, $"{ServiceName}.{eventType}", evt.IssueId, evt.AssignedByUserId);
 
-                    _logger.LogInformation(
-                        "IssueAssignedEvent received. EventId={EventId}, CorrelationId={CorrelationId}",
-                        evt.EventId,
-                        evt.CorrelationId);
+                    _logger.LogInformation("IssueAssignedEvent received.");
 
                     if (await processedRepo.ExistsAsync(evt.EventId))
                     {

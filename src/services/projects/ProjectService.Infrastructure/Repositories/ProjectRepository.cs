@@ -19,23 +19,24 @@ public sealed class ProjectRepository : IProjectRepository
         return await _dbContext.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Project>> GetByOwnerUserIdAsync(Guid ownerUserId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Project>> GetByMemberUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Projects
-            .Where(p => p.OwnerUserId == ownerUserId)
+            .Where(p => _dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByOwnerUserIdPagedAsync(
-        Guid ownerUserId,
+    public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByMemberUserIdPagedAsync(
+        Guid userId,
         int page,
         int pageSize,
         string? search,
         bool includeArchived,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Projects.Where(p => p.OwnerUserId == ownerUserId);
+        var query = _dbContext.Projects
+            .Where(p => _dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
 
         if (!includeArchived)
         {

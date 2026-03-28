@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
 import ErrorBoundary from './components/ErrorBoundary';
+import ToastContainer from './components/ToastContainer';
 
 import AuthLayout from './layouts/AuthLayout';
 import AppLayout from './layouts/AppLayout';
@@ -32,6 +33,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ToastContainer />
       <a href="#main-content" className="skip-to-content">
         İçeriğe atla
       </a>

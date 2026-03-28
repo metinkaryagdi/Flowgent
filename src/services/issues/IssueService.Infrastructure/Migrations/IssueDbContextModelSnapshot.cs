@@ -108,6 +108,9 @@ namespace IssueService.Infrastructure.Migrations
 
                     b.HasIndex("IssueId");
 
+                    b.HasIndex("IssueId", "FileId")
+                        .IsUnique();
+
                     b.ToTable("IssueAttachments");
                 });
 

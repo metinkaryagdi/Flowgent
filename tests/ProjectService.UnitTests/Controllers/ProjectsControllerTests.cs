@@ -76,7 +76,7 @@ public sealed class ProjectsControllerTests
             ControllerContext = MakeContext(ownerUserId)
         };
         var routeId = Guid.NewGuid();
-        var command = new UpdateProjectCommand(Guid.NewGuid(), "Name", "KEY");
+        var command = new UpdateProjectCommand(Guid.NewGuid(), "Name", "KEY", Guid.NewGuid(), null);
         var dto = new ProjectDto { Id = routeId };
         mediator.Send(Arg.Any<UpdateProjectCommand>()).Returns(dto);
 

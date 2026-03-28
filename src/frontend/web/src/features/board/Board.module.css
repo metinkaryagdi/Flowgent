@@ -543,3 +543,40 @@
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+/* ── Mobile ───────────────────── */
+@media (max-width: 768px) {
+    .boardPage {
+        height: auto;
+        min-height: calc(100vh - var(--topbar-height) - var(--spacing-4) * 2);
+    }
+
+    .boardHeader {
+        flex-wrap: wrap;
+        gap: var(--spacing-3);
+    }
+
+    .boardHeaderRight {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .filterBar {
+        flex-wrap: wrap;
+        gap: var(--spacing-2);
+    }
+
+    .filterInput {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .column {
+        flex: 0 0 280px;
+        width: 280px;
+    }
+
+    .boardContainer {
+        padding-bottom: var(--spacing-4);
+    }
+}

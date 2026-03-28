@@ -26,4 +26,10 @@ public sealed class IssueAttachmentRepository : IIssueAttachmentRepository
             .OrderByDescending(x => x.UploadedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<bool> ExistsAsync(Guid issueId, Guid fileId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.IssueAttachments
+            .AnyAsync(x => x.IssueId == issueId && x.FileId == fileId, cancellationToken);
+    }
 }

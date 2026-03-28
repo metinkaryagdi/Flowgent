@@ -1,4 +1,5 @@
 using BitirmeProject.SprintService.Application.Abstractions;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
 using BitirmeProject.SprintService.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ public sealed class SprintDbContext : DbContext, IUnitOfWork
 
     public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<SprintIssue> SprintIssues => Set<SprintIssue>();
+    public DbSet<SprintSummary> SprintSummaries => Set<SprintSummary>();
     public DbSet<ProcessedEvent> ProcessedEvents => Set<ProcessedEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
@@ -48,6 +50,12 @@ public sealed class SprintDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Status).IsRequired().HasMaxLength(50);
             entity.HasIndex(x => x.ProjectId);
             entity.HasIndex(x => x.SprintId);
+        });
+
+        modelBuilder.Entity<SprintSummary>(entity =>
+        {
+            entity.HasKey(x => x.SprintId);
+            entity.HasIndex(x => x.SprintId).IsUnique();
         });
 
         modelBuilder.Entity<ProcessedEvent>(entity =>

@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.AssignIssue;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
@@ -50,7 +51,7 @@ public sealed class AssignIssueCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
 
         var handler = new AssignIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new AssignIssueCommand(issue.Id, Guid.NewGuid(), Guid.NewGuid(), expectedVersion: 99, null);
+        var command = new AssignIssueCommand(issue.Id, Guid.NewGuid(), Guid.NewGuid(), ExpectedVersion: 99, null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -78,7 +79,7 @@ public sealed class AssignIssueCommandHandlerTests
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
         var handler = new AssignIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new AssignIssueCommand(issue.Id, assignee, Guid.NewGuid(), expectedVersion: issue.Version, null);
+        var command = new AssignIssueCommand(issue.Id, assignee, Guid.NewGuid(), ExpectedVersion: issue.Version, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -103,7 +104,7 @@ public sealed class AssignIssueCommandHandlerTests
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns((IssueBoardItem?)null);
 
         var handler = new AssignIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
-        var command = new AssignIssueCommand(issue.Id, Guid.NewGuid(), Guid.NewGuid(), expectedVersion: issue.Version, Guid.NewGuid());
+        var command = new AssignIssueCommand(issue.Id, Guid.NewGuid(), Guid.NewGuid(), ExpectedVersion: issue.Version, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
 

@@ -48,7 +48,8 @@ public sealed class RemoveIssueCommandHandler : IRequestHandler<RemoveIssueComma
         if (sprintIssue.SprintId != sprint.Id)
             throw new BusinessRuleException("Issue is not assigned to this sprint.");
 
-        sprintIssue.RemoveFromSprint();
+        sprintIssue.SprintId = null;
+        sprintIssue.UpdatedAt = DateTime.UtcNow;
         await _issueRepository.UpdateAsync(sprintIssue, cancellationToken);
 
         var evt = new IssueRemovedFromSprintEvent(

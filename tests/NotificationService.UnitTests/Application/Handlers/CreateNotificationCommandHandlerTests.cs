@@ -82,8 +82,9 @@ public sealed class CreateNotificationCommandHandlerTests
         result.Should().Be(expected);
         captured.Should().NotBeNull();
         captured!.Channel.Should().Be(NotificationChannel.InApp);
-        captured.Status.Should().Be(NotificationStatus.Delivered);
+        captured.Status.Should().Be(NotificationStatus.Queued);
         captured.IsRead.Should().BeFalse();
+        captured.NextDeliveryAttemptAt.Should().NotBeNull();
 
         await repository.Received(1).AddAsync(Arg.Any<Notification>(), Arg.Any<CancellationToken>());
         await outboxRepository.Received(1).AddAsync(Arg.Is<OutboxMessage>(m =>

@@ -64,12 +64,21 @@ public class RabbitMQEventBus : IEventBus, IDisposable
     {
         var routingKey = eventType;
         var body = Encoding.UTF8.GetBytes(payload);
+        IntegrationEventMetadataExtractor.TryExtract(payload, out var metadata);
 
         var properties = _channel.CreateBasicProperties();
         properties.Persistent = true;
         properties.ContentType = "application/json";
         properties.Type = eventType;
         properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        properties.MessageId = metadata.EventId == Guid.Empty ? null : metadata.EventId.ToString();
+        properties.CorrelationId = metadata.CorrelationId == Guid.Empty ? null : metadata.CorrelationId.ToString();
+        properties.Headers = new Dictionary<string, object>
+        {
+            ["x-event-version"] = metadata.EventVersion,
+            ["x-event-id"] = metadata.EventId == Guid.Empty ? string.Empty : metadata.EventId.ToString(),
+            ["x-correlation-id"] = metadata.CorrelationId == Guid.Empty ? string.Empty : metadata.CorrelationId.ToString()
+        };
 
         _channel.BasicPublish(
             exchange: _exchangeName,
@@ -78,8 +87,12 @@ public class RabbitMQEventBus : IEventBus, IDisposable
             body: body);
 
         _logger.LogInformation(
-            "Published event {EventType} to exchange {Exchange}",
-            eventType, _exchangeName);
+            "Published event {EventType} to exchange {Exchange}. EventId={EventId}, EventVersion={EventVersion}, CorrelationId={CorrelationId}",
+            eventType,
+            _exchangeName,
+            metadata.EventId == Guid.Empty ? null : metadata.EventId,
+            metadata.EventVersion,
+            metadata.CorrelationId == Guid.Empty ? null : metadata.CorrelationId);
 
         return Task.CompletedTask;
     }

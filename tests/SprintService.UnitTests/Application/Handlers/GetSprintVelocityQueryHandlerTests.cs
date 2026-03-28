@@ -1,5 +1,6 @@
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprintVelocity;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
 using FluentAssertions;
 using NSubstitute;
@@ -11,7 +12,13 @@ public sealed class GetSprintVelocityQueryHandlerTests
     [Fact]
     public async Task Handle_ReturnsCounts_FromIssues()
     {
-        var repository = Substitute.For<ISprintIssueRepository>();
+        var sprintRepository = Substitute.For<ISprintRepository>();
+        var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var summaryRepository = Substitute.For<ISprintSummaryRepository>();
+
+        var startDate = DateTime.UtcNow.Date;
+        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, startDate, startDate.AddDays(14), Guid.NewGuid());
+        sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var items = new List<SprintIssue>
         {
@@ -19,10 +26,10 @@ public sealed class GetSprintVelocityQueryHandlerTests
             new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T2", "Task", "High", "InProgress", Guid.NewGuid()),
             new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T3", "Task", "Medium", "done", Guid.NewGuid())
         };
-        repository.GetBySprintIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
+        issueRepository.GetBySprintIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
 
-        var handler = new GetSprintVelocityQueryHandler(repository);
-        var query = new GetSprintVelocityQuery(Guid.NewGuid());
+        var handler = new GetSprintVelocityQueryHandler(sprintRepository, issueRepository, summaryRepository);
+        var query = new GetSprintVelocityQuery(sprint.Id);
 
         var result = await handler.Handle(query, CancellationToken.None);
 

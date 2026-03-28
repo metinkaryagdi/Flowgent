@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.RemoveIssue;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
 using FluentAssertions;
 using NSubstitute;
@@ -77,7 +78,7 @@ public sealed class RemoveIssueCommandHandlerTests
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
-        sprintIssue.AssignToSprint(Guid.NewGuid());
+        sprintIssue.SprintId = Guid.NewGuid();
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
         var handler = new RemoveIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
@@ -104,7 +105,7 @@ public sealed class RemoveIssueCommandHandlerTests
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
-        sprintIssue.AssignToSprint(sprint.Id);
+        sprintIssue.SprintId = sprint.Id;
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
         var expectedDto = new SprintIssueDto { SprintId = sprint.Id };

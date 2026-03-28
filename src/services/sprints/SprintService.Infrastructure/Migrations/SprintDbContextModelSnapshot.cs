@@ -22,6 +22,31 @@ namespace SprintService.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.SprintSummary", b =>
+                {
+                    b.Property<Guid>("SprintId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CompletedIssues")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("SnapshotTakenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalIssues")
+                        .HasColumnType("integer");
+
+                    b.HasKey("SprintId");
+
+                    b.HasIndex("SprintId")
+                        .IsUnique();
+
+                    b.ToTable("SprintSummaries");
+                });
+
             modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.ProcessedEvent", b =>
                 {
                     b.Property<Guid>("EventId")

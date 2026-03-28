@@ -1,8 +1,5 @@
-using System.Net;
-using System.Net.Http;
-using System.Text.Json;
 using BitirmeProject.NotificationService.Api.Events.Handlers;
-using BitirmeProject.NotificationService.Api.Models;
+using BitirmeProject.NotificationService.Application.DTOs;
 using BitirmeProject.NotificationService.Application.Features.Notifications.Commands.CreateNotification;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -14,14 +11,14 @@ namespace NotificationService.UnitTests.Consumers;
 public sealed class IssueStatusChangedEventHandlerTests
 {
     [Fact]
-    public async Task HandleAsync_Ignores_WhenIssueNotFound()
+    public async Task HandleAsync_Ignores_WhenActorIsAssigneeAndCreator()
     {
         var logger = Substitute.For<ILogger<IssueStatusChangedEventHandler>>();
         var mediator = Substitute.For<IMediator>();
-        var factory = new TestHttpClientFactory(new HttpResponseMessage(HttpStatusCode.NotFound));
 
-        var handler = new IssueStatusChangedEventHandler(logger, mediator, factory);
-        var evt = new IssueStatusChangedEvent(Guid.NewGuid(), Guid.NewGuid(), "Open", "Done", Guid.NewGuid(), Guid.NewGuid());
+        var actorId = Guid.NewGuid();
+        var handler = new IssueStatusChangedEventHandler(logger, mediator);
+        var evt = new IssueStatusChangedEvent(Guid.NewGuid(), Guid.NewGuid(), "Open", "Done", actorId, "Test Issue", actorId, actorId, Guid.NewGuid());
 
         await handler.HandleAsync(evt, CancellationToken.None);
 
@@ -33,51 +30,43 @@ public sealed class IssueStatusChangedEventHandlerTests
     {
         var logger = Substitute.For<ILogger<IssueStatusChangedEventHandler>>();
         var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<CreateNotificationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new NotificationDto { Id = Guid.NewGuid() });
 
         var actorId = Guid.NewGuid();
         var assigneeId = Guid.NewGuid();
-        var issue = new IssueDto { Id = Guid.NewGuid(), CreatedByUserId = Guid.NewGuid(), AssigneeUserId = assigneeId };
-        var response = new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(JsonSerializer.Serialize(issue))
-        };
-        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-
-        var factory = new TestHttpClientFactory(response);
-        var handler = new IssueStatusChangedEventHandler(logger, mediator, factory);
-        var evt = new IssueStatusChangedEvent(Guid.NewGuid(), issue.Id, "Open", "Done", actorId, Guid.NewGuid());
+        var issueId = Guid.NewGuid();
+        var handler = new IssueStatusChangedEventHandler(logger, mediator);
+        var evt = new IssueStatusChangedEvent(issueId, Guid.NewGuid(), "Open", "Done", actorId, "Test Issue", Guid.NewGuid(), assigneeId, Guid.NewGuid());
 
         await handler.HandleAsync(evt, CancellationToken.None);
 
         await mediator.Received(1).Send(Arg.Is<CreateNotificationCommand>(c =>
             c.UserId == assigneeId &&
             c.EntityType == "Issue" &&
-            c.EntityId == issue.Id &&
+            c.EntityId == issueId &&
             c.ExternalEventId == evt.EventId), Arg.Any<CancellationToken>());
     }
 
-    private sealed class TestHttpClientFactory : IHttpClientFactory
+    [Fact]
+    public async Task HandleAsync_SendsNotification_ToCreatedBy_WhenNoAssigneeAndActorDifferent()
     {
-        private readonly HttpClient _client;
+        var logger = Substitute.For<ILogger<IssueStatusChangedEventHandler>>();
+        var mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<CreateNotificationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new NotificationDto { Id = Guid.NewGuid() });
 
-        public TestHttpClientFactory(HttpResponseMessage response)
-        {
-            _client = new HttpClient(new StubHandler(response)) { BaseAddress = new Uri("http://localhost") };
-        }
+        var actorId = Guid.NewGuid();
+        var createdById = Guid.NewGuid();
+        var issueId = Guid.NewGuid();
+        var handler = new IssueStatusChangedEventHandler(logger, mediator);
+        var evt = new IssueStatusChangedEvent(issueId, Guid.NewGuid(), "Open", "Done", actorId, "Test Issue", createdById, null, Guid.NewGuid());
 
-        public HttpClient CreateClient(string name) => _client;
-    }
+        await handler.HandleAsync(evt, CancellationToken.None);
 
-    private sealed class StubHandler : HttpMessageHandler
-    {
-        private readonly HttpResponseMessage _response;
-
-        public StubHandler(HttpResponseMessage response)
-        {
-            _response = response;
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_response);
+        await mediator.Received(1).Send(Arg.Is<CreateNotificationCommand>(c =>
+            c.UserId == createdById &&
+            c.EntityType == "Issue" &&
+            c.EntityId == issueId), Arg.Any<CancellationToken>());
     }
 }

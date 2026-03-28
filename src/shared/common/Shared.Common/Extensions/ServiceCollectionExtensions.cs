@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Abstractions.Messaging;
+using Shared.Common.Health;
 using Shared.Common.Messaging;
 using Shared.Common.Options;
 
@@ -24,9 +25,11 @@ public static class ServiceCollectionExtensions
 
         // Register EventBus as singleton (shared connection)
         services.AddSingleton<IEventBus, RabbitMQEventBus>();
+        services.AddSingleton<OutboxPublisherMonitor>();
 
         // Register Outbox Publisher background service
         services.AddHostedService<OutboxPublisherService>();
+        services.AddHealthChecks().AddCheck<OutboxPublisherHealthCheck>("outbox_publisher_worker");
 
         // Register CorrelationContext as scoped — populated per request by CorrelationIdMiddleware
         services.AddScoped<CorrelationContext>();

@@ -19,4 +19,9 @@ public interface IIntegrationEvent
     /// Correlation ID for tracking related events across services
     /// </summary>
     Guid CorrelationId { get; }
+
+    /// <summary>
+    /// Version number for schema evolution of the event payload
+    /// </summary>
+    int EventVersion { get; }
 }

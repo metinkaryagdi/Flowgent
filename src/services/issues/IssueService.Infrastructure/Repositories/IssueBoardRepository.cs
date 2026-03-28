@@ -1,5 +1,5 @@
 using BitirmeProject.IssueService.Application.Abstractions;
-using BitirmeProject.IssueService.Domain.Entities;
+using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

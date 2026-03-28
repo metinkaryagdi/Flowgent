@@ -2,6 +2,7 @@
 using BitirmeProject.IdentityService.Domain.Common;
 using BitirmeProject.IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Shared.Abstractions.Messaging;
 using System.Linq.Expressions;
 
 namespace BitirmeProject.IdentityService.Infrastructure.Persistence;
@@ -17,12 +18,20 @@ public class IdentityDbContext : DbContext, IUnitOfWork
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
+
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType).IsRequired();
+            entity.Property(x => x.Payload).IsRequired();
+        });
 
         // Soft Delete (Global Query Filter): BaseEntity türevlerinde IsDeleted == false filtrele
         ApplySoftDeleteQueryFilter(modelBuilder);

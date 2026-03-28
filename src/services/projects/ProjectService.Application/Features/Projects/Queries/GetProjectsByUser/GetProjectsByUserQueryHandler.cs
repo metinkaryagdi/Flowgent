@@ -21,7 +21,7 @@ public sealed class GetProjectsByUserQueryHandler : IRequestHandler<GetProjectsB
 
     public async Task<IReadOnlyList<ProjectDto>> Handle(GetProjectsByUserQuery request, CancellationToken cancellationToken)
     {
-        var projects = await _repository.GetByOwnerUserIdAsync(request.UserId, cancellationToken);
+        var projects = await _repository.GetByMemberUserIdAsync(request.UserId, cancellationToken);
         var summaries = await _summaryRepository.GetByProjectIdsAsync(projects.Select(x => x.Id).ToArray(), cancellationToken);
         var summaryLookup = summaries.ToDictionary(x => x.ProjectId);
 

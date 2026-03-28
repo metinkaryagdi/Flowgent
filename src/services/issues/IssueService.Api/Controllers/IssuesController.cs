@@ -1,6 +1,7 @@
 ﻿using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.AssignIssue;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.AddComment;
+using System.Security.Claims;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.AttachFile;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.ChangeIssueStatus;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.CreateIssue;
@@ -121,10 +122,16 @@ public sealed class IssuesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/attachments")]
-    public async Task<ActionResult<IssueAttachmentDto>> AttachFile(Guid id, [FromBody] AttachFileCommand command)
+    public async Task<ActionResult<IssueAttachmentDto>> AttachFile(Guid id, [FromBody] AttachFileRequest request)
     {
-        var updated = command with { IssueId = id };
-        var result = await _mediator.Send(updated);
+        var uploadedByUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(uploadedByUserIdStr, out var uploadedByUserId))
+            return Unauthorized();
+
+        var bearerToken = Request.Cookies["accessToken"] ?? string.Empty;
+
+        var command = new AttachFileCommand(id, request.FileId, uploadedByUserId, bearerToken, null);
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 

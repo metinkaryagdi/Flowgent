@@ -1,4 +1,5 @@
 using BitirmeProject.IssueService.Application.Abstractions;
+using BitirmeProject.IssueService.Infrastructure.Clients;
 using BitirmeProject.IssueService.Infrastructure.Persistence;
 using BitirmeProject.IssueService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IIssueAuditRepository, IssueAuditRepository>();
         services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IStorageServiceClient, StorageServiceClient>();
 
         return services;
     }

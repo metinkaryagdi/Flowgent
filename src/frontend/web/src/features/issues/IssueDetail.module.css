@@ -542,3 +542,31 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Inline Edit ─────────────── */
+.editInput,
+.editTextarea,
+.editSelect {
+    width: 100%;
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color var(--transition-fast);
+}
+
+.editInput:focus,
+.editTextarea:focus,
+.editSelect:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.editTextarea {
+    resize: vertical;
+    min-height: 80px;
+}

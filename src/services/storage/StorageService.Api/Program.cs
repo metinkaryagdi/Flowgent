@@ -1,4 +1,6 @@
 using System.Text;
+using BitirmeProject.StorageService.Api.Background;
+using BitirmeProject.StorageService.Api.Health;
 using BitirmeProject.StorageService.Api.Middleware;
 using BitirmeProject.StorageService.Application.DependencyInjection;
 using BitirmeProject.StorageService.Infrastructure.DependencyInjection;
@@ -38,6 +40,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                ctx.Token = ctx.Request.Cookies["accessToken"];
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -45,6 +55,11 @@ builder.Services.AddHealthChecks();
 
 builder.Services.AddStorageApplication();
 builder.Services.AddStorageInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<StorageCleanupMonitor>();
+builder.Services.AddHostedService<StorageOrphanCleanupService>();
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<StorageCleanupHealthCheck>("storage_cleanup_worker");
 
 var app = builder.Build();
 

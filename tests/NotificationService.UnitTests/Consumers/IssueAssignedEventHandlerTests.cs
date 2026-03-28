@@ -17,13 +17,15 @@ public sealed class IssueAssignedEventHandlerTests
         var mediator = Substitute.For<IMediator>();
 
         var handler = new IssueAssignedEventHandler(logger, mediator);
-        var evt = new IssueAssignedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var evt = new IssueAssignedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
 
         await handler.HandleAsync(evt, CancellationToken.None);
 
         await mediator.Received(1).Send(Arg.Is<CreateNotificationCommand>(c =>
             c.UserId == evt.AssigneeUserId &&
             c.EntityType == "Issue" &&
+            c.CorrelationId == evt.CorrelationId &&
+            c.ExternalEventId == evt.EventId &&
             c.EntityId == evt.IssueId), Arg.Any<CancellationToken>());
     }
 }

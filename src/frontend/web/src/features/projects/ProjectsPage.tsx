@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '../../api/projects';
+import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
 import type { ProjectDto } from '../../types';
 import styles from './Projects.module.css';
@@ -22,13 +23,7 @@ export default function ProjectsPage() {
     const [editProject, setEditProject] = useState<ProjectDto | null>(null);
     const [deleteProject, setDeleteProject] = useState<ProjectDto | null>(null);
 
-    // Toast
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
-    };
+    const { addToast: showToast } = useToastStore();
 
     // ── Fetch projects ────────────
     useEffect(() => {
@@ -315,15 +310,6 @@ export default function ProjectsPage() {
                 </div>
             )}
 
-            {/* ── Toast ─────────────── */}
-            {toast && (
-                <div
-                    className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError
-                        }`}
-                >
-                    {toast.message}
-                </div>
-            )}
         </div>
     );
 }

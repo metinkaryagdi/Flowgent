@@ -13,6 +13,7 @@ export default function AppLayout() {
     const location = useLocation();
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
     const [notificationsError, setNotificationsError] = useState('');
@@ -62,6 +63,11 @@ export default function AppLayout() {
         return () => document.removeEventListener('mousedown', handleClick);
     }, [showNotifications]);
 
+    // Sayfa değişince sidebar'ı kapat (mobile)
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
+
     const getBreadcrumb = () => {
         const path = location.pathname;
         if (path === '/projects') return 'Projeler';
@@ -83,17 +89,17 @@ export default function AppLayout() {
     const handleMarkAllRead = async () => {
         try {
             await notificationsApi.markAllAsRead();
-            setNotifications((prev) => prev.map((n) => ({ ...n, status: 1 })));
+            setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: new Date().toISOString() })));
             setUnreadCount(0);
         } catch { /* ignore */ }
     };
 
     const handleNotificationClick = async (notification: NotificationDto) => {
         try {
-            if (notification.status === 0) {
+            if (!notification.isRead) {
                 await notificationsApi.markAsRead(notification.id);
                 setNotifications((prev) =>
-                    prev.map((n) => (n.id === notification.id ? { ...n, status: 1 } : n))
+                    prev.map((n) => (n.id === notification.id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
                 );
                 fetchUnreadCount();
             }
@@ -110,8 +116,13 @@ export default function AppLayout() {
 
     return (
         <div className={styles.appLayout}>
-            {/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <aside className={styles.sidebar}>
+            {/* ── Mobile overlay ──────── */}
+            {sidebarOpen && (
+                <div className={styles.sidebarOverlay} onClick={() => setSidebarOpen(false)} aria-hidden=”true” />
+            )}
+
+            {/* ── Sidebar ─────────────── */}
+            <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`} aria-label=”Yan menü”>
                 <div className={styles.sidebar__header}>
                     <div className={styles.sidebar__logoIcon}>âš¡</div>
                     <span className={styles.sidebar__logoText}>BitirmeProject</span>
@@ -174,6 +185,14 @@ export default function AppLayout() {
             <div className={styles.main}>
                 <header className={styles.topbar}>
                     <div className={styles.topbar__left}>
+                        <button
+                            className={styles.hamburgerBtn}
+                            onClick={() => setSidebarOpen((v) => !v)}
+                            aria-label={sidebarOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+                            aria-expanded={sidebarOpen}
+                        >
+                            {sidebarOpen ? '✕' : '☰'}
+                        </button>
                         <span className={styles.topbar__breadcrumb}>{getBreadcrumb()}</span>
                     </div>
                     <div className={styles.topbar__right}>
@@ -221,7 +240,7 @@ export default function AppLayout() {
                                             {notifications.slice(0, 5).map((notification) => (
                                                 <button
                                                     key={notification.id}
-                                                    className={`${styles.notificationItem} ${notification.status === 0 ? styles.notificationUnread : ''}`}
+                                                    className={`${styles.notificationItem} ${!notification.isRead ? styles.notificationUnread : ''}`}
                                                     onClick={() => handleNotificationClick(notification)}
                                                 >
                                                     <div className={styles.notificationTitle}>{notification.title}</div>
@@ -243,7 +262,7 @@ export default function AppLayout() {
                                 </div>
                             )}
                         </div>
-                        <button className={styles.topbar__logoutBtn} onClick={handleLogout}>
+                        <button className={styles.topbar__logoutBtn} onClick={handleLogout} aria-label="Çıkış yap">
                             Ã‡Ä±kÄ±ÅŸ Yap
                         </button>
                     </div>

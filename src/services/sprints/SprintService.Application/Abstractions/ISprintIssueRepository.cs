@@ -1,4 +1,4 @@
-using BitirmeProject.SprintService.Domain.Entities;
+using BitirmeProject.SprintService.Application.ReadModels;
 
 namespace BitirmeProject.SprintService.Application.Abstractions;
 

@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
+using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -71,7 +72,7 @@ public sealed class LoginCommandHandlerTests
         userRepository.GetByUserNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(user);
         hasher.VerifyPassword(user.PasswordHash, Arg.Any<string>()).Returns(true);
 
-        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtToken("access", DateTime.UtcNow.AddHours(1)));
+        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
         mapper.Map<UserDto>(user).Returns(new UserDto { Id = user.Id, Email = user.Email });
 
         var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, unitOfWork, mapper, options);

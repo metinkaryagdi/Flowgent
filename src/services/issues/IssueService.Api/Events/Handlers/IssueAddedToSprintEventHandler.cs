@@ -34,7 +34,11 @@ public sealed class IssueAddedToSprintEventHandler : IEventHandler<IssueAddedToS
         if (boardItem.ProjectId != @event.ProjectId)
             throw new BusinessRuleException("Issue project mismatch for sprint assignment.");
 
-        boardItem.AssignToSprint(@event.SprintId);
+        if (boardItem.SprintId != @event.SprintId)
+        {
+            boardItem.SprintId = @event.SprintId;
+            boardItem.UpdatedAt = DateTime.UtcNow;
+        }
         await _boardRepository.UpdateAsync(boardItem, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

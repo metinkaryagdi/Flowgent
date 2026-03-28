@@ -38,13 +38,17 @@
 - [x] 4.9 IdentityService: User aggregate guclendir (FailedLoginCount, LockoutEnd, SecurityStamp)
 
 ## FAZ 5 - Attachment & Notification Lifecycle Stabilization
-- [ ] 5.1 StorageService: temp upload + finalize akis (Yol A)
-- [ ] 5.2 StorageService: orphan binary cleanup job
-- [ ] 5.3 NotificationService: delivery'yi handler'dan cikar -> delivery worker
-- [ ] 5.4 NotificationService: delivery state vs consumption state ayrimi
+- [x] 5.1 StorageService: temp upload + finalize akis (Yol A)
+- [x] 5.2 StorageService: orphan binary cleanup job
+- [x] 5.3 NotificationService: delivery'yi handler'dan cikar -> delivery worker
+- [x] 5.4 NotificationService: delivery state vs consumption state ayrimi
 
 ## FAZ 6 - Production Hardening & Observability
-- [ ] 6.1 Structured logging standardi (correlationId, actorId, entityId, eventId, consumerName)
-- [ ] 6.2 Health check: outbox worker, DLQ depth, failed delivery count
-- [ ] 6.3 Event schema / version metadata (EventVersion alani)
-- [ ] 6.4 Projection replay/rebuild stratejisi (tasarim belgesi)
+- [x] 6.1 Structured logging standardi (correlationId, actorId, entityId, eventId, consumerName)
+- [x] 6.2 Health check: outbox worker, DLQ depth, failed delivery count
+- [x] 6.3 Event schema / version metadata (EventVersion alani)
+- [x] 6.4 Projection replay/rebuild stratejisi (tasarim belgesi)
+
+## EK NOT
+- 26 Mart 2026 kod taramasinda acik kalan sorunlarin detayli kaydi: `docs/debugging_notes/open_issues_review_2026-03-26.md`
+- Faz 7+ devam plani (acik sorunlar icin): `docs/debugging_notes/task_phase7_onward.md`

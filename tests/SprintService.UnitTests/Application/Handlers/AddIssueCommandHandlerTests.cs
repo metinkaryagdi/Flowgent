@@ -2,6 +2,7 @@ using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.AddIssue;
+using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
 using BitirmeProject.SprintService.Domain.Enums;
 using FluentAssertions;
@@ -24,13 +25,14 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Sprint?)null);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -46,6 +48,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -55,7 +58,7 @@ public sealed class AddIssueCommandHandlerTests
         sprint.Complete();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, Guid.NewGuid(), Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -71,6 +74,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -78,8 +82,10 @@ public sealed class AddIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((SprintIssue?)null);
+        issueServiceClient.GetIssueAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((BitirmeProject.SprintService.Application.DTOs.IssueMetadataDto?)null);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, Guid.NewGuid(), Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -95,6 +101,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -105,7 +112,7 @@ public sealed class AddIssueCommandHandlerTests
         var sprintIssue = new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "Title", "Task", "Low", "Open", Guid.NewGuid());
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, sprintIssue.IssueId, Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -121,6 +128,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -129,10 +137,10 @@ public sealed class AddIssueCommandHandlerTests
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
-        sprintIssue.AssignToSprint(Guid.NewGuid());
+        sprintIssue.SprintId = Guid.NewGuid();
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, sprintIssue.IssueId, Guid.NewGuid(), null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -148,6 +156,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -156,13 +165,13 @@ public sealed class AddIssueCommandHandlerTests
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
-        sprintIssue.AssignToSprint(sprint.Id);
+        sprintIssue.SprintId = sprint.Id;
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
         var expectedDto = new SprintIssueDto { SprintId = sprint.Id };
         mapper.Map<SprintIssueDto>(Arg.Any<SprintIssue>()).Returns(expectedDto);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, sprintIssue.IssueId, Guid.NewGuid(), null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -178,6 +187,7 @@ public sealed class AddIssueCommandHandlerTests
     {
         var sprintRepository = Substitute.For<ISprintRepository>();
         var issueRepository = Substitute.For<ISprintIssueRepository>();
+        var issueServiceClient = Substitute.For<IIssueServiceClient>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
@@ -191,7 +201,7 @@ public sealed class AddIssueCommandHandlerTests
         var expectedDto = new SprintIssueDto { SprintId = sprint.Id };
         mapper.Map<SprintIssueDto>(Arg.Any<SprintIssue>()).Returns(expectedDto);
 
-        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, unitOfWork, outboxRepository, mapper);
+        var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
         var command = new AddIssueCommand(sprint.Id, sprintIssue.IssueId, Guid.NewGuid(), Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);

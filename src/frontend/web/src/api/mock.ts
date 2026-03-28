@@ -47,6 +47,7 @@ const STORAGE_KEYS = {
     userRoles: 'mock_user_roles',
     projectMembers: 'mock_project_members',
     issueComments: 'mock_issue_comments',
+    issueAttachments: 'mock_issue_attachments',
 };
 
 const nowIso = () => new Date().toISOString();
@@ -185,7 +186,14 @@ const seedNotifications = (): NotificationDto[] => {
             title: 'Issue atanmasi',
             message: 'Login akisi sana atandi.',
             channel: NotificationChannel.InApp,
-            status: NotificationStatus.Unread,
+            status: NotificationStatus.Delivered,
+            isRead: false,
+            readAt: null,
+            deliveryAttemptCount: 1,
+            lastDeliveryAttemptAt: addDays(-2),
+            nextDeliveryAttemptAt: null,
+            deliveredAt: addDays(-2),
+            lastFailureReason: null,
             entityType: 'Issue',
             entityId: 'issue-1',
             createdAt: addDays(-2),
@@ -341,6 +349,12 @@ const getIssueComments = () => {
 const setIssueComments = (comments: Record<string, IssueCommentDto[]>) =>
     safeSet(STORAGE_KEYS.issueComments, comments);
 
+const getIssueAttachments = () =>
+    safeGet<Record<string, IssueAttachmentDto[]>>(STORAGE_KEYS.issueAttachments, {});
+
+const setIssueAttachments = (attachments: Record<string, IssueAttachmentDto[]>) =>
+    safeSet(STORAGE_KEYS.issueAttachments, attachments);
+
 const statusLabel = (status: IssueStatus) => {
     if (status === IssueStatus.Open) return 'Acik';
     if (status === IssueStatus.InProgress) return 'Devam Ediyor';
@@ -355,7 +369,14 @@ const pushNotification = (userId: string, title: string, message: string, entity
         title,
         message,
         channel: NotificationChannel.InApp,
-        status: NotificationStatus.Unread,
+        status: NotificationStatus.Delivered,
+        isRead: false,
+        readAt: null,
+        deliveryAttemptCount: 1,
+        lastDeliveryAttemptAt: nowIso(),
+        nextDeliveryAttemptAt: null,
+        deliveredAt: nowIso(),
+        lastFailureReason: null,
         entityType: entityId ? 'Issue' : null,
         entityId: entityId || null,
         createdAt: nowIso(),
@@ -463,7 +484,10 @@ export const mockApi = {
     },
     projects: {
         getByUser: async (userId: string): Promise<ProjectDto[]> => {
-            return getProjects().filter((p) => p.ownerUserId === userId);
+            const memberProjectIds = new Set(
+                getProjectMembers().filter((m) => m.userId === userId).map((m) => m.projectId)
+            );
+            return getProjects().filter((p) => memberProjectIds.has(p.id));
         },
         getByUserPaged: async (
             userId: string,
@@ -474,7 +498,10 @@ export const mockApi = {
             const includeArchived = options.includeArchived ?? false;
             const search = options.search?.trim().toLowerCase();
 
-            let items = getProjects().filter((p) => p.ownerUserId === userId);
+            const memberProjectIds = new Set(
+                getProjectMembers().filter((m) => m.userId === userId).map((m) => m.projectId)
+            );
+            let items = getProjects().filter((p) => memberProjectIds.has(p.id));
             if (!includeArchived) {
                 items = items.filter((p) => !p.isArchived);
             }
@@ -717,7 +744,27 @@ export const mockApi = {
             const map = getIssueComments();
             return map[_id] || [];
         },
-        getAttachments: async (_id: string): Promise<IssueAttachmentDto[]> => [],
+        getAttachments: async (_id: string): Promise<IssueAttachmentDto[]> => {
+            const map = getIssueAttachments();
+            return map[_id] || [];
+        },
+        attachFile: async (_id: string, data: { fileId: string }): Promise<IssueAttachmentDto> => {
+            const attachment: IssueAttachmentDto = {
+                id: uid('attachment'),
+                issueId: _id,
+                fileId: data.fileId,
+                fileName: `file-${data.fileId.slice(0, 6)}`,
+                contentType: 'application/octet-stream',
+                sizeBytes: 0,
+                uploadedByUserId: 'demo-user-1',
+                uploadedAt: nowIso(),
+            };
+            const map = getIssueAttachments();
+            const list = map[_id] || [];
+            map[_id] = [...list, attachment];
+            setIssueAttachments(map);
+            return attachment;
+        },
         getHistory: async (_id: string): Promise<IssueAuditDto[]> => [],
         getWorkflow: async (): Promise<WorkflowConfigDto> => ({
             statuses: ['Open', 'InProgress', 'Done'],
@@ -732,12 +779,12 @@ export const mockApi = {
         getUnreadCount: async (): Promise<number> => {
             const user = getCurrentUser();
             return getNotifications().filter(
-                (n) => n.userId === user.id && n.status === NotificationStatus.Unread
+                (n) => n.userId === user.id && !n.isRead
             ).length;
         },
         markAsRead: async (id: string): Promise<void> => {
             const list = getNotifications().map((n) =>
-                n.id === id ? { ...n, status: NotificationStatus.Read, updatedAt: nowIso() } : n
+                n.id === id ? { ...n, isRead: true, readAt: nowIso(), updatedAt: nowIso() } : n
             );
             setNotifications(list);
         },
@@ -745,7 +792,7 @@ export const mockApi = {
             const user = getCurrentUser();
             const list = getNotifications().map((n) =>
                 n.userId === user.id
-                    ? { ...n, status: NotificationStatus.Read, updatedAt: nowIso() }
+                    ? { ...n, isRead: true, readAt: nowIso(), updatedAt: nowIso() }
                     : n
             );
             setNotifications(list);

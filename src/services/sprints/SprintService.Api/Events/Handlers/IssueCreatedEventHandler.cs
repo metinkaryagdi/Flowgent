@@ -1,5 +1,5 @@
 using BitirmeProject.SprintService.Application.Abstractions;
-using BitirmeProject.SprintService.Domain.Entities;
+using BitirmeProject.SprintService.Application.ReadModels;
 using Microsoft.Extensions.Logging;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;

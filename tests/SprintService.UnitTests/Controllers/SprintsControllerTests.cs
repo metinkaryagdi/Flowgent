@@ -5,6 +5,7 @@ using BitirmeProject.SprintService.Application.Features.Sprints.Commands.CreateS
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.StartSprint;
 using FluentAssertions;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 
@@ -48,7 +49,10 @@ public sealed class SprintsControllerTests
     public async Task AddIssue_UsesRouteId()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new SprintsController(mediator);
+        var controller = new SprintsController(mediator)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
         var sprintId = Guid.NewGuid();
         var command = new AddIssueCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);
         var dto = new SprintIssueDto { SprintId = sprintId };
