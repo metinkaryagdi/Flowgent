@@ -1,4 +1,5 @@
 using System.Text;
+using BitirmeProject.Bff.Api.Handlers;
 using BitirmeProject.Bff.Api.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
@@ -30,29 +31,36 @@ static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromMilliseconds(200 * retryAttempt));
 }
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<OrganizationContextHandler>();
+
 builder.Services.AddHttpClient("ProjectService", (sp, client) =>
 {
     var endpoints = sp.GetRequiredService<IOptions<ServiceEndpoints>>().Value;
     client.BaseAddress = new Uri(endpoints.ProjectService);
-}).AddPolicyHandler(GetRetryPolicy());
+}).AddPolicyHandler(GetRetryPolicy())
+  .AddHttpMessageHandler<OrganizationContextHandler>();
 
 builder.Services.AddHttpClient("IssueService", (sp, client) =>
 {
     var endpoints = sp.GetRequiredService<IOptions<ServiceEndpoints>>().Value;
     client.BaseAddress = new Uri(endpoints.IssueService);
-}).AddPolicyHandler(GetRetryPolicy());
+}).AddPolicyHandler(GetRetryPolicy())
+  .AddHttpMessageHandler<OrganizationContextHandler>();
 
 builder.Services.AddHttpClient("SprintService", (sp, client) =>
 {
     var endpoints = sp.GetRequiredService<IOptions<ServiceEndpoints>>().Value;
     client.BaseAddress = new Uri(endpoints.SprintService);
-}).AddPolicyHandler(GetRetryPolicy());
+}).AddPolicyHandler(GetRetryPolicy())
+  .AddHttpMessageHandler<OrganizationContextHandler>();
 
 builder.Services.AddHttpClient("NotificationService", (sp, client) =>
 {
     var endpoints = sp.GetRequiredService<IOptions<ServiceEndpoints>>().Value;
     client.BaseAddress = new Uri(endpoints.NotificationService);
-}).AddPolicyHandler(GetRetryPolicy());
+}).AddPolicyHandler(GetRetryPolicy())
+  .AddHttpMessageHandler<OrganizationContextHandler>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

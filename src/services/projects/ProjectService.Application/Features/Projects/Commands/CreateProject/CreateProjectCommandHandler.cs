@@ -42,7 +42,7 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
         if (await _repository.ExistsByKeyAsync(request.Key, cancellationToken))
             throw new BusinessRuleException("Project key already exists.");
 
-        var project = new Project(request.Name, request.Key, request.OwnerUserId);
+        var project = new Project(request.Name, request.Key, request.OwnerUserId, request.OrganizationId);
         await _repository.AddAsync(project, cancellationToken);
 
         var summary = new ProjectSummary(project.Id);

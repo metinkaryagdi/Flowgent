@@ -8,16 +8,18 @@ public sealed class Project : AggregateRoot<Guid>
     public string Key { get; private set; } = string.Empty;
     public Guid OwnerUserId { get; private set; }
     public bool IsArchived { get; private set; }
+    public Guid? OrganizationId { get; private set; }
 
     private Project() { }
 
-    public Project(string name, string key, Guid ownerUserId)
+    public Project(string name, string key, Guid ownerUserId, Guid? organizationId = null)
     {
         Id = Guid.NewGuid();
         SetName(name);
         SetKey(key);
         OwnerUserId = ownerUserId;
         IsArchived = false;
+        OrganizationId = organizationId;
     }
 
     public void SetName(string name)

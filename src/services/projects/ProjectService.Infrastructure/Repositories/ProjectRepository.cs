@@ -60,6 +60,14 @@ public sealed class ProjectRepository : IProjectRepository
         return (items, totalCount);
     }
 
+    public async Task<IReadOnlyList<Project>> GetByOrganizationIdAsync(Guid organizationId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Projects
+            .Where(p => p.OrganizationId == organizationId)
+            .OrderBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var normalized = key.Trim().ToUpperInvariant();

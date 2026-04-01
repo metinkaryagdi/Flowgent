@@ -7,6 +7,7 @@ using BitirmeProject.IdentityService.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Options;
 using BitirmeProject.IdentityService.Application.Options;
+using BitirmeProject.IdentityService.Domain.Enums;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 
@@ -16,6 +17,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly JwtOptions _jwtOptions;
@@ -25,6 +27,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         IRefreshTokenRepository refreshTokenRepository,
+        IOrganizationRepository organizationRepository,
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IOptions<JwtOptions> options)
@@ -33,6 +36,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
         _refreshTokenRepository = refreshTokenRepository;
+        _organizationRepository = organizationRepository;
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _jwtOptions = options.Value;
@@ -60,7 +64,11 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
             .Cast<string>()
             .ToList();
 
-        var token = _jwtTokenGenerator.Generate(user, roles);
+        var organization = await _organizationRepository.GetByUserIdAsync(user.Id, cancellationToken);
+        Guid? orgId = organization?.Id;
+        string? orgRole = organization?.GetMemberRole(user.Id)?.ToString();
+
+        var token = _jwtTokenGenerator.Generate(user, roles, orgId, orgRole);
 
         var rawToken = GenerateToken();
         var refreshToken = new RefreshToken(
