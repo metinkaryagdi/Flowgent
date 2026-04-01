@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Options;
 
@@ -18,7 +17,7 @@ public class RabbitMQEventBus : IEventBus, IDisposable
     private readonly RabbitMQOptions _options;
     private readonly IConnection _connection;
     private readonly IModel _channel;
-    private readonly string _exchangeName = "bitirme_events";
+    private readonly string _exchangeName = RabbitMqTopology.EventsExchangeName;
 
     public RabbitMQEventBus(
         ILogger<RabbitMQEventBus> logger,
@@ -47,6 +46,9 @@ public class RabbitMQEventBus : IEventBus, IDisposable
             type: ExchangeType.Topic,
             durable: true,
             autoDelete: false);
+
+        // Enable publisher confirms so we know when the broker has accepted each message
+        _channel.ConfirmSelect();
 
         _logger.LogInformation("RabbitMQ EventBus initialized. Exchange: {Exchange}", _exchangeName);
     }
@@ -86,6 +88,9 @@ public class RabbitMQEventBus : IEventBus, IDisposable
             basicProperties: properties,
             body: body);
 
+        // Wait for broker acknowledgment; throws if nacked or timeout exceeded
+        _channel.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
+
         _logger.LogInformation(
             "Published event {EventType} to exchange {Exchange}. EventId={EventId}, EventVersion={EventVersion}, CorrelationId={CorrelationId}",
             eventType,
@@ -97,32 +102,14 @@ public class RabbitMQEventBus : IEventBus, IDisposable
         return Task.CompletedTask;
     }
 
+    [Obsolete("Legacy generic queue topology is disabled. Declare service-specific queues inside a BackgroundService consumer.")]
     public void Subscribe<TEvent, THandler>()
         where TEvent : IIntegrationEvent
         where THandler : IEventHandler<TEvent>
     {
-        var eventType = typeof(TEvent).Name;
-        var queueName = $"{eventType}_queue";
-
-        // Declare queue
-        _channel.QueueDeclare(
-            queue: queueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
-
-        // Bind queue to exchange
-        _channel.QueueBind(
-            queue: queueName,
-            exchange: _exchangeName,
-            routingKey: eventType);
-
-        _logger.LogInformation(
-            "Subscribed to event {EventType} with queue {QueueName}",
-            eventType, queueName);
-
-        // Note: Actual message consumption should be done through a BackgroundService
-        // This method just sets up the queue binding
+        throw new NotSupportedException(
+            "Legacy generic queue topology is disabled. " +
+            "Declare service-specific queues inside a BackgroundService consumer.");
     }
 
     public void Dispose()

@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Infrastructure.DependencyInjection;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 
@@ -43,6 +45,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 ctx.Token = ctx.Request.Cookies["accessToken"];
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = async ctx =>
+            {
+                var stampClaim = ctx.Principal?.FindFirst("security_stamp")?.Value;
+                var userIdStr = ctx.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+                if (stampClaim is null || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    ctx.Fail("Invalid token claims.");
+                    return;
+                }
+
+                var repo = ctx.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                var user = await repo.GetByIdAsync(userId);
+
+                if (user is null || !user.IsActive)
+                {
+                    ctx.Fail("User not found or inactive.");
+                    return;
+                }
+
+                if (user.SecurityStamp.ToString() != stampClaim)
+                {
+                    ctx.Fail("Security stamp mismatch. Token has been invalidated.");
+                }
             }
         };
     });
@@ -61,9 +88,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    db.Database.Migrate();
+    if (app.Environment.IsEnvironment("Testing"))
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
+
+    await IdentityRoleSeeder.SeedAsync(db);
 }
 
+app.UseMiddleware<BitirmeProject.IdentityService.Api.Middleware.ExceptionHandlingMiddleware>();
 app.UseRouting();
 app.UseCorrelationId();
 app.UseAuthentication();
@@ -72,3 +105,5 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }

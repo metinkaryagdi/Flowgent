@@ -45,14 +45,41 @@ public sealed class NotificationsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPut("{id:guid}/read")]
-    public async Task<ActionResult<NotificationDto>> MarkRead(Guid id)
+    [HttpPost("{id:guid}/read")]
+    public async Task<ActionResult<NotificationDto>> MarkRead(Guid id, CancellationToken cancellationToken)
     {
         var userId = User.TryGetUserId();
         if (userId is null)
             return Unauthorized();
 
-        var result = await _mediator.Send(new MarkNotificationReadCommand(id, userId.Value));
+        var result = await _mediator.Send(new MarkNotificationReadCommand(id, userId.Value), cancellationToken);
         return Ok(result);
+    }
+
+    [HttpGet("unread-count")]
+    public async Task<ActionResult<object>> GetUnreadCount(CancellationToken cancellationToken)
+    {
+        var userId = User.TryGetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var notifications = await _mediator.Send(new GetNotificationsByUserQuery(userId.Value), cancellationToken);
+        var count = notifications.Count(n => !n.IsRead);
+        return Ok(new { count });
+    }
+
+    [HttpPost("read-all")]
+    public async Task<ActionResult> MarkAllRead(CancellationToken cancellationToken)
+    {
+        var userId = User.TryGetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        var notifications = await _mediator.Send(new GetNotificationsByUserQuery(userId.Value), cancellationToken);
+
+        foreach (var n in notifications.Where(n => !n.IsRead))
+            await _mediator.Send(new MarkNotificationReadCommand(n.Id, userId.Value), cancellationToken);
+
+        return Ok();
     }
 }

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using BitirmeProject.IdentityService.Api.Controllers;
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.RegisterUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.UpdateUser;
@@ -28,7 +29,10 @@ public sealed class UsersControllerTests
     public async Task Register_ReturnsCreatedAtAction()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new UsersController(mediator);
+        var userRepository = Substitute.For<IUserRepository>();
+        var roleRepository = Substitute.For<IRoleRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork);
         var command = new RegisterUserCommand("user", "user@example.com", "Pass123!");
         var dto = new UserDto { Id = Guid.NewGuid(), Email = command.Email };
         mediator.Send(command).Returns(dto);
@@ -44,7 +48,10 @@ public sealed class UsersControllerTests
     public async Task GetById_ReturnsNotFound_WhenMissing()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new UsersController(mediator)
+        var userRepository = Substitute.For<IUserRepository>();
+        var roleRepository = Substitute.For<IRoleRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork)
         {
             ControllerContext = MakeAdminContext()
         };
@@ -60,7 +67,10 @@ public sealed class UsersControllerTests
     public async Task Update_UsesRouteId()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new UsersController(mediator)
+        var userRepository = Substitute.For<IUserRepository>();
+        var roleRepository = Substitute.For<IRoleRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork)
         {
             ControllerContext = MakeAdminContext()
         };
@@ -79,7 +89,10 @@ public sealed class UsersControllerTests
     public async Task DeleteUser_ReturnsNoContent()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new UsersController(mediator);
+        var userRepository = Substitute.For<IUserRepository>();
+        var roleRepository = Substitute.For<IRoleRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork);
 
         var result = await controller.DeleteUser(Guid.NewGuid());
 

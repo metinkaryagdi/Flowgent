@@ -5,7 +5,7 @@ import type { NotificationDto } from '../types';
 export const notificationsApi = {
     getAll: async (): Promise<NotificationDto[]> => {
         if (useMockApi) return mockApi.notifications.getAll();
-        const response = await apiClient.get<NotificationDto[]>('/api/v1/notifications');
+        const response = await apiClient.get<NotificationDto[]>('/api/v1/bff/notifications');
         return response.data;
     },
 

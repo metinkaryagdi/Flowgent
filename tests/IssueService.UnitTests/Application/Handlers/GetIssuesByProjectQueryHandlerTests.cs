@@ -1,5 +1,6 @@
 using AutoMapper;
 using BitirmeProject.IssueService.Application.Abstractions;
+using Microsoft.Extensions.Caching.Distributed;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByProject;
 using BitirmeProject.IssueService.Application.ReadModels;
@@ -32,7 +33,8 @@ public sealed class GetIssuesByProjectQueryHandlerTests
         mapper.Map<IssueBoardItemDto>(items[0]).Returns(dto1);
         mapper.Map<IssueBoardItemDto>(items[1]).Returns(dto2);
 
-        var handler = new GetIssuesByProjectQueryHandler(repository, mapper);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new GetIssuesByProjectQueryHandler(repository, mapper, cache);
         var query = new GetIssuesByProjectQuery(Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);

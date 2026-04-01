@@ -27,7 +27,8 @@ public sealed class JwtTokenGenerator : IJwtTokenGenerator
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.UniqueName, user.UserName),
-            new(JwtRegisteredClaimNames.Email, user.Email)
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new("security_stamp", user.SecurityStamp.ToString())
         };
 
         foreach (var role in roles)

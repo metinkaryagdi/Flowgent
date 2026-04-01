@@ -2,6 +2,7 @@ using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Infrastructure.Persistence;
 using BitirmeProject.ProjectService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Abstractions.Messaging;
@@ -16,8 +17,23 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<ProjectDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString)
+                   .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
+
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnectionString;
+                options.InstanceName = "project:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ProjectDbContext>());
         services.AddScoped<IProjectRepository, ProjectRepository>();

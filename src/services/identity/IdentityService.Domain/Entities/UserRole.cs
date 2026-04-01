@@ -16,4 +16,13 @@ public class UserRole
         UserId = userId;
         RoleId = roleId;
     }
+
+    public UserRole(Guid userId, Role role)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+
+        UserId = userId;
+        RoleId = role.Id;
+        Role = role;
+    }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Common.Extensions;
+using Shared.Abstractions.Messaging;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -43,7 +44,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
         };
 
-        // HttpOnly cookie'den JWT token oku
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -60,6 +60,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
+builder.Services.AddScoped<CorrelationContext>();
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
@@ -72,7 +73,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
-
 app.MapReverseProxy();
 
 app.Run();

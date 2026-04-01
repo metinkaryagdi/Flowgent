@@ -26,6 +26,7 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IEventHandler<IssueCreatedEvent>, IssueCreatedEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusChangedEventHandler>();
+builder.Services.AddScoped<IEventHandler<IssueAssignedEvent>, IssueAssignedEventHandler>();
 builder.Services.AddHostedService<IssueEventsConsumer>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -74,7 +75,10 @@ app.UseCorrelationId();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
-    db.Database.Migrate();
+    if (app.Environment.IsEnvironment("Testing"))
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
 }
 
 app.UseRouting();
@@ -84,3 +88,5 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }

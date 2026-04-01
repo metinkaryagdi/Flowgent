@@ -6,6 +6,7 @@ using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shared.Abstractions.Exceptions;
@@ -28,7 +29,8 @@ public sealed class ChangeIssueStatusCommandHandlerTests
 
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Issue?)null);
 
-        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger, cache);
         var command = new ChangeIssueStatusCommand(Guid.NewGuid(), IssueStatus.InProgress, Guid.NewGuid(), 1, null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -53,7 +55,8 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         var issue = new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Low, Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
 
-        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger, cache);
         var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), ExpectedVersion: 99, null);
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -81,7 +84,8 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         var boardItem = new IssueBoardItem(issue);
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns(boardItem);
 
-        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger, cache);
         var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.Open, Guid.NewGuid(), ExpectedVersion: issue.Version, null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -108,7 +112,8 @@ public sealed class ChangeIssueStatusCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(issue);
         boardRepository.GetByIssueIdAsync(issue.Id, Arg.Any<CancellationToken>()).Returns((IssueBoardItem?)null);
 
-        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new ChangeIssueStatusCommandHandler(repository, auditRepository, boardRepository, unitOfWork, outboxRepository, mapper, logger, cache);
         var command = new ChangeIssueStatusCommand(issue.Id, IssueStatus.InProgress, Guid.NewGuid(), ExpectedVersion: issue.Version, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);

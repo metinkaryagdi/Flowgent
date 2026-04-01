@@ -1,7 +1,10 @@
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
+using BitirmeProject.IdentityService.Application.Features.Users.Commands.AssignRoleToUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.RegisterUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.UpdateUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Queries.GetUserById;
+using BitirmeProject.IdentityService.Domain.Enums;
 using IdentityService.Application.Features.Users.Commands.DeleteUser;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -16,10 +19,16 @@ namespace BitirmeProject.IdentityService.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UsersController(IMediator mediator)
+    public UsersController(IMediator mediator, IUserRepository userRepository, IRoleRepository roleRepository, IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
+        _userRepository = userRepository;
+        _roleRepository = roleRepository;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -84,7 +93,101 @@ public class UsersController : ControllerBase
         await _mediator.Send(command);
         return NoContent();
     }
+
+    /// <summary>
+    /// Admin-only: lists all users.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll(CancellationToken cancellationToken)
+    {
+        var users = await _userRepository.GetAllAsync(cancellationToken);
+        var dtos = users.Select(u => new UserDto
+        {
+            Id = u.Id,
+            UserName = u.UserName,
+            Email = u.Email,
+            IsActive = u.IsActive,
+            CreatedAt = u.CreatedAt,
+        }).ToList();
+        return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Admin-only: returns the role names for a user.
+    /// </summary>
+    [HttpGet("{id:guid}/roles")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetUserRoles(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null) return NotFound();
+        var roleNames = user.UserRoles.Select(ur => ur.Role!.Name).ToList();
+        return Ok(roleNames);
+    }
+
+    /// <summary>
+    /// Admin-only: assigns a role to a user by role name.
+    /// </summary>
+    [HttpPost("{id:guid}/roles")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request, CancellationToken cancellationToken)
+    {
+        var role = await _roleRepository.GetByNameAsync(request.RoleName, cancellationToken);
+        if (role is null) return NotFound($"Role '{request.RoleName}' not found.");
+        await _mediator.Send(new AssignRoleToUserCommand(id, role.Id), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Admin-only: removes a role from a user by role name.
+    /// </summary>
+    [HttpDelete("{id:guid}/roles/{roleName}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RemoveRole(Guid id, string roleName, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null) return NotFound();
+        var role = await _roleRepository.GetByNameAsync(roleName, cancellationToken);
+        if (role is null) return NotFound($"Role '{roleName}' not found.");
+        user.RemoveRole(role.Id);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Admin-only: deactivates a user.
+    /// </summary>
+    [HttpPost("{id:guid}/deactivate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null) return NotFound();
+        user.ChangeStatus(UserStatus.Deactivated);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Admin-only: activates a user.
+    /// </summary>
+    [HttpPost("{id:guid}/activate")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (user is null) return NotFound();
+        user.ChangeStatus(UserStatus.Active);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
 }
+
+public sealed record AssignRoleRequest(string RoleName);
 
 
 

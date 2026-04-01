@@ -8,6 +8,7 @@ using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
@@ -24,6 +25,7 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<ChangeIssueStatusCommandHandler> _logger;
+    private readonly IDistributedCache _cache;
 
     public ChangeIssueStatusCommandHandler(
         IIssueRepository repository,
@@ -32,7 +34,8 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper,
-        ILogger<ChangeIssueStatusCommandHandler> logger)
+        ILogger<ChangeIssueStatusCommandHandler> logger,
+        IDistributedCache cache)
     {
         _repository = repository;
         _auditRepository = auditRepository;
@@ -41,6 +44,7 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
         _outboxRepository = outboxRepository;
         _mapper = mapper;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<IssueDto> Handle(ChangeIssueStatusCommand request, CancellationToken cancellationToken)
@@ -91,6 +95,8 @@ public sealed class ChangeIssueStatusCommandHandler : IRequestHandler<ChangeIssu
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
 
         sw.Stop();
         _logger.LogInformation(

@@ -83,7 +83,10 @@ app.UseCorrelationId();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IssueDbContext>();
-    db.Database.Migrate();
+    if (app.Environment.IsEnvironment("Testing"))
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
 }
 
 app.UseRouting();
@@ -93,3 +96,5 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }

@@ -3,9 +3,11 @@ using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Revoke;
+using BitirmeProject.IdentityService.Application.Options;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace BitirmeProject.IdentityService.Api.Controllers;
 
@@ -14,10 +16,14 @@ namespace BitirmeProject.IdentityService.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWebHostEnvironment _env;
+    private readonly JwtOptions _jwtOptions;
 
-    public AuthController(IMediator mediator)
+    public AuthController(IMediator mediator, IWebHostEnvironment env, IOptions<JwtOptions> jwtOptions)
     {
         _mediator = mediator;
+        _env = env;
+        _jwtOptions = jwtOptions.Value;
     }
 
     [AllowAnonymous]
@@ -67,12 +73,14 @@ public sealed class AuthController : ControllerBase
     // ── Helper: JWT + Refresh token'ları HttpOnly cookie olarak ekle ──
     private void SetTokenCookies(AuthResponseDto result)
     {
-        // Always use Secure=true — the app runs behind a reverse proxy that handles HTTPS.
-        // Using Request.IsHttps here would incorrectly return false in many proxy setups.
+        // Secure=true only in Production (requires HTTPS).
+        // In Development/Testing docker-compose runs on plain HTTP.
+        var isSecure = _env.IsProduction();
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isSecure,
             SameSite = SameSiteMode.Lax,
             Expires = result.ExpiresAt,
             Path = "/"
@@ -83,9 +91,9 @@ public sealed class AuthController : ControllerBase
         var refreshCookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = isSecure,
             SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddDays(30),
+            Expires = DateTimeOffset.UtcNow.AddDays(_jwtOptions.RefreshTokenDays),
             Path = "/api/v1/identity"
         };
 

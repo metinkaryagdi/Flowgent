@@ -135,20 +135,20 @@ export default function SprintPage() {
     const handleStartSprint = async (id: string) => {
         try {
             await sprintsApi.start(id);
-            showToast('Sprint baÅŸlatÄ±ldÄ±!');
+            showToast('Sprint başlatıldı!');
             await loadData();
         } catch {
-            showToast('Sprint baÅŸlatÄ±lÄ±rken hata oluÅŸtu.', 'error');
+            showToast('Sprint başlatılırken hata oluştu.', 'error');
         }
     };
 
     const handleCompleteSprint = async (id: string) => {
         try {
             await sprintsApi.complete(id);
-            showToast('Sprint tamamlandÄ±!');
+            showToast('Sprint tamamlandı!');
             await loadData();
         } catch {
-            showToast('Sprint tamamlanÄ±rken hata oluÅŸtu.', 'error');
+            showToast('Sprint tamamlanırken hata oluştu.', 'error');
         }
     };
 
@@ -156,11 +156,11 @@ export default function SprintPage() {
         if (!projectId) return;
         try {
             await sprintsApi.create({ projectId, name, startDate, endDate });
-            showToast('Sprint oluÅŸturuldu!');
+            showToast('Sprint oluşturuldu!');
             setShowCreateModal(false);
             await loadData();
         } catch {
-            showToast('Sprint oluÅŸturulurken hata oluÅŸtu.', 'error');
+            showToast('Sprint oluşturulurken hata oluştu.', 'error');
         }
     };
 
@@ -170,7 +170,7 @@ export default function SprintPage() {
             showToast('Issue sprint\'e eklendi!');
             await loadData();
         } catch {
-            showToast('Issue eklenirken hata oluÅŸtu.', 'error');
+            showToast('Issue eklenirken hata oluştu.', 'error');
         }
     };
 
@@ -179,8 +179,8 @@ export default function SprintPage() {
             <div className={styles.sprintPage}>
                 <div className={styles.header}>
                     <div className={styles.headerLeft}>
-                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>â†</button>
-                        <h1 className={styles.title}>YÃ¼kleniyor...</h1>
+                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>←</button>
+                        <h1 className={styles.title}>Yükleniyor...</h1>
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -195,7 +195,7 @@ export default function SprintPage() {
             {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <button className={styles.backBtn} onClick={() => navigate(`/projects/${projectId}/board`)}>â†</button>
+                    <button className={styles.backBtn} onClick={() => navigate(`/projects/${projectId}/board`)}>←</button>
                     <h1 className={styles.title}>Sprint & Backlog</h1>
                 </div>
                 <button className={styles.createBtn} onClick={() => setShowCreateModal(true)}>
@@ -212,11 +212,11 @@ export default function SprintPage() {
                     </div>
                     <div className={styles.sprintDates}>
                         <div className={styles.sprintDate}>
-                            <span className={styles.sprintDateLabel}>BaÅŸlangÄ±Ã§:</span>
+                            <span className={styles.sprintDateLabel}>Başlangıç:</span>
                             {formatDate(activeSprint.startDate)}
                         </div>
                         <div className={styles.sprintDate}>
-                            <span className={styles.sprintDateLabel}>BitiÅŸ:</span>
+                            <span className={styles.sprintDateLabel}>Bitiş:</span>
                             {formatDate(activeSprint.endDate)}
                         </div>
                     </div>
@@ -227,7 +227,7 @@ export default function SprintPage() {
                         />
                     </div>
                     <div className={styles.progressText}>
-                        {activeSprint.completedIssueCount || 0} / {activeSprint.totalIssueCount || 0} tamamlandÄ±
+                        {activeSprint.completedIssueCount || 0} / {activeSprint.totalIssueCount || 0} tamamlandı
                     </div>
                     <div className={styles.sprintActions}>
                         <button className={styles.completeBtn} onClick={() => handleCompleteSprint(activeSprint.id)}>
@@ -273,10 +273,10 @@ export default function SprintPage() {
                                     <p>{formatDate(sprint.startDate)} â€” {formatDate(sprint.endDate)}</p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span className={`${styles.statusBadge} ${styles.statusPlanned}`}>PlanlandÄ±</span>
+                                    <span className={`${styles.statusBadge} ${styles.statusPlanned}`}>Planlandı</span>
                                     {!activeSprint && (
                                         <button className={styles.startBtn} onClick={() => handleStartSprint(sprint.id)}>
-                                            BaÅŸlat
+                                            Başlat
                                         </button>
                                     )}
                                 </div>
@@ -325,7 +325,7 @@ export default function SprintPage() {
                                     <h3>{sprint.name}</h3>
                                     <p>{formatDate(sprint.startDate)} â€” {formatDate(sprint.endDate)}</p>
                                 </div>
-                                <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>TamamlandÄ±</span>
+                                <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>Tamamlandı</span>
                             </div>
                         ))}
                     </div>
@@ -337,7 +337,7 @@ export default function SprintPage() {
                 <h3 className={styles.sectionTitle}>Backlog ({backlog.total || backlogIssues.length})</h3>
                 {backlogIssues.length === 0 && !backlog.loading ? (
                     <div className={styles.empty}>
-                        <div className={styles.emptyIcon}>ğŸ“‹</div>
+                        <div className={styles.emptyIcon}>📋</div>
                         <p>Backlog'da issue yok.</p>
                     </div>
                 ) : (
@@ -431,21 +431,21 @@ function CreateSprintModal({
     return (
         <div className={styles.modalOverlay} onClick={onClose}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <h2 className={styles.modalTitle}>Yeni Sprint OluÅŸtur</h2>
+                <h2 className={styles.modalTitle}>Yeni Sprint Oluştur</h2>
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Sprint AdÄ±</label>
+                        <label className={styles.formLabel}>Sprint Adı</label>
                         <input
                             type="text"
                             className={styles.formInput}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Ã–rn: Sprint 1"
+                            placeholder="Örn: Sprint 1"
                             autoFocus
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>BaÅŸlangÄ±Ã§ Tarihi</label>
+                        <label className={styles.formLabel}>Başlangıç Tarihi</label>
                         <input
                             type="date"
                             className={styles.formInput}
@@ -454,7 +454,7 @@ function CreateSprintModal({
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>BitiÅŸ Tarihi</label>
+                        <label className={styles.formLabel}>Bitiş Tarihi</label>
                         <input
                             type="date"
                             className={styles.formInput}
@@ -463,9 +463,9 @@ function CreateSprintModal({
                         />
                     </div>
                     <div className={styles.modalFooter}>
-                        <button type="button" className={styles.btnSecondary} onClick={onClose}>Ä°ptal</button>
+                        <button type="button" className={styles.btnSecondary} onClick={onClose}>İptal</button>
                         <button type="submit" className={styles.btnPrimary} disabled={submitting || !name.trim() || !startDate || !endDate}>
-                            {submitting ? 'OluÅŸturuluyor...' : 'OluÅŸtur'}
+                            {submitting ? 'Oluşturuluyor...' : 'Oluştur'}
                         </button>
                     </div>
                 </form>

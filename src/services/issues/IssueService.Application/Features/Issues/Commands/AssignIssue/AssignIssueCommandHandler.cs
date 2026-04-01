@@ -7,6 +7,7 @@ using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
@@ -22,6 +23,7 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<AssignIssueCommandHandler> _logger;
+    private readonly IDistributedCache _cache;
 
     public AssignIssueCommandHandler(
         IIssueRepository repository,
@@ -29,7 +31,8 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
         IUnitOfWork unitOfWork,
         IOutboxRepository outboxRepository,
         IMapper mapper,
-        ILogger<AssignIssueCommandHandler> logger)
+        ILogger<AssignIssueCommandHandler> logger,
+        IDistributedCache cache)
     {
         _repository = repository;
         _boardRepository = boardRepository;
@@ -37,6 +40,7 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
         _outboxRepository = outboxRepository;
         _mapper = mapper;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<IssueDto> Handle(AssignIssueCommand request, CancellationToken cancellationToken)
@@ -84,6 +88,8 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
 
         sw.Stop();
         _logger.LogInformation(

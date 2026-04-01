@@ -3,6 +3,7 @@ using BitirmeProject.SprintService.Infrastructure.Clients;
 using BitirmeProject.SprintService.Infrastructure.Persistence;
 using BitirmeProject.SprintService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Abstractions.Messaging;
@@ -17,7 +18,8 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<SprintDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString)
+                   .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SprintDbContext>());

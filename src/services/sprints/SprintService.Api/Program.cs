@@ -23,7 +23,8 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddScoped<IEventHandler<IssueCreatedEvent>, IssueCreatedEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusChangedEventHandler>();
 builder.Services.AddHostedService<IssueEventsConsumer>();
@@ -70,7 +71,10 @@ app.UseCorrelationId();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SprintDbContext>();
-    db.Database.Migrate();
+    if (app.Environment.IsEnvironment("Testing"))
+        db.Database.EnsureCreated();
+    else
+        db.Database.Migrate();
 }
 
 app.UseRouting();
@@ -80,3 +84,5 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }

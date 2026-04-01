@@ -15,6 +15,11 @@ export const authApi = {
         return response.data;
     },
 
+    logout: async (): Promise<void> => {
+        if (useMockApi) return;
+        await apiClient.post('/api/v1/identity/logout');
+    },
+
     getFlags: async (): Promise<UiFlags> => {
         if (useMockApi) return mockApi.auth.getFlags();
         const response = await apiClient.get<UiFlags>('/api/v1/bff/flags');

@@ -63,11 +63,11 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
 
         await _userRepository.AddAsync(user, cancellationToken);
 
-        var defaultRole = await _roleRepository.GetByNameAsync("Viewer", cancellationToken);
-        if (defaultRole is not null)
-        {
-            user.AddRole(defaultRole);
-        }
+        var defaultRole = await _roleRepository.GetByNameAsync(DefaultIdentityRoles.Default, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Default role '{DefaultIdentityRoles.Default}' is not configured.");
+
+        user.AddRole(defaultRole);
 
         var roles = user.UserRoles
             .Select(ur => ur.Role?.Name)

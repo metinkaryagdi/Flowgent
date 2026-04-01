@@ -7,6 +7,7 @@ using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
@@ -21,8 +22,9 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
     private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<CreateIssueCommandHandler> _logger;
+    private readonly IDistributedCache _cache;
 
-    public CreateIssueCommandHandler(IIssueRepository repository, IIssueBoardRepository boardRepository, IUnitOfWork unitOfWork, IOutboxRepository outboxRepository, IMapper mapper, ILogger<CreateIssueCommandHandler> logger)
+    public CreateIssueCommandHandler(IIssueRepository repository, IIssueBoardRepository boardRepository, IUnitOfWork unitOfWork, IOutboxRepository outboxRepository, IMapper mapper, ILogger<CreateIssueCommandHandler> logger, IDistributedCache cache)
     {
         _repository = repository;
         _boardRepository = boardRepository;
@@ -30,6 +32,7 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
         _outboxRepository = outboxRepository;
         _mapper = mapper;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<IssueDto> Handle(CreateIssueCommand request, CancellationToken cancellationToken)
@@ -52,6 +55,8 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
         await _outboxRepository.AddAsync(outbox, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
 
         sw.Stop();
         _logger.LogInformation(

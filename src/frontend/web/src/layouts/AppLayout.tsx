@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
+import { authApi } from '../api/auth';
 import { notificationsApi } from '../api/notifications';
 import type { NotificationDto } from '../types';
 import styles from './AppLayout.module.css';
@@ -33,7 +34,7 @@ export default function AppLayout() {
             const data = await notificationsApi.getAll();
             setNotifications(data);
         } catch {
-            setNotificationsError('Bildirimler yÃ¼klenemedi.');
+            setNotificationsError('Bildirimler yüklenemedi.');
         } finally {
             setNotificationsLoading(false);
         }
@@ -72,13 +73,16 @@ export default function AppLayout() {
         const path = location.pathname;
         if (path === '/projects') return 'Projeler';
         if (path === '/notifications') return 'Bildirimler';
-        if (path === '/admin') return 'YÃ¶netim Paneli';
-        if (path.includes('/board')) return 'Projeler â€º Board';
-        if (path.includes('/sprints')) return 'Projeler â€º Sprint';
+        if (path === '/admin') return 'Yönetim Paneli';
+        if (path.includes('/board')) return 'Projeler › Board';
+        if (path.includes('/sprints')) return 'Projeler › Sprint';
         return 'Kontrol Paneli';
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await authApi.logout();
+        } catch { /* sunucu erişilemese bile yerel oturum temizlenir */ }
         logout();
         navigate('/login');
     };
@@ -112,24 +116,24 @@ export default function AppLayout() {
         ? user.userName.slice(0, 2).toUpperCase()
         : '??';
 
-    const primaryRole = roles.length > 0 ? roles[0] : 'Member';
+    const roleLabel = roles.length > 0 ? roles.join(', ') : 'Member';
 
     return (
         <div className={styles.appLayout}>
             {/* ── Mobile overlay ──────── */}
             {sidebarOpen && (
-                <div className={styles.sidebarOverlay} onClick={() => setSidebarOpen(false)} aria-hidden=”true” />
+                <div className={styles.sidebarOverlay} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
             )}
 
             {/* ── Sidebar ─────────────── */}
-            <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`} aria-label=”Yan menü”>
+            <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`} aria-label="Yan menü">
                 <div className={styles.sidebar__header}>
-                    <div className={styles.sidebar__logoIcon}>âš¡</div>
+                    <div className={styles.sidebar__logoIcon}>⚡</div>
                     <span className={styles.sidebar__logoText}>BitirmeProject</span>
                 </div>
 
                 <nav className={styles.sidebar__nav}>
-                    <span className={styles.sidebar__sectionLabel}>Ana MenÃ¼</span>
+                    <span className={styles.sidebar__sectionLabel}>Ana Menü</span>
 
                     <NavLink
                         to="/projects"
@@ -138,7 +142,7 @@ export default function AppLayout() {
                         }
                         data-testid="nav-projects"
                     >
-                        <span className={styles.sidebar__linkIcon}>ğŸ“</span>
+                        <span className={styles.sidebar__linkIcon}>📁</span>
                         Projeler
                     </NavLink>
 
@@ -149,21 +153,21 @@ export default function AppLayout() {
                         }
                         data-testid="nav-notifications"
                     >
-                        <span className={styles.sidebar__linkIcon}>ğŸ””</span>
+                        <span className={styles.sidebar__linkIcon}>🔔</span>
                         Bildirimler
                         {unreadCount > 0 && <span className={styles.sidebar__badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
                     </NavLink>
 
                     {flags?.canViewAdmin && (
                         <>
-                            <span className={styles.sidebar__sectionLabel}>YÃ¶netim</span>
+                            <span className={styles.sidebar__sectionLabel}>Yönetim</span>
                             <NavLink
                                 to="/admin"
                                 className={({ isActive }) =>
                                     `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
                                 }
                             >
-                                <span className={styles.sidebar__linkIcon}>âš™ï¸</span>
+                                <span className={styles.sidebar__linkIcon}>⚙️</span>
                                 Admin Panel
                             </NavLink>
                         </>
@@ -175,13 +179,13 @@ export default function AppLayout() {
                         <div className={styles.sidebar__avatar}>{initials}</div>
                         <div className={styles.sidebar__userInfo}>
                             <div className={styles.sidebar__userName}>{user?.userName}</div>
-                            <div className={styles.sidebar__userRole}>{primaryRole}</div>
+                            <div className={styles.sidebar__userRole}>{roleLabel}</div>
                         </div>
                     </div>
                 </div>
             </aside>
 
-            {/* â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* â"€â"€ Main â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
             <div className={styles.main}>
                 <header className={styles.topbar}>
                     <div className={styles.topbar__left}>
@@ -263,7 +267,7 @@ export default function AppLayout() {
                             )}
                         </div>
                         <button className={styles.topbar__logoutBtn} onClick={handleLogout} aria-label="Çıkış yap">
-                            Ã‡Ä±kÄ±ÅŸ Yap
+                            Çıkış Yap
                         </button>
                     </div>
                 </header>

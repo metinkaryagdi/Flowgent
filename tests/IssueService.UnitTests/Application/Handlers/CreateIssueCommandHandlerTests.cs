@@ -6,6 +6,7 @@ using BitirmeProject.IssueService.Application.ReadModels;
 using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shared.Abstractions.Messaging;
@@ -28,7 +29,8 @@ public sealed class CreateIssueCommandHandlerTests
         repository.AddAsync(Arg.Do<Issue>(x => capturedIssue = x), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var handler = new CreateIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger);
+        var cache = Substitute.For<IDistributedCache>();
+        var handler = new CreateIssueCommandHandler(repository, boardRepository, unitOfWork, outboxRepository, mapper, logger, cache);
         var command = new CreateIssueCommand(Guid.NewGuid(), "Test Issue", "Desc", IssuePriority.High, Guid.NewGuid(), Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
