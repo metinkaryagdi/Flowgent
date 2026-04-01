@@ -1,6 +1,7 @@
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using BitirmeProject.IdentityService.Infrastructure.Repositories;
+using BitirmeProject.IdentityService.Infrastructure.Services;
 using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<IInviteRepository, InviteRepository>();
+
+        // Email
+        services.AddScoped<IEmailService, EmailService>();
 
         // Password hasher
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();
