@@ -11,12 +11,15 @@ import ProtectedRoute from './routes/ProtectedRoute';
 
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
+import AcceptInvitePage from './features/invite/AcceptInvitePage';
 import ProjectsPage from './features/projects/ProjectsPage';
 import ProjectDetailPage from './features/projects/ProjectDetailPage';
 import BoardPage from './features/board/BoardPage';
 import SprintPage from './features/sprints/SprintPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import AdminPage from './features/admin/AdminPage';
+import OnboardingPage from './features/onboarding/OnboardingPage';
+import OrganizationSettingsPage from './features/organization/OrganizationSettingsPage';
 
 export default function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -43,6 +46,7 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/invite/accept" element={<AcceptInvitePage />} />
           </Route>
 
           {/* ── Protected Routes ── */}
@@ -54,7 +58,9 @@ export default function App() {
               <Route path="/projects/:projectId/sprints" element={<SprintPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/settings/organization" element={<OrganizationSettingsPage />} />
             </Route>
+            <Route path="/onboarding" element={<OnboardingPage />} />
           </Route>
 
           {/* ── Fallback ── */}

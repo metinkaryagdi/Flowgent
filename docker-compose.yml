@@ -43,6 +43,16 @@ services:
       timeout: 10s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - bitirme-net
+
   seq:
     image: datalust/seq:2024.3
     container_name: seq
@@ -198,6 +208,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
@@ -218,6 +230,11 @@ services:
       Jwt__Issuer: "BitirmeProject.IdentityService"
       Jwt__Audience: "BitirmeProject.Clients"
       Jwt__ExpirationMinutes: "60"
+      # SMTP (MailHog)
+      Smtp__Host: "mailhog"
+      Smtp__Port: "1025"
+      Smtp__EnableSsl: "false"
+      Smtp__FromAddress: "noreply@bitirmeproject.local"
     ports:
       - "5001:8080"
     networks:

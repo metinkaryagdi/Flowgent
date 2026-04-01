@@ -282,6 +282,66 @@ export interface StoredFileDto {
   uploadedAt: string;
 }
 
+// ─── Organization DTOs ───────────────
+export const OrganizationRole = {
+  Owner: 'Owner',
+  Manager: 'Manager',
+  Member: 'Member',
+} as const;
+export type OrganizationRole = typeof OrganizationRole[keyof typeof OrganizationRole];
+
+export interface OrganizationDto {
+  id: string;
+  name: string;
+  createdByUserId: string;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface OrganizationMemberDto {
+  userId: string;
+  userName: string;
+  email: string;
+  role: OrganizationRole;
+  joinedAt: string;
+}
+
+export interface InviteDto {
+  id: string;
+  email: string;
+  role: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface ValidateInviteTokenResult {
+  email: string;
+  organizationName: string;
+  role: string;
+  expiresAt: string;
+}
+
+export interface SendInviteRequest {
+  organizationId: string;
+  email: string;
+  role: OrganizationRole;
+  inviteLinkBaseUrl: string;
+}
+
+export interface AcceptInviteRequest {
+  token: string;
+  userName: string;
+  password: string;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+}
+
+export interface ChangeMemberRoleRequest {
+  newRole: OrganizationRole;
+}
+
 // ─── BFF DTOs ────────────────────────
 export interface UiFlags {
   canManageProjects: boolean;
