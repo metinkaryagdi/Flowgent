@@ -26,7 +26,8 @@ public sealed class LoginCommandHandlerTests
         userRepository.GetByUserNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
         userRepository.GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((User?)null);
 
-        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, unitOfWork, mapper, options);
+        var orgRepo = Substitute.For<IOrganizationRepository>();
+        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, orgRepo, unitOfWork, mapper, options);
         var command = new LoginCommand("user", "pass");
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -49,7 +50,8 @@ public sealed class LoginCommandHandlerTests
         userRepository.GetByUserNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(user);
         hasher.VerifyPassword(user.PasswordHash, Arg.Any<string>()).Returns(false);
 
-        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, unitOfWork, mapper, options);
+        var orgRepo = Substitute.For<IOrganizationRepository>();
+        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, orgRepo, unitOfWork, mapper, options);
         var command = new LoginCommand("user", "pass");
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -72,10 +74,11 @@ public sealed class LoginCommandHandlerTests
         userRepository.GetByUserNameAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(user);
         hasher.VerifyPassword(user.PasswordHash, Arg.Any<string>()).Returns(true);
 
-        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
+        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>(), Arg.Any<Guid?>(), Arg.Any<string?>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
         mapper.Map<UserDto>(user).Returns(new UserDto { Id = user.Id, Email = user.Email });
 
-        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, unitOfWork, mapper, options);
+        var orgRepo = Substitute.For<IOrganizationRepository>();
+        var handler = new LoginCommandHandler(userRepository, hasher, jwt, refreshRepo, orgRepo, unitOfWork, mapper, options);
         var command = new LoginCommand("user", "pass");
 
         var result = await handler.Handle(command, CancellationToken.None);

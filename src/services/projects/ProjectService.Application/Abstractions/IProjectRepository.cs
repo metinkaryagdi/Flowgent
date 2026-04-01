@@ -13,6 +13,7 @@ public interface IProjectRepository
         string? search,
         bool includeArchived,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Project>> GetByOrganizationIdAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByKeyAsync(string key, CancellationToken cancellationToken = default);
     Task AddAsync(Project project, CancellationToken cancellationToken = default);
     Task UpdateAsync(Project project, CancellationToken cancellationToken = default);

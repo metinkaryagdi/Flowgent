@@ -18,7 +18,7 @@ public sealed class JwtTokenGenerator : IJwtTokenGenerator
         _options = options.Value;
     }
 
-    public JwtTokenResult Generate(User user, IReadOnlyList<string> roles)
+    public JwtTokenResult Generate(User user, IReadOnlyList<string> roles, Guid? organizationId = null, string? orgRole = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -35,6 +35,12 @@ public sealed class JwtTokenGenerator : IJwtTokenGenerator
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
+
+        if (organizationId.HasValue)
+            claims.Add(new Claim("org_id", organizationId.Value.ToString()));
+
+        if (!string.IsNullOrWhiteSpace(orgRole))
+            claims.Add(new Claim("org_role", orgRole));
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.ExpirationMinutes);
 

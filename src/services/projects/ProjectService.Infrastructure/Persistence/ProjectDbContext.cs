@@ -26,6 +26,8 @@ public sealed class ProjectDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Name).IsRequired().HasMaxLength(200);
             entity.Property(x => x.Key).IsRequired().HasMaxLength(10);
             entity.HasIndex(x => x.Key).IsUnique();
+            entity.Property(x => x.OrganizationId).IsRequired(false);
+            entity.HasIndex(x => x.OrganizationId);
         });
 
         modelBuilder.Entity<ProjectSummary>(entity =>

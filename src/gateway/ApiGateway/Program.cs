@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Common.Extensions;
 using Shared.Abstractions.Messaging;
+using Yarp.ReverseProxy.Transforms;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -63,7 +64,24 @@ builder.Services.AddHealthChecks();
 builder.Services.AddScoped<CorrelationContext>();
 
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(ctx =>
+    {
+        ctx.AddRequestTransform(async transformCtx =>
+        {
+            var user = transformCtx.HttpContext.User;
+            var orgId = user.FindFirst("org_id")?.Value;
+            var orgRole = user.FindFirst("org_role")?.Value;
+
+            if (!string.IsNullOrEmpty(orgId))
+                transformCtx.ProxyRequest.Headers.TryAddWithoutValidation("X-Organization-Id", orgId);
+
+            if (!string.IsNullOrEmpty(orgRole))
+                transformCtx.ProxyRequest.Headers.TryAddWithoutValidation("X-Organization-Role", orgRole);
+
+            await Task.CompletedTask;
+        });
+    });
 
 var app = builder.Build();
 

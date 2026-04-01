@@ -7,4 +7,5 @@ public sealed record CreateProjectCommand(
     string Name,
     string Key,
     Guid OwnerUserId,
-    Guid? CorrelationId) : IRequest<ProjectDto>;
+    Guid? CorrelationId,
+    Guid? OrganizationId = null) : IRequest<ProjectDto>;

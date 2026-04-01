@@ -33,9 +33,9 @@ public sealed class ProjectsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ProjectDto>> Create([FromBody] CreateProjectCommand command)
     {
-        // OwnerUserId must come from authenticated Claims, never from the request body.
         var ownerUserId = User.GetUserId();
-        var safeCommand = command with { OwnerUserId = ownerUserId };
+        var orgId = User.FindFirst("org_id")?.Value is string s && Guid.TryParse(s, out var g) ? g : (Guid?)null;
+        var safeCommand = command with { OwnerUserId = ownerUserId, OrganizationId = orgId };
         var result = await _mediator.Send(safeCommand);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
@@ -58,7 +58,8 @@ public sealed class ProjectsController : ControllerBase
         if (!User.HasRole("Admin") && requesterId != userId)
             return Forbid();
 
-        var result = await _mediator.Send(new GetProjectsByUserQuery(userId));
+        var orgId = User.FindFirst("org_id")?.Value is string s && Guid.TryParse(s, out var g) ? g : (Guid?)null;
+        var result = await _mediator.Send(new GetProjectsByUserQuery(userId, orgId));
         return Ok(result);
     }
 
