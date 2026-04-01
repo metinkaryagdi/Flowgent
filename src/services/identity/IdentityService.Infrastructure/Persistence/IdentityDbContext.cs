@@ -19,6 +19,9 @@ public class IdentityDbContext : DbContext, IUnitOfWork
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+    public DbSet<InviteToken> InviteTokens => Set<InviteToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
