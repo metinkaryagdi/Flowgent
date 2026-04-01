@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { issuesApi } from '../../api/issues';
+import { projectsApi } from '../../api/projects';
+import { adminApi } from '../../api/admin';
 import { useAuthStore } from '../../store/authStore';
+import { useToastStore } from '../../store/toastStore';
 import { IssueStatus, IssuePriority } from '../../types';
-import type { IssueDto, IssueCommentDto, IssueAttachmentDto, IssueAuditDto } from '../../types';
+import type { IssueDto, IssueCommentDto, IssueAttachmentDto, IssueAuditDto, UserDto } from '../../types';
 import styles from './IssueDetail.module.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -226,9 +229,11 @@ function DetailsTab({
     const [priority, setPriority] = useState<IssuePriority>(issue.priority);
     const [saving, setSaving] = useState(false);
     const [statusChanging, setStatusChanging] = useState(false);
-    const [assigneeInput, setAssigneeInput] = useState('');
+    const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
     const [assigning, setAssigning] = useState(false);
     const [showAssignInput, setShowAssignInput] = useState(false);
+    const [memberUsers, setMemberUsers] = useState<UserDto[]>([]);
+    const [membersLoading, setMembersLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
     const canEdit = flags?.canEditIssues !== false;
@@ -281,19 +286,34 @@ function DetailsTab({
         }
     };
 
+    const loadMembers = async () => {
+        setMembersLoading(true);
+        try {
+            const [members, allUsers] = await Promise.all([
+                projectsApi.getMembers(issue.projectId),
+                adminApi.getUsers(),
+            ]);
+            const memberIds = new Set(members.map(m => m.userId));
+            setMemberUsers(allUsers.filter(u => memberIds.has(u.id)));
+        } catch {
+            // fall back to empty list
+        } finally {
+            setMembersLoading(false);
+        }
+    };
+
     const handleAssign = async () => {
-        const trimmed = assigneeInput.trim();
-        if (!trimmed) return;
+        if (!selectedAssigneeId) return;
         setAssigning(true);
         setErrorMsg('');
         try {
             const updated = await issuesApi.assign(issue.id, {
-                assigneeUserId: trimmed,
+                assigneeUserId: selectedAssigneeId,
                 expectedVersion: issue.version,
             });
             onUpdated(updated);
             setShowAssignInput(false);
-            setAssigneeInput('');
+            setSelectedAssigneeId('');
         } catch {
             setErrorMsg('Atama başarısız.');
         } finally {
@@ -389,10 +409,10 @@ function DetailsTab({
                                 {issue.assigneeUserId.slice(0, 2).toUpperCase()}
                             </div>
                             <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>
-                                {issue.assigneeUserId}
+                                {memberUsers.find(u => u.id === issue.assigneeUserId)?.userName ?? issue.assigneeUserId.slice(0, 8) + '...'}
                             </span>
                             {canAssign && (
-                                <button className={styles.assignBtn} onClick={() => setShowAssignInput((v) => !v)}>
+                                <button className={styles.assignBtn} onClick={() => { setShowAssignInput((v) => !v); if (!showAssignInput) loadMembers(); }}>
                                     Değiştir
                                 </button>
                             )}
@@ -402,27 +422,37 @@ function DetailsTab({
                             <div className={styles.assigneeAvatar} style={{ background: 'var(--bg-surface-hover)', color: 'var(--text-tertiary)' }}>?</div>
                             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-tertiary)' }}>Atanmamış</span>
                             {canAssign && (
-                                <button className={styles.assignBtn} onClick={() => setShowAssignInput((v) => !v)}>Ata</button>
+                                <button className={styles.assignBtn} onClick={() => { setShowAssignInput((v) => !v); if (!showAssignInput) loadMembers(); }}>Ata</button>
                             )}
                         </>
                     )}
                 </div>
                 {showAssignInput && (
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input
-                            className={styles.editInput}
-                            style={{ flex: 1 }}
-                            placeholder="Kullanıcı ID'si"
-                            value={assigneeInput}
-                            onChange={(e) => setAssigneeInput(e.target.value)}
-                        />
-                        <button className={styles.assignBtn} onClick={handleAssign} disabled={assigning || !assigneeInput.trim()}>
-                            {assigning ? '...' : 'Ata'}
-                        </button>
-                        <button className={styles.assignBtn} onClick={() => { setShowAssignInput(false); setAssigneeInput(''); }}
-                            style={{ background: 'var(--bg-surface-hover)' }}>
-                            İptal
-                        </button>
+                        {membersLoading ? (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Üyeler yükleniyor...</span>
+                        ) : (
+                            <>
+                                <select
+                                    className={styles.editSelect}
+                                    style={{ flex: 1 }}
+                                    value={selectedAssigneeId}
+                                    onChange={(e) => setSelectedAssigneeId(e.target.value)}
+                                >
+                                    <option value="">-- Kullanıcı seç --</option>
+                                    {memberUsers.map(u => (
+                                        <option key={u.id} value={u.id}>{u.userName}</option>
+                                    ))}
+                                </select>
+                                <button className={styles.assignBtn} onClick={handleAssign} disabled={assigning || !selectedAssigneeId}>
+                                    {assigning ? '...' : 'Ata'}
+                                </button>
+                                <button className={styles.assignBtn} onClick={() => { setShowAssignInput(false); setSelectedAssigneeId(''); }}
+                                    style={{ background: 'var(--bg-surface-hover)' }}>
+                                    İptal
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -549,6 +579,7 @@ function AttachmentsTab({
     attachments: IssueAttachmentDto[];
     onReload: () => void;
 }) {
+    const { showToast } = useToastStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -588,7 +619,7 @@ function AttachmentsTab({
 
             onReload();
         } catch {
-            // error handling
+            showToast('Dosya yüklenirken hata oluştu.', 'error');
         }
 
         if (fileInputRef.current) fileInputRef.current.value = '';

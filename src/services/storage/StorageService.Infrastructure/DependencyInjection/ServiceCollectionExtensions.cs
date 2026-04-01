@@ -3,6 +3,7 @@ using BitirmeProject.StorageService.Infrastructure.FileSystem;
 using BitirmeProject.StorageService.Infrastructure.Persistence;
 using BitirmeProject.StorageService.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,8 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<StorageDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString)
+                   .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<StorageDbContext>());

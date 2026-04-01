@@ -1,7 +1,7 @@
 ﻿using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
-using MediatR;
 using AutoMapper;
+using MediatR;
 
 namespace BitirmeProject.IdentityService.Application.Features.Users.Commands.UpdateUser;
 
@@ -49,8 +49,9 @@ public sealed class UpdateUserCommandHandler
             throw new InvalidOperationException("Email already exists.");
         }
 
-        // 4) Command -> Entity update
-        _mapper.Map(request, user); // Id map'ini profilde Ignore etmiştik
+        // 4) Domain methods ile güncelle (ToLowerInvariant normalizasyonu korunur)
+        user.SetUserName(request.UserName);
+        user.SetEmail(request.Email);
 
         // 5) Repo + UnitOfWork ile kaydet
         await _userRepository.UpdateAsync(user, cancellationToken);

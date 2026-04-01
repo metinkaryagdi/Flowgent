@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BitirmeProject.Bff.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -145,6 +147,12 @@ public sealed class BffController : ControllerBase
         return builder.ToString();
     }
 
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        Converters = { new JsonStringEnumConverter() },
+        PropertyNameCaseInsensitive = true,
+    };
+
     private async Task<(T? Value, ActionResult? Error)> GetOrError<T>(
         HttpClient client,
         string path,
@@ -164,7 +172,7 @@ public sealed class BffController : ControllerBase
             return (default, StatusCode((int)response.StatusCode, body));
         }
 
-        var value = await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+        var value = await response.Content.ReadFromJsonAsync<T>(_jsonOptions, cancellationToken);
         return (value, null);
     }
 

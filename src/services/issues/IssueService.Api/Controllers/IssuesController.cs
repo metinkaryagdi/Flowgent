@@ -35,7 +35,12 @@ public sealed class IssuesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<IssueDto>> Create([FromBody] CreateIssueCommand command)
     {
-        var result = await _mediator.Send(command);
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
+        var updated = command with { CreatedByUserId = userId };
+        var result = await _mediator.Send(updated);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -107,8 +112,12 @@ public sealed class IssuesController : ControllerBase
         [FromHeader(Name = "If-Match")] string? ifMatch,
         [FromHeader(Name = "X-Expected-Version")] string? expectedVersionHeader)
     {
+        var assignedByUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(assignedByUserIdStr, out var assignedByUserId))
+            return Unauthorized();
+
         var expectedVersion = ResolveExpectedVersion(command.ExpectedVersion, ifMatch, expectedVersionHeader);
-        var updated = command with { IssueId = id, ExpectedVersion = expectedVersion };
+        var updated = command with { IssueId = id, ExpectedVersion = expectedVersion, AssignedByUserId = assignedByUserId };
         var result = await _mediator.Send(updated);
         return Ok(result);
     }
@@ -149,8 +158,12 @@ public sealed class IssuesController : ControllerBase
         [FromHeader(Name = "If-Match")] string? ifMatch,
         [FromHeader(Name = "X-Expected-Version")] string? expectedVersionHeader)
     {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
         var expectedVersion = ResolveExpectedVersion(command.ExpectedVersion, ifMatch, expectedVersionHeader);
-        var updated = command with { IssueId = id, ExpectedVersion = expectedVersion };
+        var updated = command with { IssueId = id, ExpectedVersion = expectedVersion, ChangedByUserId = userId };
         var result = await _mediator.Send(updated);
         return Ok(result);
     }

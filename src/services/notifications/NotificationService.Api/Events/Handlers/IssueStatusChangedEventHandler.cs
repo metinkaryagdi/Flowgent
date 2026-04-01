@@ -48,9 +48,7 @@ public sealed class IssueStatusChangedEventHandler : IEventHandler<IssueStatusCh
         if (@event.AssigneeUserId.HasValue && @event.AssigneeUserId.Value != @event.ChangedByUserId)
             return @event.AssigneeUserId.Value;
 
-        if (@event.CreatedByUserId != @event.ChangedByUserId)
-            return @event.CreatedByUserId;
-
-        return Guid.Empty;
+        // Always notify the reporter/creator about status changes on their issue
+        return @event.CreatedByUserId;
     }
 }

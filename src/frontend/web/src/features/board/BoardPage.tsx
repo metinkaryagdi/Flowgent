@@ -30,9 +30,9 @@ import styles from './Board.module.css';
 // Priority helpers
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 const priorityLabel: Record<string, string> = {
-    [IssuePriority.Low]: 'DÃƒÂ¼Ã…Å¸ÃƒÂ¼k',
+    [IssuePriority.Low]: 'Düşük',
     [IssuePriority.Medium]: 'Orta',
-    [IssuePriority.High]: 'YÃƒÂ¼ksek',
+    [IssuePriority.High]: 'Yüksek',
     [IssuePriority.Critical]: 'Kritik',
 };
 
@@ -145,7 +145,7 @@ function IssueCardContent({
                             onClick={e => e.stopPropagation()}
                             style={{ padding: '2px 4px', borderRadius: 4, background: 'var(--bg-surface)', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.75rem', color: 'var(--text-primary)' }}
                         >
-                            <option value="">Sprint'ten Ãƒâ€¡Ã„Â±kar</option>
+                            <option value="">Sprint'ten Çıkar</option>
                             {sprints.map(s => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
@@ -159,7 +159,7 @@ function IssueCardContent({
                                 setSelectingSprint(true);
                             }}
                         >
-                            <span style={{ fontSize: 10 }}>ÄŸÅ¸â€â€</span>
+                            <span style={{ fontSize: 10 }}>👤</span>
                             {item.sprintId ? sprints.find(s => s.id === item.sprintId)?.name || item.sprintId.slice(0, 8) : 'Sprint ata...'}
                         </div>
                     )}
@@ -177,7 +177,7 @@ function IssueCardContent({
                         {initials}
                     </div>
                 ) : (
-                    <div className={styles.unassigned} title="AtanmamÃ„Â±Ã…Å¸">?</div>
+                    <div className={styles.unassigned} title="Atanmamış">?</div>
                 )}
             </div>
         </>
@@ -273,17 +273,19 @@ export default function BoardPage() {
     const loadBoard = useCallback(async () => {
         if (!projectId) return;
         try {
-            const [boardData, sprintsData] = await Promise.all([
-                bffApi.getBoard(projectId),
-                sprintsApi.getByProject(projectId)
-            ]);
+            const boardData = await bffApi.getBoard(projectId);
             setBoard(boardData);
-            setSprints(sprintsData);
             setError('');
         } catch {
-            setError('Board veya sprintler yÃƒÂ¼klenirken hata oluÃ…Å¸tu.');
+            setError('Board veya sprintler yüklenirken hata oluştu.');
         } finally {
             setLoading(false);
+        }
+        try {
+            const sprintsData = await sprintsApi.getByProject(projectId);
+            setSprints(sprintsData);
+        } catch {
+            setSprints([]);
         }
     }, [projectId]);
 
@@ -408,7 +410,7 @@ export default function BoardPage() {
 
         if (currentKey && board.config.allowedTransitions[currentKey]) {
             if (!board.config.allowedTransitions[currentKey].includes(targetColumnKey)) {
-                showToast('Bu durum geÃƒÂ§iÃ…Å¸ine izin verilmiyor.', 'warning');
+                showToast('Bu durum geçişine izin verilmiyor.', 'warning');
                 return;
             }
         }
@@ -428,7 +430,7 @@ export default function BoardPage() {
                 newStatus,
                 expectedVersion: draggedItem.version,
             });
-            showToast('Durum gÃƒÂ¼ncellendi!');
+            showToast('Durum güncellendi!');
             // Reload to get fresh versions
             await loadBoard();
         } catch (err: unknown) {
@@ -438,12 +440,12 @@ export default function BoardPage() {
             if (err && typeof err === 'object' && 'response' in err) {
                 const axiosErr = err as { response?: { status?: number } };
                 if (axiosErr.response?.status === 409) {
-                    showToast('Bu issue baÃ…Å¸kasÃ„Â± tarafÃ„Â±ndan gÃƒÂ¼ncellendi! Sayfa yenileniyor...', 'warning');
+                    showToast('Bu issue başkası tarafından güncellendi! Sayfa yenileniyor...', 'warning');
                     setTimeout(() => loadBoard(), 1500);
                     return;
                 }
             }
-            showToast('Durum gÃƒÂ¼ncellenirken hata oluÃ…Å¸tu.', 'error');
+            showToast('Durum güncellenirken hata oluştu.', 'error');
         }
     };
 
@@ -468,10 +470,10 @@ export default function BoardPage() {
                     await sprintsApi.removeIssue(item.sprintId, issueId);
                 }
             }
-            showToast('Sprint gÃƒÂ¼ncellendi!');
+            showToast('Sprint güncellendi!');
             await loadBoard();
         } catch {
-            showToast('Sprint gÃƒÂ¼ncellenirken hata oluÃ…Å¸tu.', 'error');
+            showToast('Sprint güncellenirken hata oluştu.', 'error');
         }
     };
 
@@ -481,8 +483,8 @@ export default function BoardPage() {
             <div className={styles.boardPage}>
                 <div className={styles.boardHeader}>
                     <div className={styles.boardHeaderLeft}>
-                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>Ã¢â€ Â</button>
-                        <h1 className={styles.boardTitle}>YÃƒÂ¼kleniyor...</h1>
+                        <button className={styles.backBtn} onClick={() => navigate('/projects')}>←</button>
+                        <h1 className={styles.boardTitle}>Yükleniyor...</h1>
                     </div>
                 </div>
                 <div className={styles.boardLoading}>
@@ -503,16 +505,16 @@ export default function BoardPage() {
         return (
             <div className={styles.boardPage}>
                 <div className={styles.errorState}>
-                    <div className={styles.errorIcon}>Ã¢Å¡Â Ã¯Â¸Â</div>
-                    <h2 className={styles.errorTitle}>{error || 'Board bulunamadÃ„Â±'}</h2>
-                    <p className={styles.errorText}>LÃƒÂ¼tfen tekrar deneyin veya projeye geri dÃƒÂ¶nÃƒÂ¼n.</p>
+                    <div className={styles.errorIcon}>⚠️</div>
+                    <h2 className={styles.errorTitle}>{error || 'Board bulunamadı'}</h2>
+                    <p className={styles.errorText}>Lütfen tekrar deneyin veya projeye geri dönün.</p>
                     <button className={styles.retryBtn} onClick={loadBoard}>Tekrar Dene</button>
                     <button
                         className={styles.backBtn}
                         style={{ marginTop: 8 }}
                         onClick={() => navigate('/projects')}
                     >
-                        Ã¢â€ Â Projelere DÃƒÂ¶n
+                        ← Projelere Dön
                     </button>
                 </div>
             </div>
@@ -524,7 +526,7 @@ export default function BoardPage() {
             {/* Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <div className={styles.boardHeader}>
                 <div className={styles.boardHeaderLeft}>
-                    <button className={styles.backBtn} onClick={() => navigate('/projects')}>Ã¢â€ Â</button>
+                    <button className={styles.backBtn} onClick={() => navigate('/projects')}>←</button>
                     <h1 className={styles.boardTitle}>
                         {board.project?.name || 'Board'}
                         {board.project?.key && <span className={styles.boardKey}>{board.project.key}</span>}
@@ -561,10 +563,10 @@ export default function BoardPage() {
                     value={priorityFilter}
                     onChange={(e) => setPriorityFilter(e.target.value as 'all' | IssuePriority)}
                 >
-                    <option value="all">TÃ¼m Ã–ncelikler</option>
-                    <option value={IssuePriority.Low}>DÃ¼ÅŸÃ¼k</option>
+                    <option value="all">Tüm Öncelikler</option>
+                    <option value={IssuePriority.Low}>Düşük</option>
                     <option value={IssuePriority.Medium}>Orta</option>
-                    <option value={IssuePriority.High}>YÃ¼ksek</option>
+                    <option value={IssuePriority.High}>Yüksek</option>
                     <option value={IssuePriority.Critical}>Kritik</option>
                 </select>
                 <select
@@ -572,8 +574,8 @@ export default function BoardPage() {
                     value={assigneeFilter}
                     onChange={(e) => setAssigneeFilter(e.target.value)}
                 >
-                    <option value="all">TÃ¼m Atananlar</option>
-                    <option value="unassigned">AtanmamÄ±ÅŸ</option>
+                    <option value="all">Tüm Atananlar</option>
+                    <option value="unassigned">Atanmamış</option>
                     {assigneeOptions.map((assignee) => (
                         <option key={assignee.id} value={assignee.id}>{assignee.label}</option>
                     ))}
@@ -583,8 +585,8 @@ export default function BoardPage() {
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as 'all' | 'open' | 'inprogress' | 'done')}
                 >
-                    <option value="all">TÃ¼m Durumlar</option>
-                    <option value="open">AÃ§Ä±k</option>
+                    <option value="all">Tüm Durumlar</option>
+                    <option value="open">Açık</option>
                     <option value="inprogress">Devam</option>
                     <option value="done">Bitti</option>
                 </select>
@@ -709,10 +711,10 @@ function CreateIssueModal({
     return (
         <div className={styles.modalOverlay} onClick={onClose}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <h2 className={styles.modalTitle}>Yeni Issue OluÃ…Å¸tur</h2>
+                <h2 className={styles.modalTitle}>Yeni Issue Oluştur</h2>
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel} htmlFor="issueTitle">BaÃ…Å¸lÃ„Â±k *</label>
+                        <label className={styles.formLabel} htmlFor="issueTitle">Başlık *</label>
                         <input
                             id="issueTitle"
                             data-testid="issue-title"
@@ -720,19 +722,19 @@ function CreateIssueModal({
                             className={styles.formInput}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Issue baÃ…Å¸lÃ„Â±Ã„Å¸Ã„Â±"
+                            placeholder="Issue başlığı"
                             autoFocus
                         />
                     </div>
                     <div className={styles.formGroup}>
-                        <label className={styles.formLabel} htmlFor="issueDesc">AÃƒÂ§Ã„Â±klama</label>
+                        <label className={styles.formLabel} htmlFor="issueDesc">Açıklama</label>
                         <textarea
                             id="issueDesc"
                             data-testid="issue-description"
                             className={styles.formTextarea}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Ã„Â°steÃ„Å¸e baÃ„Å¸lÃ„Â± aÃƒÂ§Ã„Â±klama"
+                            placeholder="İsteğe bağlı açıklama"
                         />
                     </div>
                     <div className={styles.formGroup}>
@@ -744,9 +746,9 @@ function CreateIssueModal({
                             value={priority}
                             onChange={(e) => setPriority(e.target.value as IssuePriority)}
                         >
-                            <option value={IssuePriority.Low}>DÃƒÂ¼Ã…Å¸ÃƒÂ¼k</option>
+                            <option value={IssuePriority.Low}>Düşük</option>
                             <option value={IssuePriority.Medium}>Orta</option>
-                            <option value={IssuePriority.High}>YÃƒÂ¼ksek</option>
+                            <option value={IssuePriority.High}>Yüksek</option>
                             <option value={IssuePriority.Critical}>Kritik</option>
                         </select>
                     </div>
@@ -754,14 +756,14 @@ function CreateIssueModal({
                         <p style={{ color: 'var(--color-error, #ef4444)', fontSize: '0.8rem', margin: '0 0 12px' }}>{errorMsg}</p>
                     )}
                     <div className={styles.modalFooter}>
-                        <button type="button" className={styles.btnSecondary} onClick={onClose}>Ã„Â°ptal</button>
+                        <button type="button" className={styles.btnSecondary} onClick={onClose}>İptal</button>
                         <button
                             type="submit"
                             className={styles.btnPrimary}
                             disabled={submitting || !title.trim()}
                             data-testid="issue-create-submit"
                         >
-                            {submitting ? 'OluÃ…Å¸turuluyor...' : 'OluÃ…Å¸tur'}
+                            {submitting ? 'Oluşturuluyor...' : 'Oluştur'}
                         </button>
                     </div>
                 </form>

@@ -17,8 +17,10 @@ public interface IEventBus
     Task PublishRawAsync(string eventType, string payload, CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// Subscribes to an event type
+    /// Legacy subscription hook kept only for backward compatibility.
+    /// Queue topology is owned by service-specific BackgroundService consumers.
     /// </summary>
+    [Obsolete("Legacy generic queue topology is disabled. Declare service-specific queues inside a BackgroundService consumer.")]
     void Subscribe<TEvent, THandler>() 
         where TEvent : IIntegrationEvent
         where THandler : IEventHandler<TEvent>;

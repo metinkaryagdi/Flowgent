@@ -20,9 +20,9 @@ export const IssuePriority = {
 export type IssuePriority = typeof IssuePriority[keyof typeof IssuePriority];
 
 export const SprintStatus = {
-  Planned: 0,
-  Active: 1,
-  Completed: 2,
+  Planned: 'Planned',
+  Active: 'Active',
+  Completed: 'Completed',
 } as const;
 export type SprintStatus = typeof SprintStatus[keyof typeof SprintStatus];
 

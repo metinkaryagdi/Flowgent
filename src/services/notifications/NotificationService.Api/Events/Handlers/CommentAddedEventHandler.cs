@@ -22,10 +22,10 @@ public sealed class CommentAddedEventHandler : IEventHandler<CommentAddedEvent>
     public async Task HandleAsync(CommentAddedEvent @event, CancellationToken cancellationToken = default)
     {
         Guid recipient;
-        if (@event.AssigneeUserId.HasValue
-            && @event.AssigneeUserId.Value != Guid.Empty
-            && @event.AssigneeUserId.Value != @event.AuthorUserId)
+        if (@event.AssigneeUserId.HasValue && @event.AssigneeUserId.Value != Guid.Empty)
         {
+            if (@event.AssigneeUserId.Value == @event.AuthorUserId)
+                return;
             recipient = @event.AssigneeUserId.Value;
         }
         else if (@event.CreatedByUserId != Guid.Empty

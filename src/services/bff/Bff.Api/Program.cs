@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Polly.Extensions.Http;
 using Serilog;
+using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
 
 Log.Logger = new LoggerConfiguration()
@@ -73,12 +74,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<CorrelationContext>();
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
 app.UseRouting();
 app.UseCorrelationId();
+
+// Read accessToken cookie and inject as Bearer token for JWT authentication
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Headers.ContainsKey("Authorization") &&
+        context.Request.Cookies.TryGetValue("accessToken", out var token))
+    {
+        context.Request.Headers.Authorization = $"Bearer {token}";
+    }
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

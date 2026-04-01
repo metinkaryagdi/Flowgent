@@ -50,7 +50,7 @@ public sealed class NotificationsControllerTests
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
 
-        var result = await controller.MarkRead(Guid.NewGuid());
+        var result = await controller.MarkRead(Guid.NewGuid(), CancellationToken.None);
 
         result.Result.Should().BeOfType<UnauthorizedResult>();
         await mediator.DidNotReceive().Send(Arg.Any<MarkNotificationReadCommand>());
@@ -69,7 +69,7 @@ public sealed class NotificationsControllerTests
         var dto = new NotificationDto { Id = Guid.NewGuid() };
         mediator.Send(Arg.Any<MarkNotificationReadCommand>()).Returns(dto);
 
-        var result = await controller.MarkRead(Guid.NewGuid());
+        var result = await controller.MarkRead(Guid.NewGuid(), CancellationToken.None);
 
         result.Result.Should().BeOfType<OkObjectResult>();
         await mediator.Received(1).Send(Arg.Is<MarkNotificationReadCommand>(c => c.UserId == userId));

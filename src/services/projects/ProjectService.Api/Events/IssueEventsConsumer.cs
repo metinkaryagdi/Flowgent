@@ -10,6 +10,7 @@ using BitirmeProject.ProjectService.Application.Abstractions;
 using BitirmeProject.ProjectService.Domain.Entities;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Logging;
+using Shared.Common.Messaging;
 using Shared.Contracts.Events;
 
 namespace BitirmeProject.ProjectService.Api.Events;
@@ -21,9 +22,9 @@ public sealed class IssueEventsConsumer : BackgroundService
     private readonly IConfiguration _configuration;
     private IConnection? _connection;
     private IModel? _channel;
-    private const string ExchangeName = "bitirme_events";
+    private const string ExchangeName = RabbitMqTopology.EventsExchangeName;
     private const string ServiceName = "ProjectService";
-    private const string DlxName = "bitirme_events.dlx";
+    private const string DlxName = RabbitMqTopology.DeadLetterExchangeName;
 
     public IssueEventsConsumer(
         IServiceScopeFactory scopeFactory,
@@ -52,15 +53,18 @@ public sealed class IssueEventsConsumer : BackgroundService
 
         foreach (var eventType in eventTypes)
         {
-            var dlqName = $"{ServiceName}.{eventType}.dlq";
+            var dlqName = RabbitMqTopology.GetDeadLetterQueueName(ServiceName, eventType);
             _channel.QueueDeclare(queue: dlqName, durable: true, exclusive: false, autoDelete: false);
-            _channel.QueueBind(queue: dlqName, exchange: DlxName, routingKey: $"{ServiceName}.{eventType}");
+            _channel.QueueBind(
+                queue: dlqName,
+                exchange: DlxName,
+                routingKey: RabbitMqTopology.GetDeadLetterRoutingKey(ServiceName, eventType));
 
-            var queueName = $"{ServiceName}.{eventType}.queue";
+            var queueName = RabbitMqTopology.GetQueueName(ServiceName, eventType);
             var queueArgs = new Dictionary<string, object>
             {
                 ["x-dead-letter-exchange"] = DlxName,
-                ["x-dead-letter-routing-key"] = $"{ServiceName}.{eventType}"
+                ["x-dead-letter-routing-key"] = RabbitMqTopology.GetDeadLetterRoutingKey(ServiceName, eventType)
             };
             _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: queueArgs);
             _channel.QueueBind(queue: queueName, exchange: ExchangeName, routingKey: eventType);
@@ -71,7 +75,7 @@ public sealed class IssueEventsConsumer : BackgroundService
 
         foreach (var eventType in eventTypes)
         {
-            var queueName = $"{ServiceName}.{eventType}.queue";
+            var queueName = RabbitMqTopology.GetQueueName(ServiceName, eventType);
             _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
         }
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
+using Shared.Common.Messaging;
 
 namespace BitirmeProject.NotificationService.Api.Health;
 
@@ -8,10 +9,10 @@ public sealed class NotificationDlqHealthCheck : IHealthCheck
 {
     private static readonly string[] DlqNames =
     {
-        "NotificationService.IssueAssignedEvent.dlq",
-        "NotificationService.IssueStatusChangedEvent.dlq",
-        "NotificationService.CommentAddedEvent.dlq",
-        "NotificationService.MemberAddedEvent.dlq"
+        RabbitMqTopology.GetDeadLetterQueueName("NotificationService", "IssueAssignedEvent"),
+        RabbitMqTopology.GetDeadLetterQueueName("NotificationService", "IssueStatusChangedEvent"),
+        RabbitMqTopology.GetDeadLetterQueueName("NotificationService", "CommentAddedEvent"),
+        RabbitMqTopology.GetDeadLetterQueueName("NotificationService", "MemberAddedEvent")
     };
 
     private readonly IConfiguration _configuration;
@@ -43,16 +44,18 @@ public sealed class NotificationDlqHealthCheck : IHealthCheck
             };
 
             using var connection = factory.CreateConnection();
-            using var channel = connection.CreateModel();
 
             var queueDepths = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
             uint totalDepth = 0;
 
             foreach (var queueName in DlqNames)
             {
+                // Use a fresh channel per queue: OperationInterruptedException closes the channel,
+                // so reusing a closed channel would corrupt subsequent iterations.
+                using var queueChannel = connection.CreateModel();
                 try
                 {
-                    var result = channel.QueueDeclarePassive(queueName);
+                    var result = queueChannel.QueueDeclarePassive(queueName);
                     queueDepths[queueName] = result.MessageCount;
                     totalDepth += result.MessageCount;
                 }

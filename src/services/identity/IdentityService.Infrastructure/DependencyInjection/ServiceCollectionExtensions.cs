@@ -4,6 +4,7 @@ using BitirmeProject.IdentityService.Infrastructure.Repositories;
 using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shared.Abstractions.Messaging;
@@ -21,7 +22,8 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<IdentityDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            options.UseNpgsql(connectionString)
+                   .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 
         // IUnitOfWork â†’ DbContext

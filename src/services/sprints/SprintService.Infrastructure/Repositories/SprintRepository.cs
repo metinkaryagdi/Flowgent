@@ -26,6 +26,14 @@ public sealed class SprintRepository : ISprintRepository
             .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Active, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Sprint>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Sprints
+            .Where(s => s.ProjectId == projectId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Sprint sprint, CancellationToken cancellationToken = default)
     {
         await _dbContext.Sprints.AddAsync(sprint, cancellationToken);

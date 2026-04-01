@@ -109,7 +109,8 @@ public class User : BaseEntity
         if (_userRoles.Any(ur => ur.RoleId == role.Id))
             return;
 
-        _userRoles.Add(new UserRole(Id, role.Id));
+        _userRoles.Add(new UserRole(Id, role));
+        SecurityStamp = Guid.NewGuid(); // Invalidate sessions on role change
         MarkUpdated();
     }
 
@@ -120,6 +121,7 @@ public class User : BaseEntity
             return;
 
         _userRoles.Remove(link);
+        SecurityStamp = Guid.NewGuid(); // Invalidate sessions on role change
         MarkUpdated();
     }
 

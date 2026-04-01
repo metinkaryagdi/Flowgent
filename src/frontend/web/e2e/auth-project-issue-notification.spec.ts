@@ -6,7 +6,7 @@ test('register -> project -> issue -> notification', async ({ page }) => {
   const email = `e2e_${unique}@example.com`;
   const password = 'Test1234!';
   const projectName = `E2E Project ${unique}`;
-  const projectKey = `E2E${unique.slice(-2)}`.toUpperCase();
+  const projectKey = `E${unique.slice(-5)}`.toUpperCase();
   const issueTitle = `E2E Issue ${unique}`;
 
   await page.route('**/api/v1/bff/flags', async (route) => {
@@ -36,7 +36,7 @@ test('register -> project -> issue -> notification', async ({ page }) => {
 
   await expect(page).toHaveURL(/\/projects/);
 
-  await page.getByTestId('project-create-open').click();
+  await page.getByTestId('project-create-open').first().click();
   await page.getByTestId('project-name').fill(projectName);
   await page.getByTestId('project-key').fill(projectKey);
   const createRequestPromise = page.waitForRequest((req) =>
@@ -67,9 +67,24 @@ test('register -> project -> issue -> notification', async ({ page }) => {
   await expect(issueCard).toBeVisible();
 
   const inProgressColumn = page.getByTestId('board-column-inprogress');
-  await issueCard.dragTo(inProgressColumn);
-  await expect(inProgressColumn).toContainText(issueTitle);
+  const issueBox = await issueCard.boundingBox();
+  const columnBox = await inProgressColumn.boundingBox();
+  if (!issueBox || !columnBox) throw new Error('Drag elements not found');
+  await page.mouse.move(issueBox.x + issueBox.width / 2, issueBox.y + issueBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(issueBox.x + issueBox.width / 2 + 10, issueBox.y + issueBox.height / 2, { steps: 5 });
+  await page.mouse.move(columnBox.x + columnBox.width / 2, columnBox.y + columnBox.height / 2, { steps: 20 });
+  await page.mouse.up();
+  await expect(inProgressColumn).toContainText(issueTitle, { timeout: 15000 });
 
+  await page.getByTestId('nav-notifications').click();
+  await expect(page).toHaveURL(/\/notifications/);
+
+  // Wait for async event pipeline (outbox → RabbitMQ → notification service)
+  await page.waitForTimeout(8000);
+  // Navigate away and back (SPA navigation) to trigger re-fetch
+  await page.getByTestId('nav-projects').click();
+  await expect(page).toHaveURL(/\/projects/);
   await page.getByTestId('nav-notifications').click();
   await expect(page).toHaveURL(/\/notifications/);
 

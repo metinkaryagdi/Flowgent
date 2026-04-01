@@ -19,6 +19,8 @@ public interface IUserRepository
         Guid? excludeUserId = null,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);

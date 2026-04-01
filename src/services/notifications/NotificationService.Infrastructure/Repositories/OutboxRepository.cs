@@ -36,24 +36,34 @@ public sealed class OutboxRepository : IOutboxRepository
         var now = DateTime.UtcNow;
         var claimUntil = now.Add(lockDuration);
 
-        var messages = await _dbContext.OutboxMessages
+        var candidateIds = await _dbContext.OutboxMessages
             .Where(x => x.Status == OutboxStatus.Pending
                         && (x.NextRetryAt == null || x.NextRetryAt <= now)
                         && (x.ClaimedUntil == null || x.ClaimedUntil <= now))
             .OrderBy(x => x.OccurredOn)
             .Take(batchSize)
+            .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var msg in messages)
-        {
-            msg.Status = OutboxStatus.Processing;
-            msg.LockId = lockId;
-            msg.ClaimedUntil = claimUntil;
-            msg.LastAttemptedAt = now;
-        }
+        if (candidateIds.Count == 0)
+            return [];
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return messages;
+        await _dbContext.OutboxMessages
+            .Where(x => candidateIds.Contains(x.Id)
+                        && x.Status == OutboxStatus.Pending
+                        && (x.ClaimedUntil == null || x.ClaimedUntil <= now))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.Status, OutboxStatus.Processing)
+                .SetProperty(x => x.LockId, lockId)
+                .SetProperty(x => x.ClaimedUntil, claimUntil)
+                .SetProperty(x => x.LastAttemptedAt, now),
+                cancellationToken);
+
+        return await _dbContext.OutboxMessages
+            .Where(x => candidateIds.Contains(x.Id)
+                        && x.LockId == lockId
+                        && x.Status == OutboxStatus.Processing)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task MarkAsPublishedAsync(Guid messageId, DateTime publishedOn, CancellationToken cancellationToken = default)

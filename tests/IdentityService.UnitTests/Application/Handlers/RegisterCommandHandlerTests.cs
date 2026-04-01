@@ -77,8 +77,8 @@ public sealed class RegisterCommandHandlerTests
         userRepository.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
         hasher.HashPassword(Arg.Any<string>()).Returns("hashed_password");
 
-        var defaultRole = new Role("Viewer");
-        roleRepo.GetByNameAsync("Viewer", Arg.Any<CancellationToken>()).Returns(defaultRole);
+        var defaultRole = new Role("Member");
+        roleRepo.GetByNameAsync("Member", Arg.Any<CancellationToken>()).Returns(defaultRole);
 
         jwt.Generate(Arg.Any<User>(), Arg.Any<IReadOnlyList<string>>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
         mapper.Map<UserDto>(Arg.Any<User>()).Returns(new UserDto { Id = Guid.NewGuid(), Email = "user@example.com" });

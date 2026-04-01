@@ -1,4 +1,5 @@
 using BitirmeProject.SprintService.Application.DTOs;
+using BitirmeProject.SprintService.Domain.Enums;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.CompleteSprint;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.CreateSprint;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.StartSprint;
@@ -8,9 +9,11 @@ using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprin
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetBacklog;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetActiveSprint;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprintVelocity;
+using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprintsByProject;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Common.Extensions;
 
 namespace BitirmeProject.SprintService.Api.Controllers;
 
@@ -29,31 +32,41 @@ public sealed class SprintsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SprintDto>> Create([FromBody] CreateSprintCommand command)
     {
-        var result = await _mediator.Send(command);
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        var updated = command with { CreatedByUserId = userId };
+        var result = await _mediator.Send(updated);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/start")]
-    public async Task<ActionResult<SprintDto>> Start(Guid id, [FromBody] StartSprintCommand command)
+    public async Task<ActionResult<SprintDto>> Start(Guid id)
     {
-        var updated = command with { SprintId = id };
-        var result = await _mediator.Send(updated);
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        var command = new StartSprintCommand(id, userId, null);
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/complete")]
-    public async Task<ActionResult<SprintDto>> Complete(Guid id, [FromBody] CompleteSprintCommand command)
+    public async Task<ActionResult<SprintDto>> Complete(Guid id, [FromBody] CompleteSprintRequest? request = null)
     {
-        var updated = command with { SprintId = id };
-        var result = await _mediator.Send(updated);
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        var command = new CompleteSprintCommand(
+            id,
+            userId,
+            null,
+            request?.CarryOverPolicy ?? SprintCarryOverPolicy.Backlog,
+            request?.NextSprintId);
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/issues")]
     public async Task<ActionResult<SprintIssueDto>> AddIssue(Guid id, [FromBody] AddIssueCommand command)
     {
+        var userId = User.TryGetUserId() ?? Guid.Empty;
         var token = Request.Cookies["accessToken"];
-        var updated = command with { SprintId = id, BearerToken = string.IsNullOrWhiteSpace(token) ? null : token };
+        var updated = command with { SprintId = id, AddedByUserId = userId, BearerToken = string.IsNullOrWhiteSpace(token) ? null : token };
         var result = await _mediator.Send(updated);
         return Ok(result);
     }
@@ -63,6 +76,13 @@ public sealed class SprintsController : ControllerBase
     {
         var updated = command with { SprintId = id, IssueId = issueId };
         var result = await _mediator.Send(updated);
+        return Ok(result);
+    }
+
+    [HttpGet("project/{projectId:guid}")]
+    public async Task<ActionResult<IReadOnlyList<SprintDto>>> GetByProject(Guid projectId)
+    {
+        var result = await _mediator.Send(new GetSprintsByProjectQuery(projectId));
         return Ok(result);
     }
 
@@ -94,3 +114,7 @@ public sealed class SprintsController : ControllerBase
         return Ok(result);
     }
 }
+
+public sealed record CompleteSprintRequest(
+    SprintCarryOverPolicy CarryOverPolicy = SprintCarryOverPolicy.Backlog,
+    Guid? NextSprintId = null);

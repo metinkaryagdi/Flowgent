@@ -14,6 +14,14 @@ public sealed class RoleRepository : IRoleRepository
         _dbContext = dbContext;
     }
 
+    public async Task<IReadOnlyList<Role>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Roles
+            .Where(r => !r.IsDeleted)
+            .OrderBy(r => r.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Role?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Roles
