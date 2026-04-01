@@ -74,6 +74,7 @@ export default function AppLayout() {
         if (path === '/projects') return 'Projeler';
         if (path === '/notifications') return 'Bildirimler';
         if (path === '/admin') return 'Yönetim Paneli';
+        if (path === '/settings/organization') return 'Organizasyon Ayarları';
         if (path.includes('/board')) return 'Projeler › Board';
         if (path.includes('/sprints')) return 'Projeler › Sprint';
         return 'Kontrol Paneli';
@@ -156,6 +157,17 @@ export default function AppLayout() {
                         <span className={styles.sidebar__linkIcon}>🔔</span>
                         Bildirimler
                         {unreadCount > 0 && <span className={styles.sidebar__badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                    </NavLink>
+
+                    <span className={styles.sidebar__sectionLabel}>Ayarlar</span>
+                    <NavLink
+                        to="/settings/organization"
+                        className={({ isActive }) =>
+                                                    }
+                        data-testid="nav-organization"
+                    >
+                        <span className={styles.sidebar__linkIcon}>🏢</span>
+                        Organizasyon
                     </NavLink>
 
                     {flags?.canViewAdmin && (
