@@ -8,6 +8,7 @@ using BitirmeProject.ProjectService.Application.Features.Projects.Commands.Updat
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectById;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByUser;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByUserPaged;
+using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByOrganizationPaged;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetTeamMembers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -34,15 +35,43 @@ public sealed class ProjectsController : ControllerBase
     public async Task<ActionResult<ProjectDto>> Create([FromBody] CreateProjectCommand command)
     {
         var ownerUserId = User.GetUserId();
-        var orgId = User.FindFirst("org_id")?.Value is string s && Guid.TryParse(s, out var g) ? g : (Guid?)null;
+        var orgId = User.TryGetOrganizationId();
         var safeCommand = command with { OwnerUserId = ownerUserId, OrganizationId = orgId };
         var result = await _mediator.Send(safeCommand);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
+    /// <summary>
+    /// Returns all projects belonging to the caller's active organization (from JWT org_id claim), paged.
+    /// This is the primary endpoint for org-member project listing.
+    /// </summary>
+    [HttpGet("organization/paged")]
+    public async Task<ActionResult<PagedResult<ProjectDto>>> GetByOrganizationPaged(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string? search = null,
+        [FromQuery] bool includeArchived = false)
+    {
+        var orgId = User.TryGetOrganizationId();
+        if (!orgId.HasValue)
+            return BadRequest("No active organization context. Please switch to an organization first.");
+
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 12;
+        if (pageSize > 200) pageSize = 200;
+
+        var result = await _mediator.Send(new GetProjectsByOrganizationPagedQuery(
+            orgId.Value, page, pageSize, search, includeArchived));
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ProjectDto>> GetById(Guid id)
     {
+        var (_, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
         var result = await _mediator.Send(new GetProjectByIdQuery(id));
         if (result is null)
             return NotFound();
@@ -58,7 +87,7 @@ public sealed class ProjectsController : ControllerBase
         if (!User.HasRole("Admin") && requesterId != userId)
             return Forbid();
 
-        var orgId = User.FindFirst("org_id")?.Value is string s && Guid.TryParse(s, out var g) ? g : (Guid?)null;
+        var orgId = User.TryGetOrganizationId();
         var result = await _mediator.Send(new GetProjectsByUserQuery(userId, orgId));
         return Ok(result);
     }
@@ -80,13 +109,23 @@ public sealed class ProjectsController : ControllerBase
         if (pageSize < 1) pageSize = 12;
         if (pageSize > 200) pageSize = 200;
 
-        var result = await _mediator.Send(new GetProjectsByUserPagedQuery(userId, page, pageSize, search, includeArchived));
+        var result = await _mediator.Send(new GetProjectsByUserPagedQuery(
+            userId,
+            User.TryGetOrganizationId(),
+            page,
+            pageSize,
+            search,
+            includeArchived));
         return Ok(result);
     }
 
     [HttpGet("{id:guid}/members")]
     public async Task<ActionResult<IReadOnlyList<ProjectMemberDto>>> GetMembers(Guid id)
     {
+        var (_, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
         var result = await _mediator.Send(new GetTeamMembersQuery(id));
         return Ok(result);
     }
@@ -94,14 +133,18 @@ public sealed class ProjectsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<ProjectDto>> Update(Guid id, [FromBody] UpdateProjectCommand command)
     {
-        // Ownership guard: only the project owner or an Admin may update.
+        // Ownership guard: project owner, org Manager/Owner, or system Admin may update.
         var callerId = User.GetUserId();
         var isAdmin = User.HasRole("Admin");
-        if (!isAdmin)
+        var (project, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
+        if (!isAdmin && project is not null)
         {
-            var project = await _projectRepository.GetByIdAsync(id, HttpContext.RequestAborted);
-            if (project is null) return NotFound();
-            if (project.OwnerUserId != callerId) return Forbid();
+            var orgRole = User.GetOrganizationRole();
+            var isOrgManager = orgRole is "Owner" or "Manager";
+            if (project.OwnerUserId != callerId && !isOrgManager) return Forbid();
         }
 
         // UpdatedByUserId must come from authenticated Claims, never from the request body.
@@ -113,14 +156,18 @@ public sealed class ProjectsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult<ProjectDto>> Delete(Guid id)
     {
-        // Ownership guard: only the project owner or an Admin may delete.
+        // Ownership guard: project owner, org Manager/Owner, or system Admin may delete.
         var callerId = User.GetUserId();
         var isAdmin = User.HasRole("Admin");
-        if (!isAdmin)
+        var (project, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
+        if (!isAdmin && project is not null)
         {
-            var project = await _projectRepository.GetByIdAsync(id, HttpContext.RequestAborted);
-            if (project is null) return NotFound();
-            if (project.OwnerUserId != callerId) return Forbid();
+            var orgRole = User.GetOrganizationRole();
+            var isOrgManager = orgRole is "Owner" or "Manager";
+            if (project.OwnerUserId != callerId && !isOrgManager) return Forbid();
         }
 
         var result = await _mediator.Send(new DeleteProjectCommand(id));
@@ -130,6 +177,10 @@ public sealed class ProjectsController : ControllerBase
     [HttpPost("{id:guid}/members")]
     public async Task<ActionResult<ProjectDto>> AddMember(Guid id, [FromBody] AddMemberCommand command)
     {
+        var (_, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
         var updated = command with
         {
             ProjectId = id,
@@ -142,8 +193,28 @@ public sealed class ProjectsController : ControllerBase
     [HttpDelete("{id:guid}/members/{userId:guid}")]
     public async Task<ActionResult<ProjectDto>> RemoveMember(Guid id, Guid userId)
     {
+        var (_, error) = await AuthorizeProjectScopeAsync(id);
+        if (error is not null)
+            return error;
+
         var result = await _mediator.Send(new RemoveMemberCommand(id, userId, User.GetUserId()));
         return Ok(result);
     }
-}
 
+    private async Task<(Domain.Entities.Project? Project, ActionResult? Error)> AuthorizeProjectScopeAsync(Guid projectId)
+    {
+        var cancellationToken = HttpContext?.RequestAborted ?? CancellationToken.None;
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+        if (project is null)
+            return (null, NotFound());
+
+        if (User.HasRole("Admin"))
+            return (project, null);
+
+        var callerOrgId = User.TryGetOrganizationId();
+        if (project.OrganizationId.HasValue && project.OrganizationId != callerOrgId)
+            return (null, Forbid());
+
+        return (project, null);
+    }
+}

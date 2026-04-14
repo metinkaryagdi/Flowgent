@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using BitirmeProject.IdentityService.Application.Abstractions;
@@ -20,7 +21,9 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -44,12 +47,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = ctx =>
             {
                 ctx.Token = ctx.Request.Cookies["accessToken"];
+
+                if (string.IsNullOrWhiteSpace(ctx.Token)
+                    && ctx.Request.Headers.TryGetValue("Authorization", out var authHeader))
+                {
+                    var value = authHeader.ToString();
+                    if (value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        ctx.Token = value["Bearer ".Length..].Trim();
+                }
+
                 return Task.CompletedTask;
             },
             OnTokenValidated = async ctx =>
             {
                 var stampClaim = ctx.Principal?.FindFirst("security_stamp")?.Value;
-                var userIdStr = ctx.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                var userIdStr = ctx.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                             ?? ctx.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
                 if (stampClaim is null || !Guid.TryParse(userIdStr, out var userId))
                 {

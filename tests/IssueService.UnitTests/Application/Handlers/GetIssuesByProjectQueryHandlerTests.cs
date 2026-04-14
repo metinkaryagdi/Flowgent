@@ -26,7 +26,7 @@ public sealed class GetIssuesByProjectQueryHandlerTests
             new IssueBoardItem(issue1),
             new IssueBoardItem(issue2)
         };
-        repository.GetByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
+        repository.GetByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         var dto1 = new IssueBoardItemDto { IssueId = issue1.Id };
         var dto2 = new IssueBoardItemDto { IssueId = issue2.Id };

@@ -35,6 +35,15 @@ public class InvitesController : ControllerBase
         var userId = User.TryGetUserId() ?? Guid.Empty;
         if (userId == Guid.Empty) return Unauthorized();
 
+        // Fast-fail: Member role cannot send invites
+        var orgRole = User.FindFirst("org_role")?.Value;
+        if (orgRole == "Member") return Forbid();
+
+        // Cross-org guard: can only invite to the active org in JWT
+        var jwtOrgId = User.FindFirst("org_id")?.Value;
+        if (!Guid.TryParse(jwtOrgId, out var activeOrgId) || activeOrgId != request.OrganizationId)
+            return Forbid();
+
         var baseUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5173";
 
         var result = await _mediator.Send(new SendInviteCommand(
@@ -85,6 +94,15 @@ public class InvitesController : ControllerBase
         var userId = User.TryGetUserId() ?? Guid.Empty;
         if (userId == Guid.Empty) return Unauthorized();
 
+        // Fast-fail: Member role cannot view pending invites
+        var orgRole = User.FindFirst("org_role")?.Value;
+        if (orgRole == "Member") return Forbid();
+
+        // Cross-org guard: can only view invites for the active org in JWT
+        var jwtOrgId = User.FindFirst("org_id")?.Value;
+        if (!Guid.TryParse(jwtOrgId, out var activeOrgId) || activeOrgId != organizationId)
+            return Forbid();
+
         var result = await _mediator.Send(new GetPendingInvitesQuery(organizationId, userId));
         return Ok(result);
     }
@@ -98,6 +116,10 @@ public class InvitesController : ControllerBase
     {
         var userId = User.TryGetUserId() ?? Guid.Empty;
         if (userId == Guid.Empty) return Unauthorized();
+
+        // Fast-fail: Member role cannot revoke invites
+        var orgRole = User.FindFirst("org_role")?.Value;
+        if (orgRole == "Member") return Forbid();
 
         await _mediator.Send(new RevokeInviteCommand(id, userId));
         return NoContent();

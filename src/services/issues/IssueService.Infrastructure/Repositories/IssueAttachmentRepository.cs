@@ -32,4 +32,14 @@ public sealed class IssueAttachmentRepository : IIssueAttachmentRepository
         return await _dbContext.IssueAttachments
             .AnyAsync(x => x.IssueId == issueId && x.FileId == fileId, cancellationToken);
     }
+
+    public async Task RemoveByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default)
+    {
+        var items = await _dbContext.IssueAttachments
+            .Where(x => x.IssueId == issueId)
+            .ToListAsync(cancellationToken);
+
+        if (items.Count > 0)
+            _dbContext.IssueAttachments.RemoveRange(items);
+    }
 }

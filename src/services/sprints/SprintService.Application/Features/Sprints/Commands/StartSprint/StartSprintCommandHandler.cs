@@ -34,7 +34,7 @@ public sealed class StartSprintCommandHandler : IRequestHandler<StartSprintComma
         if (sprint is null)
             throw new NotFoundException("Sprint", request.SprintId);
 
-        var active = await _repository.GetActiveByProjectIdAsync(sprint.ProjectId, cancellationToken);
+        var active = await _repository.GetActiveByProjectIdAsync(sprint.ProjectId, null, cancellationToken);
         if (active is not null && active.Id != sprint.Id)
             throw new BusinessRuleException("Another active sprint exists for this project.");
 

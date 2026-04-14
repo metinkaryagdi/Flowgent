@@ -26,4 +26,14 @@ public sealed class IssueAuditRepository : IIssueAuditRepository
             .OrderBy(x => x.ChangedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task RemoveByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default)
+    {
+        var items = await _dbContext.IssueAudits
+            .Where(x => x.IssueId == issueId)
+            .ToListAsync(cancellationToken);
+
+        if (items.Count > 0)
+            _dbContext.IssueAudits.RemoveRange(items);
+    }
 }

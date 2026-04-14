@@ -3,4 +3,4 @@ using MediatR;
 
 namespace BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetActiveSprint;
 
-public sealed record GetActiveSprintQuery(Guid ProjectId) : IRequest<SprintDto?>;
+public sealed record GetActiveSprintQuery(Guid ProjectId, Guid? CallerOrgId = null) : IRequest<SprintDto?>;

@@ -24,6 +24,9 @@ public class User : BaseEntity
     /// <summary>UTC time the password was last changed.</summary>
     public DateTime? PasswordChangedAt { get; private set; }
 
+    /// <summary>The organization this user was most recently active in. Used to restore org context on login/refresh.</summary>
+    public Guid? LastActiveOrganizationId { get; private set; }
+
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
 
     // EF Core için parameterless ctor
@@ -111,6 +114,13 @@ public class User : BaseEntity
 
         _userRoles.Add(new UserRole(Id, role));
         SecurityStamp = Guid.NewGuid(); // Invalidate sessions on role change
+        MarkUpdated();
+    }
+
+    /// <summary>Records the last organization the user actively switched to. Persisted so login can restore the correct context.</summary>
+    public void SetActiveOrganization(Guid? organizationId)
+    {
+        LastActiveOrganizationId = organizationId;
         MarkUpdated();
     }
 

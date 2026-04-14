@@ -8,7 +8,7 @@ export default function OnboardingPage() {
     const [orgName, setOrgName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { user } = useAuthStore();
+    const { user, setActiveOrg } = useAuthStore();
     const navigate = useNavigate();
 
     const handleCreate = async (e: FormEvent) => {
@@ -20,7 +20,9 @@ export default function OnboardingPage() {
         }
         setLoading(true);
         try {
-            await organizationsApi.create({ name: orgName.trim() });
+            // create() now returns SwitchOrganizationResponse with new JWT already set as cookie
+            const result = await organizationsApi.create({ name: orgName.trim() });
+            setActiveOrg({ id: result.orgId, name: result.orgName, role: result.orgRole });
             navigate('/projects');
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {

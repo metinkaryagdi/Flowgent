@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using BitirmeProject.SprintService.Api.Controllers;
+using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.AddIssue;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.CreateSprint;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.StartSprint;
+using BitirmeProject.SprintService.Domain.Entities;
 using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -27,7 +29,8 @@ public sealed class SprintsControllerTests
     public async Task Create_ReturnsOk_WithResult()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new SprintsController(mediator) { ControllerContext = MakeContext() };
+        var sprintRepository = Substitute.For<ISprintRepository>();
+        var controller = new SprintsController(mediator, sprintRepository) { ControllerContext = MakeContext() };
         var startDate = DateTime.UtcNow.Date;
         var command = new CreateSprintCommand(Guid.NewGuid(), "Sprint 1", null, Guid.NewGuid(), null, startDate, startDate.AddDays(14));
         var dto = new SprintDto { Id = Guid.NewGuid(), Name = command.Name };
@@ -43,9 +46,12 @@ public sealed class SprintsControllerTests
     public async Task Start_UsesRouteId()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new SprintsController(mediator)
+        var sprintRepository = Substitute.For<ISprintRepository>();
+        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(14), Guid.NewGuid());
+        sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
+        var controller = new SprintsController(mediator, sprintRepository)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = MakeContext()
         };
         var sprintId = Guid.NewGuid();
         var dto = new SprintDto { Id = sprintId };
@@ -61,9 +67,12 @@ public sealed class SprintsControllerTests
     public async Task AddIssue_UsesRouteId()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new SprintsController(mediator)
+        var sprintRepository = Substitute.For<ISprintRepository>();
+        var sprint = new Sprint(Guid.NewGuid(), "Sprint", null, DateTime.UtcNow.Date, DateTime.UtcNow.Date.AddDays(14), Guid.NewGuid());
+        sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
+        var controller = new SprintsController(mediator, sprintRepository)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            ControllerContext = MakeContext()
         };
         var sprintId = Guid.NewGuid();
         var command = new AddIssueCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null);

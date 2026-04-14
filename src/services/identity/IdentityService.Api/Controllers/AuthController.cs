@@ -4,6 +4,7 @@ using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Revoke;
 using BitirmeProject.IdentityService.Application.Options;
+using System.IdentityModel.Tokens.Jwt;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -52,7 +53,9 @@ public sealed class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(refreshToken))
             return Unauthorized("Refresh token cookie is missing.");
 
-        var result = await _mediator.Send(new RefreshTokenCommand(refreshToken), cancellationToken);
+        var result = await _mediator.Send(
+            new RefreshTokenCommand(refreshToken, TryGetOrganizationIdFromAccessToken()),
+            cancellationToken);
         SetTokenCookies(result);
         return Ok(StripTokens(result));
     }
@@ -109,5 +112,23 @@ public sealed class AuthController : ControllerBase
         User = result.User,
         Roles = result.Roles
     };
+
+    private Guid? TryGetOrganizationIdFromAccessToken()
+    {
+        var accessToken = Request.Cookies["accessToken"];
+        if (string.IsNullOrWhiteSpace(accessToken))
+            return null;
+
+        try
+        {
+            var token = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+            var orgIdClaim = token.Claims.FirstOrDefault(c => c.Type == "org_id")?.Value;
+            return Guid.TryParse(orgIdClaim, out var organizationId) ? organizationId : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 

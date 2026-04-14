@@ -1,3 +1,4 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
@@ -14,6 +15,7 @@ public sealed class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCom
     private readonly IRoleRepository _roleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
 
     public AcceptInviteCommandHandler(
         IInviteRepository inviteRepository,
@@ -21,7 +23,8 @@ public sealed class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCom
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IPasswordHasher passwordHasher,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IMapper mapper)
     {
         _inviteRepository = inviteRepository;
         _organizationRepository = organizationRepository;
@@ -29,6 +32,7 @@ public sealed class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCom
         _roleRepository = roleRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
+        _mapper = mapper;
     }
 
     public async Task<UserDto> Handle(AcceptInviteCommand request, CancellationToken cancellationToken)
@@ -65,13 +69,6 @@ public sealed class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCom
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new UserDto
-        {
-            Id = user.Id,
-            UserName = user.UserName,
-            Email = user.Email,
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
-        };
+        return _mapper.Map<UserDto>(user);
     }
 }

@@ -43,6 +43,12 @@ public sealed class IssueRepository : IIssueRepository
         await _dbContext.Issues.AddAsync(issue, cancellationToken);
     }
 
+    public Task RemoveAsync(Issue issue, CancellationToken cancellationToken = default)
+    {
+        _dbContext.Issues.Remove(issue);
+        return Task.CompletedTask;
+    }
+
     public Task UpdateAsync(Issue issue, CancellationToken cancellationToken = default)
     {
         _dbContext.Issues.Update(issue);

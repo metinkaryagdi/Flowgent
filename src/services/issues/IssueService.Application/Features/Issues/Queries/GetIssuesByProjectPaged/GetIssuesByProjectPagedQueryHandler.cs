@@ -24,6 +24,7 @@ public sealed class GetIssuesByProjectPagedQueryHandler : IRequestHandler<GetIss
             request.PageSize,
             request.SprintId,
             request.BacklogOnly,
+            request.CallerOrgId,
             cancellationToken);
 
         return new PagedResult<IssueBoardItemDto>

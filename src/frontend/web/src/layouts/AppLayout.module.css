@@ -376,6 +376,147 @@
     background: var(--bg-surface-hover);
 }
 
+/* ── Org Switcher ─────────────── */
+.orgSwitcher {
+    position: relative;
+    margin: 0 var(--spacing-3) var(--spacing-2);
+}
+
+.orgSwitcherBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--border-radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-inverse);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    text-align: left;
+}
+
+.orgSwitcherBtn:hover {
+    background: var(--bg-sidebar-hover);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.orgSwitcherIcon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.orgSwitcherName {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.orgSwitcherRole {
+    font-size: var(--font-size-xs);
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+}
+
+.orgSwitcherChevron {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    flex-shrink: 0;
+}
+
+.orgDropdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    overflow: hidden;
+    animation: fadeIn 0.12s ease;
+}
+
+.orgDropdownHeader {
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.orgDropdownItem {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: none;
+    background: var(--bg-surface);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    text-align: left;
+    transition: background var(--transition-fast);
+}
+
+.orgDropdownItem:hover {
+    background: var(--bg-surface-hover);
+}
+
+.orgDropdownItemActive {
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.orgDropdownItemName {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.orgDropdownItemCheck {
+    font-size: 0.8rem;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+.orgDropdownDivider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 0;
+}
+
+.orgDropdownNewBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: none;
+    background: var(--bg-surface);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--color-primary);
+    text-align: left;
+    transition: background var(--transition-fast);
+}
+
+.orgDropdownNewBtn:hover {
+    background: var(--bg-surface-hover);
+}
+
 /* ── Content Area ─────────────── */
 .content {
     flex: 1;

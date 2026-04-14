@@ -52,6 +52,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = ctx =>
             {
                 ctx.Token = ctx.Request.Cookies["accessToken"];
+
+                if (string.IsNullOrWhiteSpace(ctx.Token)
+                    && ctx.Request.Headers.TryGetValue("Authorization", out var authHeader))
+                {
+                    var value = authHeader.ToString();
+                    if (value.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        ctx.Token = value["Bearer ".Length..].Trim();
+                }
+
                 return Task.CompletedTask;
             }
         };
@@ -78,6 +87,7 @@ builder.Services.AddHttpClient("StorageService", client =>
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<InternalServiceMiddleware>();
 app.UseCorrelationId();
 
 using (var scope = app.Services.CreateScope())

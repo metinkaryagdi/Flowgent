@@ -27,6 +27,15 @@ export const projectsApi = {
         return response.data;
     },
 
+    getByOrganizationPaged: async (
+        options: { page?: number; pageSize?: number; search?: string; includeArchived?: boolean } = {}
+    ): Promise<PagedResult<ProjectDto>> => {
+        const response = await apiClient.get<PagedResult<ProjectDto>>('/api/v1/projects/organization/paged', {
+            params: options,
+        });
+        return response.data;
+    },
+
     getById: async (id: string): Promise<ProjectDto> => {
         if (useMockApi) return mockApi.projects.getById(id);
         const response = await apiClient.get<ProjectDto>(`/api/v1/projects/${id}`);

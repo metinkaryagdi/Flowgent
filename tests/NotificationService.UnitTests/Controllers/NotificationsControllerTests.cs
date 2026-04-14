@@ -30,15 +30,20 @@ public sealed class NotificationsControllerTests
     public async Task Create_ReturnsOk_WithResult()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new NotificationsController(mediator);
-        var command = new CreateNotificationCommand(Guid.NewGuid(), "Title", "Body", "InApp", "Issue", Guid.NewGuid(), null, null);
+        var userId = Guid.NewGuid();
+        var controller = new NotificationsController(mediator)
+        {
+            ControllerContext = MakeContext(userId)
+        };
+        var command = new CreateNotificationCommand(userId, "Title", "Body", "InApp", "Issue", Guid.NewGuid(), null, null);
         var dto = new NotificationDto { Id = Guid.NewGuid() };
-        mediator.Send(command).Returns(dto);
+        mediator.Send(Arg.Any<CreateNotificationCommand>()).Returns(dto);
 
         var result = await controller.Create(command);
 
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().Be(dto);
+        await mediator.Received(1).Send(Arg.Is<CreateNotificationCommand>(c => c.UserId == userId));
     }
 
     [Fact]

@@ -39,7 +39,7 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
     {
         var sw = Stopwatch.StartNew();
 
-        var issue = new Issue(request.ProjectId, request.Title, request.Description, request.Priority, request.CreatedByUserId);
+        var issue = new Issue(request.ProjectId, request.Title, request.Description, request.Priority, request.CreatedByUserId, request.OrganizationId);
         await _repository.AddAsync(issue, cancellationToken);
 
         var boardItem = new IssueBoardItem(issue);

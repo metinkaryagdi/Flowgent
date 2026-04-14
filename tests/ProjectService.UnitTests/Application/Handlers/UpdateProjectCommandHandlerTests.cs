@@ -45,7 +45,7 @@ public sealed class UpdateProjectCommandHandlerTests
 
         var project = new Project("Old", "OLD", Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
-        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
         var command = new UpdateProjectCommand(project.Id, "Name", "NEW", Guid.NewGuid(), null);
@@ -69,7 +69,7 @@ public sealed class UpdateProjectCommandHandlerTests
 
         var project = new Project("Old", "OLD", Guid.NewGuid());
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
-        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
         summaryRepository.GetByProjectIdAsync(project.Id, Arg.Any<CancellationToken>()).Returns(new ProjectSummary(project.Id));
 
         var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
@@ -86,5 +86,32 @@ public sealed class UpdateProjectCommandHandlerTests
             (m.EventType == "ProjectUpdatedEvent" || m.EventType == "ProjectSettingsUpdatedEvent") &&
             !string.IsNullOrWhiteSpace(m.Payload)), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ScopesKeyCheck_ToProjectOrganization()
+    {
+        var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        var mapper = Substitute.For<IMapper>();
+
+        var organizationId = Guid.NewGuid();
+        var project = new Project("Old", "OLD", Guid.NewGuid(), organizationId);
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(project);
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+        summaryRepository.GetByProjectIdAsync(project.Id, Arg.Any<CancellationToken>()).Returns(new ProjectSummary(project.Id));
+
+        var handler = new UpdateProjectCommandHandler(repository, summaryRepository, unitOfWork, outboxRepository, mapper);
+        var command = new UpdateProjectCommand(project.Id, "New Name", "NEW", Guid.NewGuid(), Guid.NewGuid());
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await repository.Received(1).ExistsByKeyAsync(
+            command.Key,
+            organizationId,
+            project.Id,
+            Arg.Any<CancellationToken>());
     }
 }

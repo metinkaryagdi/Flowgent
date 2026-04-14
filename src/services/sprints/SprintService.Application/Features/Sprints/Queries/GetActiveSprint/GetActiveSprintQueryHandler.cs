@@ -18,7 +18,7 @@ public sealed class GetActiveSprintQueryHandler : IRequestHandler<GetActiveSprin
 
     public async Task<SprintDto?> Handle(GetActiveSprintQuery request, CancellationToken cancellationToken)
     {
-        var sprint = await _repository.GetActiveByProjectIdAsync(request.ProjectId, cancellationToken);
+        var sprint = await _repository.GetActiveByProjectIdAsync(request.ProjectId, request.CallerOrgId, cancellationToken);
         return sprint is null ? null : _mapper.Map<SprintDto>(sprint);
     }
 }

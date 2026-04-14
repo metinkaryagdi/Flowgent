@@ -9,6 +9,7 @@ public sealed class IssueBoardItem
 {
     public Guid IssueId { get; set; }
     public Guid ProjectId { get; set; }
+    public Guid? OrganizationId { get; set; }
     public string Title { get; set; } = string.Empty;
     public IssueStatus Status { get; set; }
     public IssuePriority Priority { get; set; }
@@ -24,6 +25,7 @@ public sealed class IssueBoardItem
     {
         IssueId = issue.Id;
         ProjectId = issue.ProjectId;
+        OrganizationId = issue.OrganizationId;
         Title = issue.Title;
         Status = issue.Status;
         Priority = issue.Priority;

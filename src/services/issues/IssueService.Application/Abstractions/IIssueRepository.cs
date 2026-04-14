@@ -8,5 +8,6 @@ public interface IIssueRepository
     Task<IReadOnlyList<Issue>> GetByAssigneeAsync(Guid assigneeUserId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Issue>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
     Task AddAsync(Issue issue, CancellationToken cancellationToken = default);
+    Task RemoveAsync(Issue issue, CancellationToken cancellationToken = default);
     Task UpdateAsync(Issue issue, CancellationToken cancellationToken = default);
 }

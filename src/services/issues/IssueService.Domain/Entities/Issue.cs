@@ -8,6 +8,7 @@ namespace BitirmeProject.IssueService.Domain.Entities;
 public sealed class Issue : AggregateRoot<Guid>
 {
     public Guid ProjectId { get; private set; }
+    public Guid? OrganizationId { get; private set; }
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public IssueStatus Status { get; private set; }
@@ -18,10 +19,11 @@ public sealed class Issue : AggregateRoot<Guid>
 
     private Issue() { }
 
-    public Issue(Guid projectId, string title, string? description, IssuePriority priority, Guid createdByUserId)
+    public Issue(Guid projectId, string title, string? description, IssuePriority priority, Guid createdByUserId, Guid? organizationId = null)
     {
         Id = Guid.NewGuid();
         ProjectId = projectId;
+        OrganizationId = organizationId;
         SetTitleInternal(title);
         SetDescriptionInternal(description);
         Priority = priority;

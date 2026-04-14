@@ -10,4 +10,5 @@ public sealed record CreateSprintCommand(
     Guid CreatedByUserId,
     Guid? CorrelationId,
     DateTime StartDate,
-    DateTime EndDate) : IRequest<SprintDto>;
+    DateTime EndDate,
+    Guid? OrganizationId = null) : IRequest<SprintDto>;

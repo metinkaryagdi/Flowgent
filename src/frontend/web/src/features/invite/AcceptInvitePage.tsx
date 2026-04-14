@@ -10,7 +10,7 @@ export default function AcceptInvitePage() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token') ?? '';
     const navigate = useNavigate();
-    const { setAuth, setFlags } = useAuthStore();
+    const { setAuth, setFlags, setActiveOrg } = useAuthStore();
 
     const [inviteInfo, setInviteInfo] = useState<ValidateInviteTokenResult | null>(null);
     const [validating, setValidating] = useState(true);
@@ -72,6 +72,9 @@ export default function AcceptInvitePage() {
                         password,
                     });
                     setAuth(result.user, result.roles);
+                    if (result.activeOrgId && result.activeOrgName) {
+                        setActiveOrg({ id: result.activeOrgId, name: result.activeOrgName, role: result.activeOrgRole ?? '' });
+                    }
                     try {
                         const flags = await authApi.getFlags();
                         setFlags(flags);

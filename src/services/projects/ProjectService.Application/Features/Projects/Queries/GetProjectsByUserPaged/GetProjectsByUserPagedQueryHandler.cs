@@ -23,6 +23,7 @@ public sealed class GetProjectsByUserPagedQueryHandler : IRequestHandler<GetProj
     {
         var (items, totalCount) = await _repository.GetByMemberUserIdPagedAsync(
             request.UserId,
+            request.OrganizationId,
             request.Page,
             request.PageSize,
             request.Search,

@@ -1,3 +1,4 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Domain.Enums;
@@ -10,13 +11,16 @@ public sealed class GetPendingInvitesQueryHandler
 {
     private readonly IInviteRepository _inviteRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IMapper _mapper;
 
     public GetPendingInvitesQueryHandler(
         IInviteRepository inviteRepository,
-        IOrganizationRepository organizationRepository)
+        IOrganizationRepository organizationRepository,
+        IMapper mapper)
     {
         _inviteRepository = inviteRepository;
         _organizationRepository = organizationRepository;
+        _mapper = mapper;
     }
 
     public async Task<IReadOnlyList<InviteDto>> Handle(
@@ -35,13 +39,6 @@ public sealed class GetPendingInvitesQueryHandler
         var invites = await _inviteRepository.GetPendingByOrganizationAsync(
             request.OrganizationId, cancellationToken);
 
-        return invites.Select(i => new InviteDto
-        {
-            Id = i.Id,
-            Email = i.Email,
-            Role = i.Role.ToString(),
-            ExpiresAt = i.ExpiresAt,
-            CreatedAt = i.CreatedAt
-        }).ToList();
+        return _mapper.Map<List<InviteDto>>(invites);
     }
 }

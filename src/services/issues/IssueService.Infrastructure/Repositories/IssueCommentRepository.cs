@@ -26,4 +26,14 @@ public sealed class IssueCommentRepository : IIssueCommentRepository
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task RemoveByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default)
+    {
+        var items = await _dbContext.IssueComments
+            .Where(x => x.IssueId == issueId)
+            .ToListAsync(cancellationToken);
+
+        if (items.Count > 0)
+            _dbContext.IssueComments.RemoveRange(items);
+    }
 }

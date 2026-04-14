@@ -23,7 +23,7 @@ public sealed class CreateProjectCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         var handler = new CreateProjectCommandHandler(repository, summaryRepository, memberRepository, unitOfWork, outboxRepository, mapper);
         var command = new CreateProjectCommand("Name", "KEY", Guid.NewGuid(), null);
@@ -46,7 +46,7 @@ public sealed class CreateProjectCommandHandlerTests
         var outboxRepository = Substitute.For<IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
 
         Project? capturedProject = null;
         repository.AddAsync(Arg.Do<Project>(x => capturedProject = x), Arg.Any<CancellationToken>())
@@ -76,5 +76,30 @@ public sealed class CreateProjectCommandHandlerTests
             m.EventType == "ProjectCreatedEvent" &&
             !string.IsNullOrWhiteSpace(m.Payload)), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ScopesKeyCheck_ToOrganization()
+    {
+        var repository = Substitute.For<IProjectRepository>();
+        var summaryRepository = Substitute.For<IProjectSummaryRepository>();
+        var memberRepository = Substitute.For<IProjectMemberRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var outboxRepository = Substitute.For<IOutboxRepository>();
+        var mapper = Substitute.For<IMapper>();
+
+        repository.ExistsByKeyAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
+
+        var handler = new CreateProjectCommandHandler(repository, summaryRepository, memberRepository, unitOfWork, outboxRepository, mapper);
+        var organizationId = Guid.NewGuid();
+        var command = new CreateProjectCommand("Name", "KEY", Guid.NewGuid(), null, organizationId);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await repository.Received(1).ExistsByKeyAsync(
+            command.Key,
+            organizationId,
+            null,
+            Arg.Any<CancellationToken>());
     }
 }

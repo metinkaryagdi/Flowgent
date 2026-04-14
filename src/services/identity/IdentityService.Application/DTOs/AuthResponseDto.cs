@@ -7,4 +7,9 @@ public sealed class AuthResponseDto
     public string RefreshToken { get; init; } = string.Empty;
     public UserDto User { get; init; } = null!;
     public IReadOnlyList<string> Roles { get; init; } = Array.Empty<string>();
+
+    /// <summary>Active organization context at login time — lets the frontend set activeOrg immediately.</summary>
+    public Guid? ActiveOrgId { get; init; }
+    public string? ActiveOrgName { get; init; }
+    public string? ActiveOrgRole { get; init; }
 }

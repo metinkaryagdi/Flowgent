@@ -19,16 +19,24 @@ public sealed class ProjectRepository : IProjectRepository
         return await _dbContext.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Project>> GetByMemberUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Project>> GetByMemberUserIdAsync(Guid userId, Guid? organizationId = null, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Projects
-            .Where(p => _dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId))
+        var query = _dbContext.Projects
+            .Where(p => _dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
+
+        if (organizationId.HasValue)
+        {
+            query = query.Where(p => !p.OrganizationId.HasValue || p.OrganizationId == organizationId);
+        }
+
+        return await query
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByMemberUserIdPagedAsync(
         Guid userId,
+        Guid? organizationId,
         int page,
         int pageSize,
         string? search,
@@ -37,6 +45,11 @@ public sealed class ProjectRepository : IProjectRepository
     {
         var query = _dbContext.Projects
             .Where(p => _dbContext.ProjectMembers.Any(m => m.ProjectId == p.Id && m.UserId == userId));
+
+        if (organizationId.HasValue)
+        {
+            query = query.Where(p => !p.OrganizationId.HasValue || p.OrganizationId == organizationId);
+        }
 
         if (!includeArchived)
         {
@@ -68,10 +81,59 @@ public sealed class ProjectRepository : IProjectRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> ExistsByKeyAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetByOrganizationIdPagedAsync(
+        Guid organizationId,
+        int page,
+        int pageSize,
+        string? search,
+        bool includeArchived,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Projects.Where(p => p.OrganizationId == organizationId);
+
+        if (!includeArchived)
+            query = query.Where(p => !p.IsArchived);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(p => p.Name.ToLower().Contains(term) || p.Key.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<bool> ExistsByKeyAsync(
+        string key,
+        Guid? organizationId = null,
+        Guid? excludeProjectId = null,
+        CancellationToken cancellationToken = default)
     {
         var normalized = key.Trim().ToUpperInvariant();
-        return await _dbContext.Projects.AnyAsync(p => p.Key == normalized, cancellationToken);
+        var query = _dbContext.Projects.Where(p => p.Key == normalized);
+
+        if (organizationId.HasValue)
+        {
+            query = query.Where(p => p.OrganizationId == organizationId);
+        }
+        else
+        {
+            query = query.Where(p => p.OrganizationId == null);
+        }
+
+        if (excludeProjectId.HasValue)
+        {
+            query = query.Where(p => p.Id != excludeProjectId.Value);
+        }
+
+        return await query.AnyAsync(cancellationToken);
     }
 
     public async Task AddAsync(Project project, CancellationToken cancellationToken = default)

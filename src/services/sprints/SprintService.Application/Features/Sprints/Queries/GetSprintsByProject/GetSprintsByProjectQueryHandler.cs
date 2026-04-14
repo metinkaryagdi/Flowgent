@@ -18,7 +18,7 @@ public sealed class GetSprintsByProjectQueryHandler : IRequestHandler<GetSprints
 
     public async Task<IReadOnlyList<SprintDto>> Handle(GetSprintsByProjectQuery request, CancellationToken cancellationToken)
     {
-        var sprints = await _repository.GetByProjectIdAsync(request.ProjectId, cancellationToken);
+        var sprints = await _repository.GetByProjectIdAsync(request.ProjectId, request.CallerOrgId, cancellationToken);
         return _mapper.Map<IReadOnlyList<SprintDto>>(sprints);
     }
 }

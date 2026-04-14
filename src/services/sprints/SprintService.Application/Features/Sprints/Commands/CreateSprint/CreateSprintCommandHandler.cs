@@ -30,7 +30,8 @@ public sealed class CreateSprintCommandHandler : IRequestHandler<CreateSprintCom
             request.Goal,
             DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc),
             DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc),
-            request.CreatedByUserId);
+            request.CreatedByUserId,
+            request.OrganizationId);
         await _repository.AddAsync(sprint, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

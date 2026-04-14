@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'r
 import { issuesApi } from '../../api/issues';
 import { projectsApi } from '../../api/projects';
 import { adminApi } from '../../api/admin';
+import { aiApi } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import { IssueStatus, IssuePriority } from '../../types';
@@ -235,6 +236,24 @@ function DetailsTab({
     const [memberUsers, setMemberUsers] = useState<UserDto[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [aiEnriching, setAiEnriching] = useState(false);
+    const [aiResult, setAiResult] = useState<{ description: string; acceptanceCriteria: string; edgeCases: string; storyPoints: number } | null>(null);
+    const { addToast: showToast } = useToastStore();
+
+    const handleEnrich = async () => {
+        setAiEnriching(true);
+        setAiResult(null);
+        try {
+            const result = await aiApi.enrichIssue(issue.id, issue.projectId, issue.title);
+            setAiResult(result);
+            setDescription(result.description);
+            if (!editing) setEditing(true);
+        } catch {
+            showToast('AI zenginleştirme başarısız. Tekrar deneyin.', 'error');
+        } finally {
+            setAiEnriching(false);
+        }
+    };
 
     const canEdit = flags?.canEditIssues !== false;
     const canChangeStatus = flags?.canChangeStatus !== false;
@@ -327,9 +346,20 @@ function DetailsTab({
             <div className={styles.section}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <h3 className={styles.sectionTitle} style={{ margin: 0 }}>Detaylar</h3>
-                    {canEdit && !editing && (
-                        <button className={styles.assignBtn} onClick={() => setEditing(true)}>Düzenle</button>
-                    )}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                            className={styles.assignBtn}
+                            style={{ background: 'var(--color-success, #22c55e)', color: '#fff', opacity: aiEnriching ? 0.6 : 1 }}
+                            onClick={handleEnrich}
+                            disabled={aiEnriching}
+                            title="Başlıktan açıklama, kabul kriterleri ve story point önerisi üret"
+                        >
+                            {aiEnriching ? '...' : '✦ AI Zenginleştir'}
+                        </button>
+                        {canEdit && !editing && (
+                            <button className={styles.assignBtn} onClick={() => setEditing(true)}>Düzenle</button>
+                        )}
+                    </div>
                 </div>
 
                 {editing ? (
@@ -366,6 +396,14 @@ function DetailsTab({
                                 İptal
                             </button>
                         </div>
+                        {aiResult && (
+                            <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', borderRadius: 'var(--border-radius-md)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 'var(--font-size-xs)' }}>
+                                <div style={{ fontWeight: 700, color: 'var(--color-primary)', marginBottom: 2 }}>✦ AI Önerisi</div>
+                                <div><strong>Kabul Kriterleri:</strong> {aiResult.acceptanceCriteria}</div>
+                                <div><strong>Edge Cases:</strong> {aiResult.edgeCases}</div>
+                                <div><strong>Story Points:</strong> {aiResult.storyPoints} SP</div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -579,7 +617,7 @@ function AttachmentsTab({
     attachments: IssueAttachmentDto[];
     onReload: () => void;
 }) {
-    const { showToast } = useToastStore();
+    const { addToast: showToast } = useToastStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

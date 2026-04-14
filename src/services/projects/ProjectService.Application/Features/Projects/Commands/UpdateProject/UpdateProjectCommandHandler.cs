@@ -41,8 +41,14 @@ public sealed class UpdateProjectCommandHandler : IRequestHandler<UpdateProjectC
         var incomingKey = request.Key.Trim().ToUpperInvariant();
         if (!string.Equals(project.Key, incomingKey, StringComparison.OrdinalIgnoreCase))
         {
-            if (await _repository.ExistsByKeyAsync(request.Key, cancellationToken))
-                throw new BusinessRuleException("Project key already exists.");
+            if (await _repository.ExistsByKeyAsync(
+                    request.Key,
+                    project.OrganizationId,
+                    project.Id,
+                    cancellationToken))
+            {
+                throw new BusinessRuleException("This project key is already used in the current organization.");
+            }
         }
 
         project.SetName(request.Name);
