@@ -55,6 +55,8 @@ public sealed class ProjectsControllerTests
         var projectRepository = Substitute.For<IProjectRepository>();
         var controller = new ProjectsController(mediator, projectRepository);
         var id = Guid.NewGuid();
+        projectRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((Project?)null);
         mediator.Send(Arg.Any<BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectById.GetProjectByIdQuery>())
             .Returns((ProjectDto?)null);
 
@@ -92,6 +94,9 @@ public sealed class ProjectsControllerTests
         var mediator = Substitute.For<IMediator>();
         var projectRepository = Substitute.For<IProjectRepository>();
         var userId = Guid.NewGuid();
+        var project = new Project("Name", "KEY", userId);
+        projectRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(project);
         var controller = new ProjectsController(mediator, projectRepository)
         {
             ControllerContext = MakeContext(userId)

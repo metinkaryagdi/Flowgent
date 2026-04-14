@@ -22,7 +22,7 @@ public sealed class GetActiveSprintQueryHandlerTests
         var repository = Substitute.For<ISprintRepository>();
         var mapper = Substitute.For<IMapper>();
 
-        repository.GetActiveByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Sprint?)null);
+        repository.GetActiveByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns((Sprint?)null);
 
         var handler = new GetActiveSprintQueryHandler(repository, mapper);
         var query = new GetActiveSprintQuery(Guid.NewGuid());
@@ -39,7 +39,7 @@ public sealed class GetActiveSprintQueryHandlerTests
         var mapper = Substitute.For<IMapper>();
 
         var sprint = CreateSprint();
-        repository.GetActiveByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
+        repository.GetActiveByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var expected = new SprintDto { Id = sprint.Id };
         mapper.Map<SprintDto>(sprint).Returns(expected);

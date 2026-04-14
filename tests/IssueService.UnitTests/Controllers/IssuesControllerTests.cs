@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using BitirmeProject.IssueService.Api.Controllers;
+using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Application.DTOs;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.AssignIssue;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.ChangeIssueStatus;
 using BitirmeProject.IssueService.Application.Features.Issues.Commands.CreateIssue;
+using BitirmeProject.IssueService.Domain.Entities;
 using BitirmeProject.IssueService.Domain.Enums;
 using FluentAssertions;
 using MediatR;
@@ -16,11 +18,11 @@ namespace IssueService.UnitTests.Controllers;
 
 public sealed class IssuesControllerTests
 {
-    private static ControllerContext MakeContext()
+    private static ControllerContext MakeContext(Guid? userId = null)
     {
         var identity = new ClaimsIdentity(new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+            new Claim(ClaimTypes.NameIdentifier, (userId ?? Guid.NewGuid()).ToString())
         }, "Test");
         return new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) } };
     }
@@ -28,7 +30,8 @@ public sealed class IssuesControllerTests
     public async Task Create_ReturnsCreatedAtAction_WithResult()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var issueRepository = Substitute.For<IIssueRepository>();
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext() };
         var command = new CreateIssueCommand(Guid.NewGuid(), "Title", null, IssuePriority.Medium, Guid.NewGuid(), null);
         var dto = new IssueDto { Id = Guid.NewGuid(), ProjectId = command.ProjectId, Title = command.Title };
         mediator.Send(Arg.Any<CreateIssueCommand>()).Returns(dto);
@@ -45,7 +48,9 @@ public sealed class IssuesControllerTests
     public async Task GetById_ReturnsNotFound_WhenMissing()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var issueRepository = Substitute.For<IIssueRepository>();
+        issueRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Issue?)null);
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext() };
         var id = Guid.NewGuid();
         mediator.Send(Arg.Any<BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssueById.GetIssueByIdQuery>())
             .Returns((IssueDto?)null);
@@ -59,7 +64,11 @@ public sealed class IssuesControllerTests
     public async Task Assign_UsesExpectedVersion_FromBody_WhenProvided()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var userId = Guid.NewGuid();
+        var issueRepository = Substitute.For<IIssueRepository>();
+        issueRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Medium, userId));
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext(userId) };
         var issueId = Guid.NewGuid();
         var command = new AssignIssueCommand(issueId, Guid.NewGuid(), Guid.NewGuid(), 5, null);
         var dto = new IssueDto { Id = issueId };
@@ -77,7 +86,11 @@ public sealed class IssuesControllerTests
     public async Task Assign_UsesExpectedVersion_FromHeader_WhenBodyMissing()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var userId = Guid.NewGuid();
+        var issueRepository = Substitute.For<IIssueRepository>();
+        issueRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Medium, userId));
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext(userId) };
         var issueId = Guid.NewGuid();
         var command = new AssignIssueCommand(issueId, Guid.NewGuid(), Guid.NewGuid(), 0, null);
         var dto = new IssueDto { Id = issueId };
@@ -95,7 +108,11 @@ public sealed class IssuesControllerTests
     public async Task Assign_Throws_WhenExpectedVersionMissing()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var userId = Guid.NewGuid();
+        var issueRepository = Substitute.For<IIssueRepository>();
+        issueRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Medium, userId));
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext(userId) };
         var issueId = Guid.NewGuid();
         var command = new AssignIssueCommand(issueId, Guid.NewGuid(), Guid.NewGuid(), 0, null);
 
@@ -108,7 +125,11 @@ public sealed class IssuesControllerTests
     public async Task ChangeStatus_UsesExpectedVersion_FromIfMatch()
     {
         var mediator = Substitute.For<IMediator>();
-        var controller = new IssuesController(mediator) { ControllerContext = MakeContext() };
+        var userId = Guid.NewGuid();
+        var issueRepository = Substitute.For<IIssueRepository>();
+        issueRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new Issue(Guid.NewGuid(), "Title", null, IssuePriority.Medium, userId));
+        var controller = new IssuesController(mediator, issueRepository) { ControllerContext = MakeContext(userId) };
         var issueId = Guid.NewGuid();
         var command = new ChangeIssueStatusCommand(issueId, IssueStatus.InProgress, Guid.NewGuid(), 0, null);
         var dto = new IssueDto { Id = issueId };

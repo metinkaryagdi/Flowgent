@@ -22,29 +22,54 @@ namespace SprintService.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.SprintSummary", b =>
+            modelBuilder.Entity("BitirmeProject.SprintService.Application.ReadModels.SprintIssue", b =>
                 {
-                    b.Property<Guid>("SprintId")
+                    b.Property<Guid>("IssueId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CompletedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("CompletedIssues")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
 
-                    b.Property<DateTime>("SnapshotTakenAt")
+                    b.Property<string>("IssueType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SprintId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("TotalIssues")
-                        .HasColumnType("integer");
+                    b.HasKey("IssueId");
 
-                    b.HasKey("SprintId");
+                    b.HasIndex("ProjectId");
 
-                    b.HasIndex("SprintId")
-                        .IsUnique();
+                    b.HasIndex("SprintId");
 
-                    b.ToTable("SprintSummaries");
+                    b.ToTable("SprintIssues");
                 });
 
             modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.ProcessedEvent", b =>
@@ -96,6 +121,9 @@ namespace SprintService.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
@@ -115,60 +143,35 @@ namespace SprintService.Infrastructure.Migrations
 
                     b.HasIndex("ProjectId")
                         .IsUnique()
-                        .HasFilter("\"Status\" = 1")
-                        .HasDatabaseName("IX_Sprints_ProjectId_Active");
+                        .HasFilter("\"Status\" = 1");
 
                     b.ToTable("Sprints");
                 });
 
-            modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.SprintIssue", b =>
+            modelBuilder.Entity("BitirmeProject.SprintService.Domain.Entities.SprintSummary", b =>
                 {
-                    b.Property<Guid>("IssueId")
+                    b.Property<Guid>("SprintId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTime>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("CompletedIssues")
+                        .HasColumnType("integer");
 
-                    b.Property<string>("IssueType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Priority")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("SprintId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<DateTime>("SnapshotTakenAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("IssueId");
+                    b.Property<int>("TotalIssues")
+                        .HasColumnType("integer");
 
-                    b.HasIndex("ProjectId");
+                    b.HasKey("SprintId");
 
-                    b.HasIndex("SprintId");
+                    b.HasIndex("SprintId")
+                        .IsUnique();
 
-                    b.ToTable("SprintIssues");
+                    b.ToTable("SprintSummaries");
                 });
 
             modelBuilder.Entity("Shared.Abstractions.Messaging.OutboxMessage", b =>
@@ -177,12 +180,30 @@ namespace SprintService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Error")
+                    b.Property<string>("ActorId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ClaimedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CorrelationId")
                         .HasColumnType("text");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastAttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("LockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("OccurredOn")
                         .HasColumnType("timestamp with time zone");
@@ -191,7 +212,7 @@ namespace SprintService.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("ProcessedOn")
+                    b.Property<DateTime?>("PublishedOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("RetryCount")

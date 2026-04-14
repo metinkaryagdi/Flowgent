@@ -3,11 +3,11 @@ using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
+using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
+using BitirmeProject.IdentityService.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Options;
-using BitirmeProject.IdentityService.Application.Options;
-using BitirmeProject.IdentityService.Domain.Enums;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 
@@ -64,9 +64,19 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
             .Cast<string>()
             .ToList();
 
-        var organization = await _organizationRepository.GetByUserIdAsync(user.Id, cancellationToken);
+        // Prefer the last-active org; fall back to any org the user belongs to.
+        Organization? organization = null;
+        if (user.LastActiveOrganizationId.HasValue)
+        {
+            var candidate = await _organizationRepository.GetByIdAsync(user.LastActiveOrganizationId.Value, cancellationToken);
+            if (candidate?.HasMember(user.Id) == true)
+                organization = candidate;
+        }
+        organization ??= await _organizationRepository.GetByUserIdAsync(user.Id, cancellationToken);
+
         Guid? orgId = organization?.Id;
         string? orgRole = organization?.GetMemberRole(user.Id)?.ToString();
+        string? orgName = organization?.Name;
 
         var token = _jwtTokenGenerator.Generate(user, roles, orgId, orgRole);
 
@@ -85,7 +95,10 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
             ExpiresAt = token.ExpiresAt,
             RefreshToken = rawToken,
             User = _mapper.Map<UserDto>(user),
-            Roles = roles
+            Roles = roles,
+            ActiveOrgId = orgId,
+            ActiveOrgName = orgName,
+            ActiveOrgRole = orgRole,
         };
     }
 

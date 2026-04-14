@@ -51,7 +51,7 @@ public sealed class StartSprintCommandHandlerTests
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
         var anotherActive = CreateSprint(sprint.ProjectId, "Active");
-        repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<CancellationToken>()).Returns(anotherActive);
+        repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(anotherActive);
 
         var handler = new StartSprintCommandHandler(repository, unitOfWork, outboxRepository, mapper);
         var command = new StartSprintCommand(sprint.Id, Guid.NewGuid(), null);
@@ -74,7 +74,7 @@ public sealed class StartSprintCommandHandlerTests
 
         var sprint = CreateSprint();
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
-        repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<CancellationToken>()).Returns((Sprint?)null);
+        repository.GetActiveByProjectIdAsync(sprint.ProjectId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns((Sprint?)null);
 
         var expectedDto = new SprintDto { Id = sprint.Id };
         mapper.Map<SprintDto>(Arg.Any<Sprint>()).Returns(expectedDto);

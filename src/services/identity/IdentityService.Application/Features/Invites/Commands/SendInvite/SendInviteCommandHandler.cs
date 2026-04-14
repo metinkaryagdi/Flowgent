@@ -1,8 +1,10 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Domain.Entities;
 using BitirmeProject.IdentityService.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace BitirmeProject.IdentityService.Application.Features.Invites.Commands.SendInvite;
 
@@ -12,17 +14,23 @@ public sealed class SendInviteCommandHandler : IRequestHandler<SendInviteCommand
     private readonly IInviteRepository _inviteRepository;
     private readonly IEmailService _emailService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
+    private readonly ILogger<SendInviteCommandHandler> _logger;
 
     public SendInviteCommandHandler(
         IOrganizationRepository organizationRepository,
         IInviteRepository inviteRepository,
         IEmailService emailService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ILogger<SendInviteCommandHandler> logger)
     {
         _organizationRepository = organizationRepository;
         _inviteRepository = inviteRepository;
         _emailService = emailService;
         _unitOfWork = unitOfWork;
+        _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<InviteDto> Handle(SendInviteCommand request, CancellationToken cancellationToken)
@@ -52,15 +60,19 @@ public sealed class SendInviteCommandHandler : IRequestHandler<SendInviteCommand
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var inviteLink = $"{request.InviteLinkBaseUrl}/invite/accept?token={invite.Token}";
-        await _emailService.SendInviteEmailAsync(request.Email, organization.Name, inviteLink, cancellationToken);
-
-        return new InviteDto
+        try
         {
-            Id = invite.Id,
-            Email = invite.Email,
-            Role = invite.Role.ToString(),
-            ExpiresAt = invite.ExpiresAt,
-            CreatedAt = invite.CreatedAt
-        };
+            await _emailService.SendInviteEmailAsync(request.Email, organization.Name, inviteLink, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Email delivery is best-effort. The invite token is already saved;
+            // the inviter can share the link manually if needed.
+            _logger.LogWarning(ex,
+                "Invite email could not be delivered to {Email} for org {OrgId}. Invite token: {Token}",
+                request.Email, request.OrganizationId, invite.Token);
+        }
+
+        return _mapper.Map<InviteDto>(invite);
     }
 }

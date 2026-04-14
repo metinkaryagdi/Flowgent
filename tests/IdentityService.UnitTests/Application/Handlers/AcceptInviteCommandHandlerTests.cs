@@ -1,3 +1,4 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInvite;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -16,6 +17,7 @@ public sealed class AcceptInviteCommandHandlerTests
         IRoleRepository roleRepo,
         IPasswordHasher hasher,
         IUnitOfWork unitOfWork,
+        IMapper mapper,
         AcceptInviteCommandHandler handler) CreateHandler()
     {
         var inviteRepo = Substitute.For<IInviteRepository>();
@@ -24,14 +26,15 @@ public sealed class AcceptInviteCommandHandlerTests
         var roleRepo = Substitute.For<IRoleRepository>();
         var hasher = Substitute.For<IPasswordHasher>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new AcceptInviteCommandHandler(inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork);
-        return (inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork, handler);
+        var mapper = Substitute.For<IMapper>();
+        var handler = new AcceptInviteCommandHandler(inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork, mapper);
+        return (inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork, mapper, handler);
     }
 
     [Fact]
     public async Task Handle_Throws_WhenTokenNotFound()
     {
-        var (inviteRepo, _, _, _, _, _, handler) = CreateHandler();
+        var (inviteRepo, _, _, _, _, _, _, handler) = CreateHandler();
 
         inviteRepo.GetByTokenAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((InviteToken?)null);
 
@@ -45,7 +48,7 @@ public sealed class AcceptInviteCommandHandlerTests
     [Fact]
     public async Task Handle_Throws_WhenTokenIsUsed()
     {
-        var (inviteRepo, orgRepo, _, _, _, _, handler) = CreateHandler();
+        var (inviteRepo, orgRepo, _, _, _, _, _, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -71,7 +74,7 @@ public sealed class AcceptInviteCommandHandlerTests
     [Fact]
     public async Task Handle_Throws_WhenUserNameAlreadyExists()
     {
-        var (inviteRepo, orgRepo, userRepo, _, _, _, handler) = CreateHandler();
+        var (inviteRepo, orgRepo, userRepo, _, _, _, _, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -92,7 +95,7 @@ public sealed class AcceptInviteCommandHandlerTests
     [Fact]
     public async Task Handle_CreatesUserAndJoinsOrg_WhenTokenIsValid()
     {
-        var (inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork, handler) = CreateHandler();
+        var (inviteRepo, orgRepo, userRepo, roleRepo, hasher, unitOfWork, mapper, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -107,6 +110,17 @@ public sealed class AcceptInviteCommandHandlerTests
 
         var defaultRole = new Role("Member");
         roleRepo.GetByNameAsync("Member", Arg.Any<CancellationToken>()).Returns(defaultRole);
+        mapper.Map<BitirmeProject.IdentityService.Application.DTOs.UserDto>(Arg.Any<User>())
+            .Returns(call =>
+            {
+                var user = call.Arg<User>();
+                return new BitirmeProject.IdentityService.Application.DTOs.UserDto
+                {
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email
+                };
+            });
 
         var command = new AcceptInviteCommand(invite.Token, "newuser", "Pass123!");
         var result = await handler.Handle(command, CancellationToken.None);

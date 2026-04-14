@@ -13,9 +13,9 @@ public sealed class EmailService : IEmailService
 
     public EmailService(IConfiguration configuration)
     {
-        _host = configuration["Email:Host"] ?? "mailhog";
-        _port = int.TryParse(configuration["Email:Port"], out var p) ? p : 1025;
-        _fromAddress = configuration["Email:From"] ?? "noreply@bitirmeproject.local";
+        _host = configuration["Smtp:Host"] ?? "mailhog";
+        _port = int.TryParse(configuration["Smtp:Port"], out var p) ? p : 1025;
+        _fromAddress = configuration["Smtp:FromAddress"] ?? "noreply@bitirmeproject.local";
     }
 
     public async Task SendInviteEmailAsync(

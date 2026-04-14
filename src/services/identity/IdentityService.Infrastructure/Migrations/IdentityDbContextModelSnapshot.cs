@@ -307,6 +307,9 @@ namespace IdentityService.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<Guid?>("LastActiveOrganizationId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
 

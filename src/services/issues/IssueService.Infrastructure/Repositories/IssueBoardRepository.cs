@@ -29,10 +29,12 @@ public sealed class IssueBoardRepository : IIssueBoardRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<IssueBoardItem>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<IssueBoardItem>> GetByProjectIdAsync(Guid projectId, Guid? callerOrgId = null, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.IssueBoardItems
-            .Where(x => x.ProjectId == projectId)
+        var query = _dbContext.IssueBoardItems.Where(x => x.ProjectId == projectId);
+        if (callerOrgId.HasValue)
+            query = query.Where(x => x.OrganizationId == null || x.OrganizationId == callerOrgId);
+        return await query
             .OrderBy(x => x.Status)
             .ThenBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -53,9 +55,12 @@ public sealed class IssueBoardRepository : IIssueBoardRepository
         int pageSize,
         Guid? sprintId = null,
         bool backlogOnly = false,
+        Guid? callerOrgId = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.IssueBoardItems.Where(x => x.ProjectId == projectId);
+        if (callerOrgId.HasValue)
+            query = query.Where(x => x.OrganizationId == null || x.OrganizationId == callerOrgId);
 
         if (backlogOnly)
         {
@@ -81,6 +86,13 @@ public sealed class IssueBoardRepository : IIssueBoardRepository
     public async Task AddAsync(IssueBoardItem boardItem, CancellationToken cancellationToken = default)
     {
         await _dbContext.IssueBoardItems.AddAsync(boardItem, cancellationToken);
+    }
+
+    public async Task RemoveByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default)
+    {
+        var boardItem = await _dbContext.IssueBoardItems.FirstOrDefaultAsync(x => x.IssueId == issueId, cancellationToken);
+        if (boardItem is not null)
+            _dbContext.IssueBoardItems.Remove(boardItem);
     }
 
     public Task UpdateAsync(IssueBoardItem boardItem, CancellationToken cancellationToken = default)

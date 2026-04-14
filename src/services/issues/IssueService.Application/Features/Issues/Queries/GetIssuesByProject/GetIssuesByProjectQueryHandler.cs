@@ -27,7 +27,7 @@ public sealed class GetIssuesByProjectQueryHandler : IRequestHandler<GetIssuesBy
 
     public async Task<IReadOnlyList<IssueBoardItemDto>> Handle(GetIssuesByProjectQuery request, CancellationToken cancellationToken)
     {
-        var cacheKey = $"board:project:{request.ProjectId}";
+        var cacheKey = $"board:project:{request.ProjectId}:{request.CallerOrgId}";
 
         try
         {
@@ -37,7 +37,7 @@ public sealed class GetIssuesByProjectQueryHandler : IRequestHandler<GetIssuesBy
         }
         catch { /* Redis unavailable — fall through to DB */ }
 
-        var items = await _boardRepository.GetByProjectIdAsync(request.ProjectId, cancellationToken);
+        var items = await _boardRepository.GetByProjectIdAsync(request.ProjectId, request.CallerOrgId, cancellationToken);
         var dtos = items.Select(item => _mapper.Map<IssueBoardItemDto>(item)).ToList();
 
         try

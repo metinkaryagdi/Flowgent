@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { sprintsApi } from '../../api/sprints';
 import { useToastStore } from '../../store/toastStore';
 import { issuesApi } from '../../api/issues';
+import { aiApi, type SprintRiskResult, type SuggestBalanceResult } from '../../api/ai';
 import { IssuePriority, SprintStatus } from '../../types';
 import type { SprintDto, IssueBoardItemDto } from '../../types';
 import styles from './Sprint.module.css';
@@ -22,6 +23,10 @@ export default function SprintPage() {
     const navigate = useNavigate();
 
     const [sprints, setSprints] = useState<SprintDto[]>([]);
+    const [riskResult, setRiskResult] = useState<SprintRiskResult | null>(null);
+    const [riskLoading, setRiskLoading] = useState(false);
+    const [balanceResult, setBalanceResult] = useState<SuggestBalanceResult | null>(null);
+    const [balanceLoading, setBalanceLoading] = useState(false);
     const [backlog, setBacklog] = useState<{ items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>({
         items: [],
         page: 1,
@@ -164,6 +169,34 @@ export default function SprintPage() {
         }
     };
 
+    const handleRiskAnalysis = async (sprintId: string) => {
+        if (!projectId) return;
+        setRiskLoading(true);
+        setRiskResult(null);
+        try {
+            const result = await aiApi.sprintRisk(sprintId, projectId);
+            setRiskResult(result);
+        } catch {
+            showToast('Risk analizi başarısız. Tekrar deneyin.', 'error');
+        } finally {
+            setRiskLoading(false);
+        }
+    };
+
+    const handleBalanceAnalysis = async (sprintId: string) => {
+        if (!projectId) return;
+        setBalanceLoading(true);
+        setBalanceResult(null);
+        try {
+            const result = await aiApi.suggestBalance(sprintId, projectId);
+            setBalanceResult(result);
+        } catch {
+            showToast('Yük analizi başarısız. Tekrar deneyin.', 'error');
+        } finally {
+            setBalanceLoading(false);
+        }
+    };
+
     const handleAddIssueToSprint = async (sprintId: string, issueId: string) => {
         try {
             await sprintsApi.addIssue(sprintId, issueId);
@@ -231,9 +264,59 @@ export default function SprintPage() {
                     </div>
                     <div className={styles.sprintActions}>
                         <button className={styles.completeBtn} onClick={() => handleCompleteSprint(activeSprint.id)}>
-                            âœ“ Sprint'i Tamamla
+                            ✓ Sprint'i Tamamla
+                        </button>
+                        <button
+                            className={styles.startBtn}
+                            style={{ background: 'var(--color-error, #ef4444)', color: '#fff', opacity: riskLoading ? 0.6 : 1 }}
+                            onClick={() => handleRiskAnalysis(activeSprint.id)}
+                            disabled={riskLoading}
+                        >
+                            {riskLoading ? '...' : '✦ Risk Analizi'}
+                        </button>
+                        <button
+                            className={styles.startBtn}
+                            style={{ background: 'var(--color-primary)', color: '#fff', opacity: balanceLoading ? 0.6 : 1 }}
+                            onClick={() => handleBalanceAnalysis(activeSprint.id)}
+                            disabled={balanceLoading}
+                        >
+                            {balanceLoading ? '...' : '✦ Yük Analizi'}
                         </button>
                     </div>
+
+                    {/* AI Risk Result */}
+                    {riskResult && (
+                        <div style={{ background: 'var(--color-surface-raised)', border: `2px solid ${riskResult.riskLevel === 'Low' ? '#22c55e' : riskResult.riskLevel === 'Medium' ? '#f59e0b' : '#ef4444'}`, borderRadius: 'var(--border-radius-md)', padding: '12px 16px', marginTop: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                <span style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)' }}>✦ Risk Analizi</span>
+                                <span style={{ padding: '2px 10px', borderRadius: 'var(--border-radius-full)', fontWeight: 700, fontSize: 'var(--font-size-xs)', background: riskResult.riskLevel === 'Low' ? '#22c55e' : riskResult.riskLevel === 'Medium' ? '#f59e0b' : '#ef4444', color: '#fff' }}>
+                                    {riskResult.riskLevel}
+                                </span>
+                                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>{riskResult.doneIssues}/{riskResult.totalIssues} tamamlandı</span>
+                            </div>
+                            <p style={{ fontSize: 'var(--font-size-xs)', margin: '0 0 4px' }}><strong>Neden:</strong> {riskResult.reason}</p>
+                            <p style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}><strong>Öneri:</strong> {riskResult.recommendation}</p>
+                        </div>
+                    )}
+
+                    {/* AI Balance Result */}
+                    {balanceResult && (
+                        <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-primary)', borderRadius: 'var(--border-radius-md)', padding: '12px 16px', marginTop: 8 }}>
+                            <div style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)', marginBottom: 8 }}>✦ Yük Analizi</div>
+                            <p style={{ fontSize: 'var(--font-size-xs)', margin: '0 0 4px' }}><strong>Analiz:</strong> {balanceResult.analysis}</p>
+                            <p style={{ fontSize: 'var(--font-size-xs)', margin: '0 0 8px' }}><strong>Öneri:</strong> {balanceResult.recommendation}</p>
+                            {balanceResult.suggestions.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {balanceResult.suggestions.map((s, i) => (
+                                        <div key={i} style={{ fontSize: '0.72rem', padding: '4px 8px', background: 'var(--color-surface)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--color-border)' }}>
+                                            <strong>{s.issueTitle}</strong> [{s.currentPriority}] → {s.suggestedAction}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Active Sprint Issues */}
                     <div className={styles.backlogList} style={{ marginTop: 16 }}>
                         {(sprintIssues[activeSprint.id]?.items || []).map(issue => (

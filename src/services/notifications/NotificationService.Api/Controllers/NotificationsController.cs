@@ -24,7 +24,15 @@ public sealed class NotificationsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<NotificationDto>> Create([FromBody] CreateNotificationCommand command)
     {
-        var result = await _mediator.Send(command);
+        var requesterId = User.TryGetUserId();
+        if (requesterId is null)
+            return Unauthorized();
+
+        var safeCommand = User.HasRole("Admin")
+            ? command
+            : command with { UserId = requesterId.Value };
+
+        var result = await _mediator.Send(safeCommand);
         return Ok(result);
     }
 

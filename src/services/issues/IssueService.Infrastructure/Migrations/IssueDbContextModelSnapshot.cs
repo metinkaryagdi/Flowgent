@@ -22,6 +22,53 @@ namespace IssueService.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BitirmeProject.IssueService.Application.ReadModels.IssueBoardItem", b =>
+                {
+                    b.Property<Guid>("IssueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssigneeUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SprintId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IssueId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("SprintId");
+
+                    b.ToTable("IssueBoardItems");
+                });
+
             modelBuilder.Entity("BitirmeProject.IssueService.Domain.Entities.Issue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -40,6 +87,9 @@ namespace IssueService.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
@@ -142,50 +192,6 @@ namespace IssueService.Infrastructure.Migrations
                     b.ToTable("IssueAudits");
                 });
 
-            modelBuilder.Entity("BitirmeProject.IssueService.Domain.Entities.IssueBoardItem", b =>
-                {
-                    b.Property<Guid>("IssueId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AssigneeUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("SprintId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("IssueId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("SprintId");
-
-                    b.ToTable("IssueBoardItems");
-                });
-
             modelBuilder.Entity("BitirmeProject.IssueService.Domain.Entities.IssueComment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -241,12 +247,30 @@ namespace IssueService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Error")
+                    b.Property<string>("ActorId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ClaimedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CorrelationId")
                         .HasColumnType("text");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastAttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("LockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("OccurredOn")
                         .HasColumnType("timestamp with time zone");
@@ -255,7 +279,7 @@ namespace IssueService.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime?>("ProcessedOn")
+                    b.Property<DateTime?>("PublishedOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("RetryCount")

@@ -3,4 +3,4 @@ using MediatR;
 
 namespace BitirmeProject.IdentityService.Application.Features.Organizations.Queries.GetMyOrganization;
 
-public sealed record GetMyOrganizationQuery(Guid UserId) : IRequest<OrganizationDto?>;
+public sealed record GetMyOrganizationQuery(Guid UserId, Guid? OrganizationId = null) : IRequest<OrganizationDto?>;

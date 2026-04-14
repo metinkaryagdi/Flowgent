@@ -47,6 +47,13 @@ export interface UserDto {
   email: string;
   isActive: boolean;
   createdAt: string;
+  orgName?: string;
+}
+
+export interface AdminStatsDto {
+  totalUsers: number;
+  activeUsers: number;
+  totalOrgs: number;
 }
 
 export interface AuthResponseDto {
@@ -54,6 +61,9 @@ export interface AuthResponseDto {
   expiresAt: string;
   user: UserDto;
   roles: string[];
+  activeOrgId?: string;
+  activeOrgName?: string;
+  activeOrgRole?: string;
 }
 
 export interface RoleDto {

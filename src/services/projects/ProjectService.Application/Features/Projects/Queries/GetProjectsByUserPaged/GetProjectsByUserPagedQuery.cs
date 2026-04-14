@@ -5,6 +5,7 @@ namespace BitirmeProject.ProjectService.Application.Features.Projects.Queries.Ge
 
 public sealed record GetProjectsByUserPagedQuery(
     Guid UserId,
+    Guid? OrganizationId,
     int Page,
     int PageSize,
     string? Search,

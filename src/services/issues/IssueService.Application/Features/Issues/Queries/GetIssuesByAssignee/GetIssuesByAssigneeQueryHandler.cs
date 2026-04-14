@@ -22,6 +22,13 @@ public sealed class GetIssuesByAssigneeQueryHandler : IRequestHandler<GetIssuesB
     public async Task<IReadOnlyList<IssueDto>> Handle(GetIssuesByAssigneeQuery request, CancellationToken cancellationToken)
     {
         var issues = await _repository.GetByAssigneeAsync(request.AssigneeUserId, cancellationToken);
+        if (request.CallerOrgId.HasValue)
+        {
+            issues = issues
+                .Where(issue => !issue.OrganizationId.HasValue || issue.OrganizationId == request.CallerOrgId)
+                .ToList();
+        }
+
         var boardItems = await _boardRepository.GetByIssueIdsAsync(issues.Select(x => x.Id).ToArray(), cancellationToken);
         var sprintLookup = boardItems.ToDictionary(x => x.IssueId, x => x.SprintId);
 

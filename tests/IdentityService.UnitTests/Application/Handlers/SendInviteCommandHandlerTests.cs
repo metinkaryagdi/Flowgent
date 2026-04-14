@@ -1,8 +1,10 @@
 using BitirmeProject.IdentityService.Application.Abstractions;
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.SendInvite;
 using BitirmeProject.IdentityService.Domain.Entities;
 using BitirmeProject.IdentityService.Domain.Enums;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace IdentityService.UnitTests.Application.Handlers;
@@ -14,20 +16,23 @@ public sealed class SendInviteCommandHandlerTests
         IInviteRepository inviteRepo,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
+        IMapper mapper,
         SendInviteCommandHandler handler) CreateHandler()
     {
         var orgRepo = Substitute.For<IOrganizationRepository>();
         var inviteRepo = Substitute.For<IInviteRepository>();
         var emailService = Substitute.For<IEmailService>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new SendInviteCommandHandler(orgRepo, inviteRepo, emailService, unitOfWork);
-        return (orgRepo, inviteRepo, emailService, unitOfWork, handler);
+        var mapper = Substitute.For<IMapper>();
+        var logger = Substitute.For<ILogger<SendInviteCommandHandler>>();
+        var handler = new SendInviteCommandHandler(orgRepo, inviteRepo, emailService, unitOfWork, mapper, logger);
+        return (orgRepo, inviteRepo, emailService, unitOfWork, mapper, handler);
     }
 
     [Fact]
     public async Task Handle_Throws_WhenOrganizationNotFound()
     {
-        var (orgRepo, _, _, _, handler) = CreateHandler();
+        var (orgRepo, _, _, _, _, handler) = CreateHandler();
 
         orgRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Organization?)null);
 
@@ -44,7 +49,7 @@ public sealed class SendInviteCommandHandlerTests
     [Fact]
     public async Task Handle_Throws_WhenRequesterIsNotMember()
     {
-        var (orgRepo, _, _, _, handler) = CreateHandler();
+        var (orgRepo, _, _, _, _, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -62,7 +67,7 @@ public sealed class SendInviteCommandHandlerTests
     [Fact]
     public async Task Handle_Throws_WhenRequesterIsMemberRole()
     {
-        var (orgRepo, _, _, _, handler) = CreateHandler();
+        var (orgRepo, _, _, _, _, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
@@ -83,7 +88,7 @@ public sealed class SendInviteCommandHandlerTests
     [Fact]
     public async Task Handle_Throws_WhenPendingInviteAlreadyExists()
     {
-        var (orgRepo, inviteRepo, _, _, handler) = CreateHandler();
+        var (orgRepo, inviteRepo, _, _, _, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -103,7 +108,7 @@ public sealed class SendInviteCommandHandlerTests
     [Fact]
     public async Task Handle_CreatesInvite_SendsEmail_AndReturnsDto()
     {
-        var (orgRepo, inviteRepo, emailService, unitOfWork, handler) = CreateHandler();
+        var (orgRepo, inviteRepo, emailService, unitOfWork, mapper, handler) = CreateHandler();
 
         var ownerId = Guid.NewGuid();
         var org = new Organization("Acme", ownerId);
@@ -113,6 +118,13 @@ public sealed class SendInviteCommandHandlerTests
         var command = new SendInviteCommand(
             org.Id, ownerId, "new@example.com",
             OrganizationRole.Member, "http://localhost:5173");
+
+        mapper.Map<BitirmeProject.IdentityService.Application.DTOs.InviteDto>(Arg.Any<InviteToken>())
+            .Returns(new BitirmeProject.IdentityService.Application.DTOs.InviteDto
+            {
+                Email = "new@example.com",
+                Role = "Member"
+            });
 
         var result = await handler.Handle(command, CancellationToken.None);
 

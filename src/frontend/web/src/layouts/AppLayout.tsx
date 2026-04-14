@@ -4,11 +4,12 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { authApi } from '../api/auth';
 import { notificationsApi } from '../api/notifications';
-import type { NotificationDto } from '../types';
+import { organizationsApi } from '../api/organizations';
+import type { NotificationDto, OrganizationDto } from '../types';
 import styles from './AppLayout.module.css';
 
 export default function AppLayout() {
-    const { user, roles, flags, logout } = useAuthStore();
+    const { user, roles, flags, logout, activeOrg, setActiveOrg } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
     const location = useLocation();
@@ -19,6 +20,12 @@ export default function AppLayout() {
     const [notificationsLoading, setNotificationsLoading] = useState(false);
     const [notificationsError, setNotificationsError] = useState('');
     const notificationsRef = useRef<HTMLDivElement>(null);
+
+    // Org switcher state
+    const [allOrgs, setAllOrgs] = useState<OrganizationDto[]>([]);
+    const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+    const [orgSwitching, setOrgSwitching] = useState(false);
+    const orgDropdownRef = useRef<HTMLDivElement>(null);
 
     const fetchUnreadCount = useCallback(async () => {
         try {
@@ -39,6 +46,27 @@ export default function AppLayout() {
             setNotificationsLoading(false);
         }
     }, []);
+
+    // Load all orgs + set active org on mount
+    const loadOrgs = useCallback(async () => {
+        try {
+            const orgs = await organizationsApi.getAll();
+            setAllOrgs(orgs);
+
+            // If no active org stored, set the first one (or the active JWT org)
+            if (orgs.length > 0 && !activeOrg) {
+                const currentOrg = await organizationsApi.getMy();
+                if (currentOrg) {
+                    const memberEntry = currentOrg;
+                    setActiveOrg({ id: memberEntry.id, name: memberEntry.name, role: '' });
+                }
+            }
+        } catch { /* ignore */ }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        void loadOrgs();
+    }, [loadOrgs]);
 
     useEffect(() => {
         fetchUnreadCount();
@@ -63,6 +91,19 @@ export default function AppLayout() {
         }
         return () => document.removeEventListener('mousedown', handleClick);
     }, [showNotifications]);
+
+    useEffect(() => {
+        const handleClick = (event: MouseEvent) => {
+            if (!orgDropdownRef.current) return;
+            if (!orgDropdownRef.current.contains(event.target as Node)) {
+                setShowOrgDropdown(false);
+            }
+        };
+        if (showOrgDropdown) {
+            document.addEventListener('mousedown', handleClick);
+        }
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [showOrgDropdown]);
 
     // Sayfa değişince sidebar'ı kapat (mobile)
     useEffect(() => {
@@ -113,11 +154,38 @@ export default function AppLayout() {
         navigate('/notifications');
     };
 
+    const handleSwitchOrg = async (org: OrganizationDto) => {
+        if (orgSwitching || activeOrg?.id === org.id) {
+            setShowOrgDropdown(false);
+            return;
+        }
+        setOrgSwitching(true);
+        setShowOrgDropdown(false);
+        try {
+            const result = await organizationsApi.switchOrg(org.id);
+            setActiveOrg({ id: result.orgId, name: result.orgName, role: result.orgRole });
+            // Reload to refresh JWT-dependent data
+            window.location.reload();
+        } catch {
+            // ignore, user stays on current org
+        } finally {
+            setOrgSwitching(false);
+        }
+    };
+
+    const handleNewOrg = () => {
+        setShowOrgDropdown(false);
+        navigate('/onboarding');
+    };
+
     const initials = user?.userName
         ? user.userName.slice(0, 2).toUpperCase()
         : '??';
 
     const roleLabel = roles.length > 0 ? roles.join(', ') : 'Member';
+
+    const activeOrgName = activeOrg?.name ?? (allOrgs.length > 0 ? allOrgs[0].name : null);
+    const activeOrgId = activeOrg?.id ?? (allOrgs.length > 0 ? allOrgs[0].id : null);
 
     return (
         <div className={styles.appLayout}>
@@ -133,6 +201,45 @@ export default function AppLayout() {
                     <span className={styles.sidebar__logoText}>BitirmeProject</span>
                 </div>
 
+                {/* ── Org Switcher ── */}
+                {(allOrgs.length > 0 || activeOrgName) && (
+                    <div className={styles.orgSwitcher} ref={orgDropdownRef}>
+                        <button
+                            className={styles.orgSwitcherBtn}
+                            onClick={() => setShowOrgDropdown((v) => !v)}
+                            disabled={orgSwitching}
+                        >
+                            <span className={styles.orgSwitcherIcon}>🏢</span>
+                            <span className={styles.orgSwitcherName}>
+                                {orgSwitching ? 'Geçiş yapılıyor...' : (activeOrgName ?? 'Organizasyon')}
+                            </span>
+                            <span className={styles.orgSwitcherChevron}>▼</span>
+                        </button>
+
+                        {showOrgDropdown && (
+                            <div className={styles.orgDropdown}>
+                                <div className={styles.orgDropdownHeader}>Organizasyonlar</div>
+                                {allOrgs.map((org) => (
+                                    <button
+                                        key={org.id}
+                                        className={`${styles.orgDropdownItem} ${org.id === activeOrgId ? styles.orgDropdownItemActive : ''}`}
+                                        onClick={() => handleSwitchOrg(org)}
+                                    >
+                                        <span className={styles.orgDropdownItemName}>{org.name}</span>
+                                        {org.id === activeOrgId && (
+                                            <span className={styles.orgDropdownItemCheck}>✓</span>
+                                        )}
+                                    </button>
+                                ))}
+                                <hr className={styles.orgDropdownDivider} />
+                                <button className={styles.orgDropdownNewBtn} onClick={handleNewOrg}>
+                                    + Yeni Organizasyon
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <nav className={styles.sidebar__nav}>
                     <span className={styles.sidebar__sectionLabel}>Ana Menü</span>
 
@@ -143,7 +250,7 @@ export default function AppLayout() {
                         }
                         data-testid="nav-projects"
                     >
-                        <span className={styles.sidebar__linkIcon}>📁</span>
+                        <span className={styles.sidebar__linkIcon}>📁</span>
                         Projeler
                     </NavLink>
 
@@ -163,7 +270,8 @@ export default function AppLayout() {
                     <NavLink
                         to="/settings/organization"
                         className={({ isActive }) =>
-                                                    }
+                            `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
+                        }
                         data-testid="nav-organization"
                     >
                         <span className={styles.sidebar__linkIcon}>🏢</span>
@@ -179,7 +287,7 @@ export default function AppLayout() {
                                     `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
                                 }
                             >
-                                <span className={styles.sidebar__linkIcon}>⚙️</span>
+                                <span className={styles.sidebar__linkIcon}>⚙️</span>
                                 Admin Panel
                             </NavLink>
                         </>
@@ -197,7 +305,7 @@ export default function AppLayout() {
                 </div>
             </aside>
 
-            {/* â"€â"€ Main â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+            {/* ── Main ────────────────── */}
             <div className={styles.main}>
                 <header className={styles.topbar}>
                     <div className={styles.topbar__left}>

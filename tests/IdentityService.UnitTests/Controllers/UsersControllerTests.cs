@@ -31,8 +31,9 @@ public sealed class UsersControllerTests
         var mediator = Substitute.For<IMediator>();
         var userRepository = Substitute.For<IUserRepository>();
         var roleRepository = Substitute.For<IRoleRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork);
+        var controller = new UsersController(mediator, userRepository, roleRepository, organizationRepository, unitOfWork);
         var command = new RegisterUserCommand("user", "user@example.com", "Pass123!");
         var dto = new UserDto { Id = Guid.NewGuid(), Email = command.Email };
         mediator.Send(command).Returns(dto);
@@ -50,8 +51,9 @@ public sealed class UsersControllerTests
         var mediator = Substitute.For<IMediator>();
         var userRepository = Substitute.For<IUserRepository>();
         var roleRepository = Substitute.For<IRoleRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork)
+        var controller = new UsersController(mediator, userRepository, roleRepository, organizationRepository, unitOfWork)
         {
             ControllerContext = MakeAdminContext()
         };
@@ -69,8 +71,9 @@ public sealed class UsersControllerTests
         var mediator = Substitute.For<IMediator>();
         var userRepository = Substitute.For<IUserRepository>();
         var roleRepository = Substitute.For<IRoleRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork)
+        var controller = new UsersController(mediator, userRepository, roleRepository, organizationRepository, unitOfWork)
         {
             ControllerContext = MakeAdminContext()
         };
@@ -91,8 +94,9 @@ public sealed class UsersControllerTests
         var mediator = Substitute.For<IMediator>();
         var userRepository = Substitute.For<IUserRepository>();
         var roleRepository = Substitute.For<IRoleRepository>();
+        var organizationRepository = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var controller = new UsersController(mediator, userRepository, roleRepository, unitOfWork);
+        var controller = new UsersController(mediator, userRepository, roleRepository, organizationRepository, unitOfWork);
 
         var result = await controller.DeleteUser(Guid.NewGuid());
 

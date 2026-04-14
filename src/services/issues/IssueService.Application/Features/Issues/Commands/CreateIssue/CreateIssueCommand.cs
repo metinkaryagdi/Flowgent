@@ -10,4 +10,5 @@ public sealed record CreateIssueCommand(
     string? Description,
     IssuePriority Priority,
     Guid CreatedByUserId,
-    Guid? CorrelationId) : IRequest<IssueDto>;
+    Guid? CorrelationId,
+    Guid? OrganizationId = null) : IRequest<IssueDto>;

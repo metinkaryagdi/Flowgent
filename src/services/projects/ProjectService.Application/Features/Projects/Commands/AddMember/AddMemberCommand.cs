@@ -9,4 +9,4 @@ public sealed record AddMemberCommand(
     Guid UserId,
     Guid AddedByUserId,
     Guid? CorrelationId,
-    ProjectMemberRole Role) : IRequest<ProjectDto>;
+    ProjectMemberRole Role = ProjectMemberRole.Member) : IRequest<ProjectDto>;

@@ -3,4 +3,4 @@ using MediatR;
 
 namespace BitirmeProject.IssueService.Application.Features.Issues.Queries.GetIssuesByProject;
 
-public sealed record GetIssuesByProjectQuery(Guid ProjectId) : IRequest<IReadOnlyList<IssueBoardItemDto>>;
+public sealed record GetIssuesByProjectQuery(Guid ProjectId, Guid? CallerOrgId = null) : IRequest<IReadOnlyList<IssueBoardItemDto>>;

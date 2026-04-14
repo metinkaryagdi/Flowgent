@@ -8,4 +8,5 @@ public sealed record GetIssuesByProjectPagedQuery(
     int Page,
     int PageSize,
     Guid? SprintId,
-    bool BacklogOnly) : IRequest<PagedResult<IssueBoardItemDto>>;
+    bool BacklogOnly,
+    Guid? CallerOrgId = null) : IRequest<PagedResult<IssueBoardItemDto>>;

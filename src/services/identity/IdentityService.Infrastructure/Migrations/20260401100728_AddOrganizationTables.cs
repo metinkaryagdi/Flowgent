@@ -15,31 +15,8 @@ namespace IdentityService.Infrastructure.Migrations
                 name: "IX_OutboxMessages_Status_OccurredOn",
                 table: "OutboxMessages");
 
-            migrationBuilder.AddColumn<int>(
-                name: "FailedLoginCount",
-                table: "Users",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "LockoutEnd",
-                table: "Users",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "PasswordChangedAt",
-                table: "Users",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "SecurityStamp",
-                table: "Users",
-                type: "uuid",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
+            // NOTE: FailedLoginCount, LockoutEnd, PasswordChangedAt, SecurityStamp
+            // were already added by AddMissingUserColumns migration — skipped here.
 
             migrationBuilder.CreateTable(
                 name: "Organizations",
@@ -142,21 +119,8 @@ namespace IdentityService.Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "Organizations");
 
-            migrationBuilder.DropColumn(
-                name: "FailedLoginCount",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "LockoutEnd",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "PasswordChangedAt",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "SecurityStamp",
-                table: "Users");
+            // NOTE: FailedLoginCount, LockoutEnd, PasswordChangedAt, SecurityStamp
+            // are dropped by AddMissingUserColumns Down — skipped here.
 
             migrationBuilder.CreateIndex(
                 name: "IX_OutboxMessages_Status_OccurredOn",

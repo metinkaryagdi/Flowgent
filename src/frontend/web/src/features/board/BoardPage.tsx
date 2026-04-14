@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type FormEvent } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     DndContext,
@@ -18,6 +18,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { bffApi } from '../../api/bff';
 import { issuesApi } from '../../api/issues';
 import { sprintsApi } from '../../api/sprints';
+import { aiApi } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import { IssueStatus, IssuePriority } from '../../types';
@@ -650,6 +651,7 @@ export default function BoardPage() {
             {/* Ã¢â€â‚¬Ã¢â€â‚¬ Create Modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {showCreateModal && (
                 <CreateIssueModal
+                    projectId={projectId ?? ''}
                     onSubmit={handleCreateIssue}
                     onClose={() => setShowCreateModal(false)}
                 />
@@ -671,9 +673,11 @@ export default function BoardPage() {
 // Create Issue Modal
 // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 function CreateIssueModal({
+    projectId,
     onSubmit,
     onClose,
 }: {
+    projectId: string;
     onSubmit: (title: string, description: string, priority: IssuePriority) => Promise<void>;
     onClose: () => void;
 }) {
@@ -682,6 +686,26 @@ function CreateIssueModal({
     const [priority, setPriority] = useState<IssuePriority>(IssuePriority.Medium);
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [duplicateChecking, setDuplicateChecking] = useState(false);
+    const [similarIssues, setSimilarIssues] = useState<{ issueId: string; title: string; reason: string; similarityScore: number }[]>([]);
+    const duplicateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const checkDuplicates = (value: string) => {
+        if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
+        setSimilarIssues([]);
+        if (value.trim().length < 8 || !projectId) return;
+        duplicateTimerRef.current = setTimeout(async () => {
+            setDuplicateChecking(true);
+            try {
+                const result = await aiApi.detectDuplicate(projectId, value.trim());
+                setSimilarIssues(result.similarIssues ?? []);
+            } catch {
+                // silent — don't block issue creation
+            } finally {
+                setDuplicateChecking(false);
+            }
+        }, 900);
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -721,10 +745,23 @@ function CreateIssueModal({
                             type="text"
                             className={styles.formInput}
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
+                            onChange={(e) => { setTitle(e.target.value); checkDuplicates(e.target.value); }}
                             placeholder="Issue başlığı"
                             autoFocus
                         />
+                        {duplicateChecking && (
+                            <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>✦ Benzer issue'lar aranıyor...</p>
+                        )}
+                        {similarIssues.length > 0 && (
+                            <div style={{ background: 'var(--color-warning-light, #fef3c7)', border: '1px solid var(--color-warning, #f59e0b)', borderRadius: 'var(--border-radius-md)', padding: '8px 12px', marginTop: 6 }}>
+                                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-warning, #b45309)', margin: '0 0 6px' }}>Benzer issue'lar tespit edildi:</p>
+                                {similarIssues.map((s) => (
+                                    <div key={s.issueId} style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginBottom: 3 }}>
+                                        <strong>{s.title}</strong> — {s.reason} <span style={{ opacity: 0.6 }}>(%{s.similarityScore})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className={styles.formGroup}>
                         <label className={styles.formLabel} htmlFor="issueDesc">Açıklama</label>

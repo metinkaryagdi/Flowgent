@@ -30,6 +30,22 @@ public sealed class OrganizationRepository : IOrganizationRepository
                 cancellationToken);
     }
 
+    public async Task<List<Organization>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Organizations
+            .Include(o => o.Members)
+            .Where(o => o.Members.Any(m => m.UserId == userId))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Organization>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Organizations
+            .Include(o => o.Members)
+            .OrderBy(o => o.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Organizations

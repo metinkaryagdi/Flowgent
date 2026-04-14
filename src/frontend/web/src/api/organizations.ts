@@ -8,12 +8,17 @@ import type {
     AcceptInviteRequest,
     CreateOrganizationRequest,
     ChangeMemberRoleRequest,
-    UserDto,
 } from '../types';
 
+export interface SwitchOrganizationResponse {
+    orgId: string;
+    orgName: string;
+    orgRole: string;
+}
+
 export const organizationsApi = {
-    create: async (data: CreateOrganizationRequest): Promise<OrganizationDto> => {
-        const response = await apiClient.post<OrganizationDto>('/api/v1/identity/organizations', data);
+    create: async (data: CreateOrganizationRequest): Promise<SwitchOrganizationResponse> => {
+        const response = await apiClient.post<SwitchOrganizationResponse>('/api/v1/identity/organizations', data);
         return response.data;
     },
 
@@ -28,6 +33,18 @@ export const organizationsApi = {
             }
             throw err;
         }
+    },
+
+    getAll: async (): Promise<OrganizationDto[]> => {
+        const response = await apiClient.get<OrganizationDto[]>('/api/v1/identity/organizations/my/all');
+        return response.data;
+    },
+
+    switchOrg: async (orgId: string): Promise<SwitchOrganizationResponse> => {
+        const response = await apiClient.post<SwitchOrganizationResponse>(
+            `/api/v1/identity/organizations/${orgId}/switch`
+        );
+        return response.data;
     },
 
     getMembers: async (organizationId: string): Promise<OrganizationMemberDto[]> => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '../../api/projects';
 import { useToastStore } from '../../store/toastStore';
@@ -7,7 +8,7 @@ import type { ProjectDto } from '../../types';
 import styles from './Projects.module.css';
 
 export default function ProjectsPage() {
-    const { user, flags } = useAuthStore();
+    const { user, flags, activeOrg } = useAuthStore();
     const navigate = useNavigate();
 
     const [projects, setProjects] = useState<ProjectDto[]>([]);
@@ -25,22 +26,44 @@ export default function ProjectsPage() {
 
     const { addToast: showToast } = useToastStore();
 
+    const getApiErrorMessage = (error: unknown, fallback: string) => {
+        if (!axios.isAxiosError(error)) {
+            return fallback;
+        }
+
+        const data = error.response?.data as
+            | { detail?: string; message?: string; title?: string; errors?: Record<string, string[]> }
+            | undefined;
+
+        if (data?.detail === 'This project key is already used in the current organization.') {
+            return 'Bu proje anahtarı mevcut organizasyonda zaten kullanılıyor.';
+        }
+
+        if (data?.detail) return data.detail;
+        if (data?.message) return data.message;
+
+        const firstValidationError = data?.errors
+            ? Object.values(data.errors).flat()[0]
+            : undefined;
+
+        return firstValidationError || fallback;
+    };
+
     // ── Fetch projects ────────────
     useEffect(() => {
-        if (!user?.id) return;
+        if (!activeOrg?.id && !user?.id) return;
         loadProjects();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, page, searchTerm, showArchived]);
+    }, [activeOrg?.id, page, searchTerm, showArchived]);
 
     useEffect(() => {
         setPage(1);
     }, [searchTerm, showArchived]);
 
     const loadProjects = async () => {
-        if (!user?.id) return;
         setLoading(true);
         try {
-            const result = await projectsApi.getByUserPaged(user.id, {
+            const result = await projectsApi.getByOrganizationPaged({
                 page,
                 pageSize,
                 search: searchTerm.trim() || undefined,
@@ -57,17 +80,13 @@ export default function ProjectsPage() {
 
     // ── Create project ────────────
     const handleCreate = async (name: string, key: string) => {
-        if (!user?.id) {
-            showToast('Kullanıcı bilgisi bulunamadı.', 'error');
-            return;
-        }
         try {
-            await projectsApi.create({ name, key, ownerUserId: user.id });
+            await projectsApi.create({ name, key });
             showToast('Proje başarıyla oluşturuldu!');
             setShowCreateModal(false);
             await loadProjects();
-        } catch {
-            showToast('Proje oluşturulurken hata oluştu.', 'error');
+        } catch (error) {
+            showToast(getApiErrorMessage(error, 'Proje oluşturulurken hata oluştu.'), 'error');
         }
     };
 
@@ -79,8 +98,8 @@ export default function ProjectsPage() {
             showToast('Proje güncellendi!');
             setEditProject(null);
             await loadProjects();
-        } catch {
-            showToast('Proje güncellenirken hata oluştu.', 'error');
+        } catch (error) {
+            showToast(getApiErrorMessage(error, 'Proje güncellenirken hata oluştu.'), 'error');
         }
     };
 

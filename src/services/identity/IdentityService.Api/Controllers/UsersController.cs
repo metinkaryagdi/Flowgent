@@ -21,13 +21,15 @@ public class UsersController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IUserRepository _userRepository;
     private readonly IRoleRepository _roleRepository;
+    private readonly IOrganizationRepository _organizationRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public UsersController(IMediator mediator, IUserRepository userRepository, IRoleRepository roleRepository, IUnitOfWork unitOfWork)
+    public UsersController(IMediator mediator, IUserRepository userRepository, IRoleRepository roleRepository, IOrganizationRepository organizationRepository, IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
         _userRepository = userRepository;
         _roleRepository = roleRepository;
+        _organizationRepository = organizationRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -95,13 +97,21 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Admin-only: lists all users.
+    /// Admin-only: lists all users with their organization name.
     /// </summary>
     [HttpGet]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll(CancellationToken cancellationToken)
     {
         var users = await _userRepository.GetAllAsync(cancellationToken);
+        var orgs = await _organizationRepository.GetAllAsync(cancellationToken);
+
+        // Build userId → orgName map
+        var userOrgMap = new Dictionary<Guid, string>();
+        foreach (var org in orgs)
+            foreach (var member in org.Members)
+                userOrgMap.TryAdd(member.UserId, org.Name);
+
         var dtos = users.Select(u => new UserDto
         {
             Id = u.Id,
@@ -109,8 +119,27 @@ public class UsersController : ControllerBase
             Email = u.Email,
             IsActive = u.IsActive,
             CreatedAt = u.CreatedAt,
+            OrgName = userOrgMap.GetValueOrDefault(u.Id),
         }).ToList();
         return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Admin-only: returns high-level system statistics.
+    /// </summary>
+    [HttpGet("stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<AdminStatsDto>> GetStats(CancellationToken cancellationToken)
+    {
+        var users = await _userRepository.GetAllAsync(cancellationToken);
+        var orgs = await _organizationRepository.GetAllAsync(cancellationToken);
+
+        return Ok(new AdminStatsDto
+        {
+            TotalUsers = users.Count,
+            ActiveUsers = users.Count(u => u.IsActive),
+            TotalOrgs = orgs.Count,
+        });
     }
 
     /// <summary>
@@ -188,6 +217,13 @@ public class UsersController : ControllerBase
 }
 
 public sealed record AssignRoleRequest(string RoleName);
+
+public sealed record AdminStatsDto
+{
+    public int TotalUsers { get; init; }
+    public int ActiveUsers { get; init; }
+    public int TotalOrgs { get; init; }
+}
 
 
 

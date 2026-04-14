@@ -39,8 +39,8 @@ public sealed class CreateProjectCommandHandler : IRequestHandler<CreateProjectC
 
     public async Task<ProjectDto> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
     {
-        if (await _repository.ExistsByKeyAsync(request.Key, cancellationToken))
-            throw new BusinessRuleException("Project key already exists.");
+        if (await _repository.ExistsByKeyAsync(request.Key, request.OrganizationId, cancellationToken: cancellationToken))
+            throw new BusinessRuleException("This project key is already used in the current organization.");
 
         var project = new Project(request.Name, request.Key, request.OwnerUserId, request.OrganizationId);
         await _repository.AddAsync(project, cancellationToken);

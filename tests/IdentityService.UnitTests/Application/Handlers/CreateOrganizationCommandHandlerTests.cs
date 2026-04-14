@@ -1,3 +1,4 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Features.Organizations.Commands.CreateOrganization;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -12,19 +13,21 @@ public sealed class CreateOrganizationCommandHandlerTests
         IOrganizationRepository orgRepo,
         IUserRepository userRepo,
         IUnitOfWork unitOfWork,
+        IMapper mapper,
         CreateOrganizationCommandHandler handler) CreateHandler()
     {
         var orgRepo = Substitute.For<IOrganizationRepository>();
         var userRepo = Substitute.For<IUserRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new CreateOrganizationCommandHandler(orgRepo, userRepo, unitOfWork);
-        return (orgRepo, userRepo, unitOfWork, handler);
+        var mapper = Substitute.For<IMapper>();
+        var handler = new CreateOrganizationCommandHandler(orgRepo, userRepo, unitOfWork, mapper);
+        return (orgRepo, userRepo, unitOfWork, mapper, handler);
     }
 
     [Fact]
     public async Task Handle_Throws_WhenUserNotFound()
     {
-        var (orgRepo, userRepo, _, handler) = CreateHandler();
+        var (orgRepo, userRepo, _, _, handler) = CreateHandler();
 
         userRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((User?)null);
 
@@ -37,9 +40,9 @@ public sealed class CreateOrganizationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Throws_WhenUserAlreadyBelongsToOrganization()
+    public async Task Handle_CreatesOrganization_WhenUserAlreadyBelongsToAnotherOrganization()
     {
-        var (orgRepo, userRepo, _, handler) = CreateHandler();
+        var (orgRepo, userRepo, unitOfWork, mapper, handler) = CreateHandler();
 
         var userId = Guid.NewGuid();
         var user = new User("alice", "alice@example.com", "hash");
@@ -47,23 +50,47 @@ public sealed class CreateOrganizationCommandHandlerTests
 
         var existingOrg = new Organization("Existing Org", userId);
         orgRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existingOrg);
+        mapper.Map<BitirmeProject.IdentityService.Application.DTOs.OrganizationDto>(Arg.Any<Organization>())
+            .Returns(call =>
+            {
+                var organization = call.Arg<Organization>();
+                return new BitirmeProject.IdentityService.Application.DTOs.OrganizationDto
+                {
+                    Id = organization.Id,
+                    Name = organization.Name,
+                    CreatedByUserId = organization.CreatedByUserId,
+                    MemberCount = organization.Members.Count
+                };
+            });
 
         var command = new CreateOrganizationCommand("New Org", userId);
-        var act = async () => await handler.Handle(command, CancellationToken.None);
+        var result = await handler.Handle(command, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already belongs*");
+        result.Name.Should().Be("New Org");
+        await orgRepo.Received(1).AddAsync(Arg.Any<Organization>(), Arg.Any<CancellationToken>());
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_CreatesOrganization_AndReturnsDto()
     {
-        var (orgRepo, userRepo, unitOfWork, handler) = CreateHandler();
+        var (orgRepo, userRepo, unitOfWork, mapper, handler) = CreateHandler();
 
         var userId = Guid.NewGuid();
         var user = new User("alice", "alice@example.com", "hash");
         userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-        orgRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns((Organization?)null);
+        mapper.Map<BitirmeProject.IdentityService.Application.DTOs.OrganizationDto>(Arg.Any<Organization>())
+            .Returns(call =>
+            {
+                var organization = call.Arg<Organization>();
+                return new BitirmeProject.IdentityService.Application.DTOs.OrganizationDto
+                {
+                    Id = organization.Id,
+                    Name = organization.Name,
+                    CreatedByUserId = organization.CreatedByUserId,
+                    MemberCount = organization.Members.Count
+                };
+            });
 
         var command = new CreateOrganizationCommand("Acme Corp", userId);
         var result = await handler.Handle(command, CancellationToken.None);

@@ -10,5 +10,11 @@ public sealed class IdentityMappingProfile : Profile
     {
         CreateMap<User, UserDto>();
         CreateMap<Role, RoleDto>();
+
+        CreateMap<Organization, OrganizationDto>()
+            .ForMember(d => d.MemberCount, o => o.MapFrom(s => s.Members.Count));
+
+        CreateMap<InviteToken, InviteDto>()
+            .ForMember(d => d.Role, o => o.MapFrom(s => s.Role.ToString()));
     }
 }

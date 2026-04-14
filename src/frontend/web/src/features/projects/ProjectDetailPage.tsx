@@ -147,6 +147,13 @@ export default function ProjectDetailPage() {
                 >
                     📊 Sprint'lere Git
                 </button>
+                <button
+                    className={styles.addMemberBtn}
+                    style={{ background: 'var(--color-success, #22c55e)' }}
+                    onClick={() => navigate(`/projects/${projectId}/ai-planner`)}
+                >
+                    ✦ AI Planlayıcı
+                </button>
             </div>
 
             {/* ── Members ────────────── */}

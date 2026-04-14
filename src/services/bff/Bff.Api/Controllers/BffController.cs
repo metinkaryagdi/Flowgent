@@ -63,15 +63,18 @@ public sealed class BffController : ControllerBase
     {
         var roles = User.FindAll(ClaimTypes.Role).Select(x => x.Value).ToList();
         var isAdmin = roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-        var isManager = roles.Any(r => r.Equals("Manager", StringComparison.OrdinalIgnoreCase));
-        var isMember = roles.Any(r => r.Equals("Member", StringComparison.OrdinalIgnoreCase));
+        var hasSystemManager = roles.Any(r => r.Equals("Manager", StringComparison.OrdinalIgnoreCase));
+        var hasSystemMember = roles.Any(r => r.Equals("Member", StringComparison.OrdinalIgnoreCase));
+        var orgRole = User.FindFirst("org_role")?.Value;
+        var isOrgManager = orgRole is "Owner" or "Manager";
+        var isOrgMember = !string.IsNullOrWhiteSpace(orgRole);
 
         var flags = new UiFlags
         {
-            CanManageProjects = isAdmin || isManager,
-            CanEditIssues = isAdmin || isManager || isMember,
-            CanAssignIssues = isAdmin || isManager,
-            CanChangeStatus = isAdmin || isManager || isMember,
+            CanManageProjects = isAdmin || hasSystemManager || isOrgManager,
+            CanEditIssues = isAdmin || hasSystemManager || hasSystemMember || isOrgMember,
+            CanAssignIssues = isAdmin || hasSystemManager || isOrgManager,
+            CanChangeStatus = isAdmin || hasSystemManager || hasSystemMember || isOrgMember,
             CanViewAdmin = isAdmin
         };
 

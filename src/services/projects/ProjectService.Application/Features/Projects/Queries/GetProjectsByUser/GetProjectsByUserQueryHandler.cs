@@ -30,9 +30,7 @@ public sealed class GetProjectsByUserQueryHandler : IRequestHandler<GetProjectsB
 
     public async Task<IReadOnlyList<ProjectDto>> Handle(GetProjectsByUserQuery request, CancellationToken cancellationToken)
     {
-        var cacheKey = request.OrganizationId.HasValue
-            ? $"projects:org:{request.OrganizationId}"
-            : $"projects:user:{request.UserId}";
+        var cacheKey = $"projects:user:{request.UserId}:org:{request.OrganizationId?.ToString() ?? "none"}";
 
         try
         {
@@ -42,9 +40,7 @@ public sealed class GetProjectsByUserQueryHandler : IRequestHandler<GetProjectsB
         }
         catch { /* Redis unavailable — fall through to DB */ }
 
-        var projects = request.OrganizationId.HasValue
-            ? await _repository.GetByOrganizationIdAsync(request.OrganizationId.Value, cancellationToken)
-            : await _repository.GetByMemberUserIdAsync(request.UserId, cancellationToken);
+        var projects = await _repository.GetByMemberUserIdAsync(request.UserId, request.OrganizationId, cancellationToken);
         var summaries = await _summaryRepository.GetByProjectIdsAsync(projects.Select(x => x.Id).ToArray(), cancellationToken);
         var summaryLookup = summaries.ToDictionary(x => x.ProjectId);
 

@@ -20,16 +20,21 @@ public sealed class SprintRepository : ISprintRepository
         return await _dbContext.Sprints.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
-    public async Task<Sprint?> GetActiveByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    public async Task<Sprint?> GetActiveByProjectIdAsync(Guid projectId, Guid? callerOrgId = null, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Sprints
-            .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Active, cancellationToken);
+        var query = _dbContext.Sprints
+            .Where(s => s.ProjectId == projectId && s.Status == SprintStatus.Active);
+        if (callerOrgId.HasValue)
+            query = query.Where(s => s.OrganizationId == null || s.OrganizationId == callerOrgId);
+        return await query.FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Sprint>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Sprint>> GetByProjectIdAsync(Guid projectId, Guid? callerOrgId = null, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Sprints
-            .Where(s => s.ProjectId == projectId)
+        var query = _dbContext.Sprints.Where(s => s.ProjectId == projectId);
+        if (callerOrgId.HasValue)
+            query = query.Where(s => s.OrganizationId == null || s.OrganizationId == callerOrgId);
+        return await query
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
     }

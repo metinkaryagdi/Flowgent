@@ -10,7 +10,7 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { setAuth, setFlags } = useAuthStore();
+    const { setAuth, setFlags, setActiveOrg } = useAuthStore();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: FormEvent) => {
@@ -25,9 +25,12 @@ export default function LoginPage() {
         setLoading(true);
         try {
             const result = await authApi.login({ userNameOrEmail: email, password });
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { accessToken: _, ...rest } = result;
-            setAuth(rest.user, rest.roles);
+            setAuth(result.user, result.roles);
+
+            // Restore active org from login response
+            if (result.activeOrgId && result.activeOrgName) {
+                setActiveOrg({ id: result.activeOrgId, name: result.activeOrgName, role: result.activeOrgRole ?? '' });
+            }
 
             // BFF flags çek
             try {

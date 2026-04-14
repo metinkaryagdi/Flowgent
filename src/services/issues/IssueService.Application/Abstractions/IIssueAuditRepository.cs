@@ -6,4 +6,5 @@ public interface IIssueAuditRepository
 {
     Task AddAsync(IssueAudit audit, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<IssueAudit>> GetByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default);
+    Task RemoveByIssueIdAsync(Guid issueId, CancellationToken cancellationToken = default);
 }

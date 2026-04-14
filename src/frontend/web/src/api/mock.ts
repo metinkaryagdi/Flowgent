@@ -908,5 +908,14 @@ export const mockApi = {
             );
             setUsers(users);
         },
+        getStats: async () => {
+            const users = getUsers();
+            return {
+                totalUsers: users.length,
+                activeUsers: users.filter((u) => u.isActive).length,
+                totalOrgs: 0,
+            };
+        },
+        getAdminOrgs: async () => [] as import('../types').OrganizationDto[],
     },
 };

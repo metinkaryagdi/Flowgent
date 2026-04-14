@@ -1,6 +1,6 @@
 import apiClient from './client';
 import { mockApi, useMockApi } from './mock';
-import type { UserDto, RoleDto } from '../types';
+import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto } from '../types';
 
 export const adminApi = {
     getUsers: async (): Promise<UserDto[]> => {
@@ -39,5 +39,17 @@ export const adminApi = {
     activateUser: async (userId: string): Promise<void> => {
         if (useMockApi) return mockApi.admin.activateUser(userId);
         await apiClient.post(`/api/v1/identity/users/${userId}/activate`);
+    },
+
+    getStats: async (): Promise<AdminStatsDto> => {
+        if (useMockApi) return mockApi.admin.getStats();
+        const response = await apiClient.get<AdminStatsDto>('/api/v1/identity/users/stats');
+        return response.data;
+    },
+
+    getAdminOrgs: async (): Promise<OrganizationDto[]> => {
+        if (useMockApi) return mockApi.admin.getAdminOrgs();
+        const response = await apiClient.get<OrganizationDto[]>('/api/v1/identity/organizations/admin/all');
+        return response.data;
     },
 };

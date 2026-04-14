@@ -1,3 +1,4 @@
+using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Domain.Entities;
@@ -11,15 +12,18 @@ public sealed class CreateOrganizationCommandHandler
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
 
     public CreateOrganizationCommandHandler(
         IOrganizationRepository organizationRepository,
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IMapper mapper)
     {
         _organizationRepository = organizationRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
+        _mapper = mapper;
     }
 
     public async Task<OrganizationDto> Handle(
@@ -29,21 +33,15 @@ public sealed class CreateOrganizationCommandHandler
         var user = await _userRepository.GetByIdAsync(request.CreatedByUserId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
-        var existing = await _organizationRepository.GetByUserIdAsync(request.CreatedByUserId, cancellationToken);
-        if (existing is not null)
-            throw new InvalidOperationException("User already belongs to an organization.");
-
         var organization = new Organization(request.Name, request.CreatedByUserId);
         await _organizationRepository.AddAsync(organization, cancellationToken);
+
+        // Mark this as the user's active org so login/refresh restores the correct context
+        user.SetActiveOrganization(organization.Id);
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new OrganizationDto
-        {
-            Id = organization.Id,
-            Name = organization.Name,
-            CreatedByUserId = organization.CreatedByUserId,
-            CreatedAt = organization.CreatedAt,
-            MemberCount = organization.Members.Count
-        };
+        return _mapper.Map<OrganizationDto>(organization);
     }
 }

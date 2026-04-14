@@ -20,13 +20,14 @@ public sealed class RefreshTokenCommandHandlerTests
         var refreshRepo = Substitute.For<IRefreshTokenRepository>();
         var userRepo = Substitute.For<IUserRepository>();
         var jwt = Substitute.For<IJwtTokenGenerator>();
+        var orgRepo = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var mapper = Substitute.For<IMapper>();
         var options = Options.Create(new JwtOptions { RefreshTokenDays = 7 });
 
         refreshRepo.GetByTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((RefreshToken?)null);
 
-        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);
+        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, orgRepo, unitOfWork, mapper, options);
         var command = new RefreshTokenCommand("bad");
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -40,6 +41,7 @@ public sealed class RefreshTokenCommandHandlerTests
         var refreshRepo = Substitute.For<IRefreshTokenRepository>();
         var userRepo = Substitute.For<IUserRepository>();
         var jwt = Substitute.For<IJwtTokenGenerator>();
+        var orgRepo = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var mapper = Substitute.For<IMapper>();
         var options = Options.Create(new JwtOptions { RefreshTokenDays = 7 });
@@ -51,7 +53,7 @@ public sealed class RefreshTokenCommandHandlerTests
         user.ChangeStatus(UserStatus.Deactivated);
         userRepo.GetByIdAsync(token.UserId, Arg.Any<CancellationToken>()).Returns(user);
 
-        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);
+        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, orgRepo, unitOfWork, mapper, options);
         var command = new RefreshTokenCommand("token");
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -65,6 +67,7 @@ public sealed class RefreshTokenCommandHandlerTests
         var refreshRepo = Substitute.For<IRefreshTokenRepository>();
         var userRepo = Substitute.For<IUserRepository>();
         var jwt = Substitute.For<IJwtTokenGenerator>();
+        var orgRepo = Substitute.For<IOrganizationRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var mapper = Substitute.For<IMapper>();
         var options = Options.Create(new JwtOptions { RefreshTokenDays = 7 });
@@ -75,10 +78,12 @@ public sealed class RefreshTokenCommandHandlerTests
         var user = new User("user", "user@example.com", "hash");
         userRepo.GetByIdAsync(token.UserId, Arg.Any<CancellationToken>()).Returns(user);
 
-        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>()).Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
+        orgRepo.GetByUserIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns((Organization?)null);
+        jwt.Generate(user, Arg.Any<IReadOnlyList<string>>(), Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(new JwtTokenResult("access", DateTime.UtcNow.AddHours(1)));
         mapper.Map<UserDto>(user).Returns(new UserDto { Id = user.Id, Email = user.Email });
 
-        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, unitOfWork, mapper, options);
+        var handler = new RefreshTokenCommandHandler(refreshRepo, userRepo, jwt, orgRepo, unitOfWork, mapper, options);
         var rawToken = "myRawToken";
         var command = new RefreshTokenCommand(rawToken);
 

@@ -191,6 +191,26 @@ services:
       timeout: 5s
       retries: 5
 
+  ai-db:
+    image: postgres:16-alpine
+    container_name: ai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aidb
+      POSTGRES_USER: ai_user
+      POSTGRES_PASSWORD: ai_pass
+    ports:
+      - "5439:5432"
+    volumes:
+      - ai-db-data:/var/lib/postgresql/data
+    networks:
+      - bitirme-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ai_user -d aidb" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ============================================
   # MICROSERVICES
   # ============================================
@@ -382,6 +402,40 @@ services:
     networks:
       - bitirme-net
 
+  ai-api:
+    build:
+      context: .
+      dockerfile: src/services/ai/AiService.Api/Dockerfile
+    container_name: ai-api
+    restart: unless-stopped
+    depends_on:
+      ai-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__AiDatabase: "Host=ai-db;Port=5432;Database=aidb;Username=ai_user;Password=ai_pass"
+      Ollama__BaseUrl: "http://host.docker.internal:11434"
+      Ollama__Model: "gemma3:4b"
+      Ollama__FallbackModel: "llama3.2:3b"
+      Services__SprintService: "http://sprint-api:8080"
+      Services__IssueService: "http://issue-api:8080"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: "admin"
+      RabbitMQ__Password: "admin123"
+      RabbitMQ__VirtualHost: "/"
+      Seq__ServerUrl: "http://seq:5341"
+      Jwt__Secret: "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters"
+      Jwt__Issuer: "BitirmeProject.IdentityService"
+      Jwt__Audience: "BitirmeProject.Clients"
+    ports:
+      - "5008:8080"
+    networks:
+      - bitirme-net
+
   bff-api:
     build:
       context: .
@@ -426,6 +480,8 @@ services:
       notification-api:
         condition: service_started
       storage-api:
+        condition: service_started
+      ai-api:
         condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
@@ -481,3 +537,4 @@ volumes:
   notification-db-data:
   storage-db-data:
   storage-uploads:
+  ai-db-data:

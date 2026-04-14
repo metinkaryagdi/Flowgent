@@ -7,6 +7,7 @@ namespace BitirmeProject.SprintService.Domain.Entities;
 public sealed class Sprint : AggregateRoot<Guid>
 {
     public Guid ProjectId { get; private set; }
+    public Guid? OrganizationId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string? Goal { get; private set; }
     public DateTime StartDate { get; private set; }
@@ -18,10 +19,11 @@ public sealed class Sprint : AggregateRoot<Guid>
 
     private Sprint() { }
 
-    public Sprint(Guid projectId, string name, string? goal, DateTime startDate, DateTime endDate, Guid createdByUserId)
+    public Sprint(Guid projectId, string name, string? goal, DateTime startDate, DateTime endDate, Guid createdByUserId, Guid? organizationId = null)
     {
         Id = Guid.NewGuid();
         ProjectId = projectId;
+        OrganizationId = organizationId;
         SetName(name);
         SetGoal(goal);
         SetSchedule(startDate, endDate);
