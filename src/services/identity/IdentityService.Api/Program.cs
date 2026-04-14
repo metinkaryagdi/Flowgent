@@ -107,6 +107,9 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate();
 
     await IdentityRoleSeeder.SeedAsync(db);
+
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<BitirmeProject.IdentityService.Application.Abstractions.IPasswordHasher>();
+    await AdminUserSeeder.SeedAsync(db, passwordHasher);
 }
 
 app.UseMiddleware<BitirmeProject.IdentityService.Api.Middleware.ExceptionHandlingMiddleware>();
