@@ -18,7 +18,7 @@ public sealed class GetBacklogQueryHandler : IRequestHandler<GetBacklogQuery, IR
 
     public async Task<IReadOnlyList<SprintIssueDto>> Handle(GetBacklogQuery request, CancellationToken cancellationToken)
     {
-        var items = await _issueRepository.GetBacklogByProjectIdAsync(request.ProjectId, cancellationToken);
+        var items = await _issueRepository.GetBacklogByProjectIdAsync(request.ProjectId, request.OrganizationId, cancellationToken);
         return items.Select(item => _mapper.Map<SprintIssueDto>(item)).ToList();
     }
 }

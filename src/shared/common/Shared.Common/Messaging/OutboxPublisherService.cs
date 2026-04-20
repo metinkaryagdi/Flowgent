@@ -44,7 +44,7 @@ public class OutboxPublisherService : BackgroundService
             {
                 _monitor.RecordStarted(DateTime.UtcNow);
                 var result = await ProcessOutboxMessagesAsync(stoppingToken);
-                _monitor.RecordCompleted(DateTime.UtcNow, result.ProcessedCount, result.FailedCount);
+                _monitor.RecordCompleted(DateTime.UtcNow, result.ProcessedCount, result.FailedCount, result.PermanentlyFailedCount);
             }
             catch (Exception ex)
             {
@@ -83,14 +83,14 @@ public class OutboxPublisherService : BackgroundService
         if (outboxRepository == null || eventBus == null)
         {
             _logger.LogWarning("Outbox repository or EventBus not registered. Skipping outbox processing.");
-            return new OutboxCycleResult(0, 0);
+            return new OutboxCycleResult(0, 0, 0);
         }
 
         // Claim a batch exclusively for this worker instance
         var messages = await outboxRepository.ClaimBatchAsync(_workerId, BatchSize, _lockDuration, cancellationToken);
 
         if (messages.Count == 0)
-            return new OutboxCycleResult(0, 0);
+            return new OutboxCycleResult(0, 0, 0);
 
         _logger.LogInformation(
             "Processing {Count} outbox messages. WorkerId={WorkerId}",
@@ -98,6 +98,7 @@ public class OutboxPublisherService : BackgroundService
 
         var processedCount = 0;
         var failedCount = 0;
+        var permanentlyFailedCount = 0;
 
         foreach (var message in messages)
         {
@@ -134,15 +135,23 @@ public class OutboxPublisherService : BackgroundService
                 var delaySeconds = Math.Min(10 * (int)Math.Pow(2, message.RetryCount), 300);
                 var nextRetryAt = message.RetryCount < MaxRetries
                     ? DateTime.UtcNow.AddSeconds(delaySeconds)
-                    : (DateTime?)null; // No more retries → stays Failed
+                    : (DateTime?)null; // No more retries → permanently failed (DLQ)
+
+                if (nextRetryAt is null)
+                {
+                    permanentlyFailedCount += 1;
+                    _logger.LogCritical(
+                        "Outbox message permanently failed after {MaxRetries} retries — manual intervention required. MessageId={MessageId}, EventType={EventType}",
+                        MaxRetries, message.Id, message.EventType);
+                }
 
                 await outboxRepository.MarkAsFailedAsync(message.Id, ex.Message, nextRetryAt, cancellationToken);
             }
         }
 
-        return new OutboxCycleResult(processedCount, failedCount);
+        return new OutboxCycleResult(processedCount, failedCount, permanentlyFailedCount);
     }
 
-    private readonly record struct OutboxCycleResult(int ProcessedCount, int FailedCount);
+    private readonly record struct OutboxCycleResult(int ProcessedCount, int FailedCount, int PermanentlyFailedCount);
 }
 

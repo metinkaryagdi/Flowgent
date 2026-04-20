@@ -8,6 +8,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using BitirmeProject.NotificationService.Application.Abstractions;
 using BitirmeProject.NotificationService.Domain.Entities;
+using BitirmeProject.NotificationService.Infrastructure.Persistence;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Logging;
 using Shared.Common.Messaging;
@@ -46,7 +47,8 @@ public sealed class NotificationEventsConsumer : BackgroundService
             nameof(IssueAssignedEvent),
             nameof(IssueStatusChangedEvent),
             nameof(CommentAddedEvent),
-            nameof(MemberAddedEvent)
+            nameof(MemberAddedEvent),
+            nameof(UserInvitedEvent)
         };
 
         // Declare Dead Letter Exchange for failed messages
@@ -96,9 +98,11 @@ public sealed class NotificationEventsConsumer : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
             var processedRepo = scope.ServiceProvider.GetRequiredService<IProcessedEventRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
+            await using var tx = await dbContext.Database.BeginTransactionAsync();
             switch (eventType)
             {
                 case nameof(IssueAssignedEvent):
@@ -185,11 +189,32 @@ public sealed class NotificationEventsConsumer : BackgroundService
                     await unitOfWork.SaveChangesAsync(CancellationToken.None);
                     break;
                 }
+                case nameof(UserInvitedEvent):
+                {
+                    var evt = JsonSerializer.Deserialize<UserInvitedEvent>(message);
+                    if (evt is null) throw new InvalidOperationException("Invalid UserInvitedEvent payload");
+
+                    _logger.LogInformation("UserInvitedEvent received. Email={Email}", evt.Email);
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate UserInvitedEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
+                    var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<UserInvitedEvent>>();
+                    await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
+                    break;
+                }
                 default:
                     _logger.LogWarning("Unknown event type received: {EventType}", eventType);
                     break;
             }
 
+            await tx.CommitAsync();
             _channel!.BasicAck(args.DeliveryTag, multiple: false);
         }
         catch (Exception ex)

@@ -25,10 +25,8 @@ public sealed class GetMyOrganizationQueryHandler
         Organization? organization;
         if (request.OrganizationId.HasValue)
         {
-            organization = await _organizationRepository.GetByIdAsync(request.OrganizationId.Value, cancellationToken);
-            // Verify user is actually a member of this org
-            if (organization is not null && !organization.Members.Any(m => m.UserId == request.UserId))
-                organization = null;
+            // DB-level member check: returns null if user is not a member
+            organization = await _organizationRepository.GetByIdAndUserIdAsync(request.OrganizationId.Value, request.UserId, cancellationToken);
         }
         else
         {

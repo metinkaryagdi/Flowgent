@@ -14,6 +14,8 @@ public sealed class OllamaClient : IOllamaClient
     private readonly string _model;
     private readonly string _fallbackModel;
     private readonly ILogger<OllamaClient> _logger;
+    private static readonly SemaphoreSlim _concurrencyLimit = new(5, 5);
+    private const int MaxRetries = 3;
 
     public OllamaClient(HttpClient http, IConfiguration configuration, ILogger<OllamaClient> logger)
     {
@@ -25,20 +27,46 @@ public sealed class OllamaClient : IOllamaClient
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken ct = default)
     {
-        return await GenerateWithModelAsync(prompt, _model, ct);
+        return await GenerateWithRetryAsync(prompt, _model, ct);
     }
 
     public async Task<T?> GenerateJsonAsync<T>(string prompt, CancellationToken ct = default) where T : class
     {
-        var raw = await GenerateWithModelAsync(prompt, _model, ct);
+        var raw = await GenerateWithRetryAsync(prompt, _model, ct);
 
         var parsed = TryParseJson<T>(raw);
         if (parsed is not null)
             return parsed;
 
         _logger.LogWarning("Primary model JSON parse failed, retrying with fallback model {Model}", _fallbackModel);
-        var rawFallback = await GenerateWithModelAsync(prompt, _fallbackModel, ct);
+        var rawFallback = await GenerateWithRetryAsync(prompt, _fallbackModel, ct);
         return TryParseJson<T>(rawFallback);
+    }
+
+    private async Task<string> GenerateWithRetryAsync(string prompt, string model, CancellationToken ct)
+    {
+        await _concurrencyLimit.WaitAsync(ct);
+        try
+        {
+            for (var attempt = 1; attempt <= MaxRetries; attempt++)
+            {
+                try
+                {
+                    return await GenerateWithModelAsync(prompt, model, ct);
+                }
+                catch (Exception ex) when (attempt < MaxRetries)
+                {
+                    var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogWarning(ex, "Ollama attempt {Attempt}/{Max} failed, retrying in {Delay}s", attempt, MaxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay, ct);
+                }
+            }
+            return await GenerateWithModelAsync(prompt, model, ct);
+        }
+        finally
+        {
+            _concurrencyLimit.Release();
+        }
     }
 
     private async Task<string> GenerateWithModelAsync(string prompt, string model, CancellationToken ct)

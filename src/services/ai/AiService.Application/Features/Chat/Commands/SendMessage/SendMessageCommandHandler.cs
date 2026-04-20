@@ -1,4 +1,5 @@
 using BitirmeProject.AiService.Application.Abstractions;
+using BitirmeProject.AiService.Application.Common;
 using BitirmeProject.AiService.Application.DTOs;
 using BitirmeProject.AiService.Domain.Entities;
 using BitirmeProject.AiService.Domain.Enums;
@@ -65,7 +66,7 @@ public sealed class SendMessageCommandHandler : IRequestHandler<SendMessageComma
             .Select(r => $"User: {r.Prompt}\nAssistant: {r.RawResponse}")
             .ToList();
 
-        var prompt = BuildPrompt(request.Message, context, history);
+        var prompt = BuildPrompt(PromptSanitizer.Sanitize(request.Message), context, history);
         string answer;
 
         try

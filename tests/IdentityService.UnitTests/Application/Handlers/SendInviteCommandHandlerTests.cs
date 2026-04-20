@@ -21,11 +21,13 @@ public sealed class SendInviteCommandHandlerTests
     {
         var orgRepo = Substitute.For<IOrganizationRepository>();
         var inviteRepo = Substitute.For<IInviteRepository>();
+        var userRepo = Substitute.For<IUserRepository>();
         var emailService = Substitute.For<IEmailService>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
+        var outboxRepo = Substitute.For<Shared.Abstractions.Messaging.IOutboxRepository>();
         var mapper = Substitute.For<IMapper>();
         var logger = Substitute.For<ILogger<SendInviteCommandHandler>>();
-        var handler = new SendInviteCommandHandler(orgRepo, inviteRepo, emailService, unitOfWork, mapper, logger);
+        var handler = new SendInviteCommandHandler(orgRepo, inviteRepo, userRepo, emailService, unitOfWork, outboxRepo, mapper, logger);
         return (orgRepo, inviteRepo, emailService, unitOfWork, mapper, handler);
     }
 

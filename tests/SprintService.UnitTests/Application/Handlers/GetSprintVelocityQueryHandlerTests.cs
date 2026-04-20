@@ -1,4 +1,4 @@
-using BitirmeProject.SprintService.Application.Abstractions;
+﻿using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprintVelocity;
 using BitirmeProject.SprintService.Application.ReadModels;
 using BitirmeProject.SprintService.Domain.Entities;
@@ -22,9 +22,9 @@ public sealed class GetSprintVelocityQueryHandlerTests
 
         var items = new List<SprintIssue>
         {
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T1", "Task", "Low", "Done", Guid.NewGuid()),
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T2", "Task", "High", "InProgress", Guid.NewGuid()),
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T3", "Task", "Medium", "done", Guid.NewGuid())
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T1", "Task", "Low", "Done", Guid.NewGuid()),
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T2", "Task", "High", "InProgress", Guid.NewGuid()),
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T3", "Task", "Medium", "done", Guid.NewGuid())
         };
         issueRepository.GetBySprintIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
 

@@ -8,6 +8,7 @@ import type {
     AcceptInviteRequest,
     CreateOrganizationRequest,
     ChangeMemberRoleRequest,
+    UserDto,
 } from '../types';
 
 export interface SwitchOrganizationResponse {
@@ -83,6 +84,11 @@ export const organizationsApi = {
 
     acceptInvite: async (data: AcceptInviteRequest): Promise<UserDto> => {
         const response = await apiClient.post<UserDto>('/api/v1/identity/invites/accept', data);
+        return response.data;
+    },
+
+    acceptInviteExisting: async (token: string): Promise<UserDto> => {
+        const response = await apiClient.post<UserDto>('/api/v1/identity/invites/accept-existing', { token });
         return response.data;
     },
 

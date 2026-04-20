@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Shared.Common.Extensions;
+using System.Security.Claims;
 
 namespace BitirmeProject.IdentityService.Api.Controllers;
 
@@ -27,13 +28,15 @@ public class OrganizationsController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly JwtOptions _jwtOptions;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public OrganizationsController(IMediator mediator, IWebHostEnvironment env, IOptions<JwtOptions> jwtOptions, IOrganizationRepository organizationRepository)
+    public OrganizationsController(IMediator mediator, IWebHostEnvironment env, IOptions<JwtOptions> jwtOptions, IOrganizationRepository organizationRepository, IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
         _env = env;
         _jwtOptions = jwtOptions.Value;
         _organizationRepository = organizationRepository;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -174,6 +177,20 @@ public class OrganizationsController : ControllerBase
             CreatedAt = o.CreatedAt,
         }).ToList();
         return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Admin-only: hard-deletes an organization and all its members.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var org = await _organizationRepository.GetByIdAsync(id, cancellationToken);
+        if (org is null) return NotFound();
+        await _organizationRepository.DeleteAsync(org, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     /// <summary>

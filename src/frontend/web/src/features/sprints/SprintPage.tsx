@@ -36,6 +36,7 @@ export default function SprintPage() {
     const [sprintIssues, setSprintIssues] = useState<Record<string, { items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>>({});
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [addingIssues, setAddingIssues] = useState<Set<string>>(new Set());
     const pageSize = 20;
 
     const { addToast: showToast } = useToastStore();
@@ -198,12 +199,16 @@ export default function SprintPage() {
     };
 
     const handleAddIssueToSprint = async (sprintId: string, issueId: string) => {
+        if (addingIssues.has(issueId)) return;
+        setAddingIssues((prev) => new Set(prev).add(issueId));
         try {
             await sprintsApi.addIssue(sprintId, issueId);
             showToast('Issue sprint\'e eklendi!');
             await loadData();
         } catch {
             showToast('Issue eklenirken hata oluştu.', 'error');
+        } finally {
+            setAddingIssues((prev) => { const next = new Set(prev); next.delete(issueId); return next; });
         }
     };
 
@@ -434,21 +439,25 @@ export default function SprintPage() {
                                 {plannedSprints.length === 1 && (
                                     <button
                                         className={styles.assignSprintBtn}
+                                        disabled={addingIssues.has(issue.issueId)}
                                         onClick={() => handleAddIssueToSprint(plannedSprints[0].id, issue.issueId)}
                                     >
-                                        Sprint'e Ekle
+                                        {addingIssues.has(issue.issueId) ? 'Ekleniyor...' : "Sprint'e Ekle"}
                                     </button>
                                 )}
                                 {plannedSprints.length > 1 && (
                                     <select
                                         className={styles.assignSprintBtn}
                                         defaultValue=""
+                                        disabled={addingIssues.has(issue.issueId)}
                                         onChange={(e) => {
                                             if (e.target.value) handleAddIssueToSprint(e.target.value, issue.issueId);
                                             e.target.value = '';
                                         }}
                                     >
-                                        <option value="" disabled>Sprint'e Ekle</option>
+                                        <option value="" disabled>
+                                            {addingIssues.has(issue.issueId) ? 'Ekleniyor...' : "Sprint'e Ekle"}
+                                        </option>
                                         {plannedSprints.map((s) => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}

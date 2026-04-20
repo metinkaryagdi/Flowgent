@@ -6,9 +6,10 @@ import { useAuthStore } from '../store/authStore';
  * Admin ise bypass, activeOrg varsa geç, yoksa /onboarding'e yönlendir.
  */
 export default function OrgGuard() {
-    const { roles, activeOrg } = useAuthStore();
+    const { roles, activeOrg, skippedOnboarding } = useAuthStore();
 
     if (roles.includes('Admin')) return <Outlet />;
     if (activeOrg !== null) return <Outlet />;
+    if (skippedOnboarding) return <Outlet />;
     return <Navigate to="/onboarding" replace />;
 }

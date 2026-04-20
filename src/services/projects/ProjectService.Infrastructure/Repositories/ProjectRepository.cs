@@ -110,6 +110,35 @@ public sealed class ProjectRepository : IProjectRepository
         return (items, totalCount);
     }
 
+    public async Task<(IReadOnlyList<Project> Items, int TotalCount)> GetAllPagedAsync(
+        int page,
+        int pageSize,
+        string? search,
+        bool includeArchived,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Projects.AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(p => !p.IsArchived);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(p => p.Name.ToLower().Contains(term) || p.Key.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(p => p.OrganizationId)
+            .ThenBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task<bool> ExistsByKeyAsync(
         string key,
         Guid? organizationId = null,

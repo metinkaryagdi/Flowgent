@@ -110,7 +110,10 @@ public sealed class AuthController : ControllerBase
         RefreshToken = string.Empty,
         ExpiresAt = result.ExpiresAt,
         User = result.User,
-        Roles = result.Roles
+        Roles = result.Roles,
+        ActiveOrgId = result.ActiveOrgId,
+        ActiveOrgName = result.ActiveOrgName,
+        ActiveOrgRole = result.ActiveOrgRole,
     };
 
     private Guid? TryGetOrganizationIdFromAccessToken()

@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.RemoveIssue;
@@ -77,7 +77,7 @@ public sealed class RemoveIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         sprintIssue.SprintId = Guid.NewGuid();
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
@@ -104,7 +104,7 @@ public sealed class RemoveIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         sprintIssue.SprintId = sprint.Id;
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 

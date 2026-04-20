@@ -15,11 +15,13 @@ interface AuthState {
     flags: UiFlags | null;
     isAuthenticated: boolean;
     activeOrg: ActiveOrg | null;
+    skippedOnboarding: boolean;
 
     // Actions
     setAuth: (user: UserDto, roles: string[]) => void;
     setFlags: (flags: UiFlags) => void;
     setActiveOrg: (org: ActiveOrg | null) => void;
+    skipOnboarding: () => void;
     logout: () => void;
     hydrate: () => void;
 }
@@ -30,6 +32,7 @@ const getPersistedState = (): {
     roles: string[];
     isAuthenticated: boolean;
     activeOrg: ActiveOrg | null;
+    skippedOnboarding: boolean;
 } => {
     try {
         const userStr = localStorage.getItem('user');
@@ -37,19 +40,22 @@ const getPersistedState = (): {
             const user = JSON.parse(userStr) as UserDto;
             const rolesStr = localStorage.getItem('roles');
             const activeOrgStr = localStorage.getItem('activeOrg');
+            const skipped = localStorage.getItem('skippedOnboarding') === 'true';
             return {
                 user,
                 roles: rolesStr ? (JSON.parse(rolesStr) as string[]) : [],
                 isAuthenticated: true,
                 activeOrg: activeOrgStr ? (JSON.parse(activeOrgStr) as ActiveOrg) : null,
+                skippedOnboarding: skipped,
             };
         }
     } catch {
         localStorage.removeItem('user');
         localStorage.removeItem('roles');
         localStorage.removeItem('activeOrg');
+        localStorage.removeItem('skippedOnboarding');
     }
-    return { user: null, roles: [], isAuthenticated: false, activeOrg: null };
+    return { user: null, roles: [], isAuthenticated: false, activeOrg: null, skippedOnboarding: false };
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -76,11 +82,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         set({ activeOrg: org });
     },
 
+    skipOnboarding: () => {
+        localStorage.setItem('skippedOnboarding', 'true');
+        set({ skippedOnboarding: true });
+    },
+
     logout: () => {
         localStorage.removeItem('user');
         localStorage.removeItem('roles');
         localStorage.removeItem('activeOrg');
-        set({ token: null, user: null, roles: [], flags: null, isAuthenticated: false, activeOrg: null });
+        localStorage.removeItem('skippedOnboarding');
+        set({ token: null, user: null, roles: [], flags: null, isAuthenticated: false, activeOrg: null, skippedOnboarding: false });
     },
 
     // hydrate() is kept for backward compat but no longer needed for OrgGuard correctness

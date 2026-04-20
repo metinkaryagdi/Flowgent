@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.AddIssue;
@@ -109,7 +109,7 @@ public sealed class AddIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
         var handler = new AddIssueCommandHandler(sprintRepository, issueRepository, issueServiceClient, unitOfWork, outboxRepository, mapper);
@@ -136,7 +136,7 @@ public sealed class AddIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         sprintIssue.SprintId = Guid.NewGuid();
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
@@ -164,7 +164,7 @@ public sealed class AddIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         sprintIssue.SprintId = sprint.Id;
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
@@ -195,7 +195,7 @@ public sealed class AddIssueCommandHandlerTests
         var sprint = CreateSprint();
         sprintRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprint);
 
-        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid());
+        var sprintIssue = new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid());
         issueRepository.GetByIssueIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(sprintIssue);
 
         var expectedDto = new SprintIssueDto { SprintId = sprint.Id };

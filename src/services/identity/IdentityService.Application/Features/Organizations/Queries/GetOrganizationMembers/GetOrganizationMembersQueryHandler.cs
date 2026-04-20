@@ -22,11 +22,9 @@ public sealed class GetOrganizationMembersQueryHandler
         GetOrganizationMembersQuery request,
         CancellationToken cancellationToken)
     {
-        var organization = await _organizationRepository.GetByIdAsync(request.OrganizationId, cancellationToken)
-            ?? throw new InvalidOperationException("Organization not found.");
-
-        if (!organization.HasMember(request.RequestedByUserId))
-            throw new UnauthorizedAccessException("You are not a member of this organization.");
+        // DB-level member check: returns org only if requesting user is a member
+        var organization = await _organizationRepository.GetByIdAndUserIdAsync(request.OrganizationId, request.RequestedByUserId, cancellationToken)
+            ?? throw new UnauthorizedAccessException("Organization not found or you are not a member.");
 
         var result = new List<OrganizationMemberDto>();
         foreach (var member in organization.Members)

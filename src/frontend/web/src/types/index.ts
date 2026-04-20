@@ -88,6 +88,7 @@ export interface ProjectDto {
   name: string;
   key: string;
   ownerUserId: string;
+  organizationId?: string;
   isArchived: boolean;
   issueCount: number;
   openIssueCount: number;

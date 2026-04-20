@@ -172,7 +172,11 @@ public sealed class SprintsController : ControllerBase
     [HttpGet("project/{projectId:guid}/backlog")]
     public async Task<ActionResult<IReadOnlyList<SprintIssueDto>>> GetBacklog(Guid projectId)
     {
-        var result = await _mediator.Send(new GetBacklogQuery(projectId));
+        var orgId = User.TryGetOrganizationId();
+        if (orgId is null)
+            return Unauthorized();
+
+        var result = await _mediator.Send(new GetBacklogQuery(projectId, orgId.Value));
         return Ok(result);
     }
 

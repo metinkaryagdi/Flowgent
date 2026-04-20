@@ -5,7 +5,7 @@
 /* ── Stats Cards ─────────────── */
 .statsGrid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-4);
     margin-bottom: var(--spacing-6);
 }
@@ -333,6 +333,22 @@
     background: rgba(239, 68, 68, 0.1);
     color: var(--color-error);
     border-color: var(--color-error);
+}
+
+.actionBtnDelete {
+    composes: actionBtn;
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+.actionBtnDelete:hover:not(:disabled) {
+    background: var(--color-error);
+    color: #fff;
+}
+
+.actionBtnDelete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* ── Loading ─────────────────── */

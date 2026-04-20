@@ -1,4 +1,8 @@
-﻿### Register
+# Auth flow: Login sets HttpOnly cookies (access_token + refresh_token).
+# All subsequent requests use cookies automatically — no manual token copy needed.
+# Use a REST client that supports cookies (e.g. VS Code REST Client with cookie jar, Insomnia, Postman).
+
+### Register
 POST http://localhost:5000/api/v1/identity/register
 Content-Type: application/json
 
@@ -8,7 +12,7 @@ Content-Type: application/json
   "password": "Demo123!"
 }
 
-### Login
+### Login — sets access_token + refresh_token cookies
 POST http://localhost:5000/api/v1/identity/login
 Content-Type: application/json
 
@@ -17,67 +21,58 @@ Content-Type: application/json
   "password": "Demo123!"
 }
 
-### Create Project (set {{token}} from login response)
+### Refresh token — uses refresh_token cookie, returns new access_token cookie
+POST http://localhost:5000/api/v1/identity/refresh
+
+### Logout — clears both cookies
+POST http://localhost:5000/api/v1/identity/logout
+
+### Create Project
 POST http://localhost:5000/api/v1/projects
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "name": "Demo Project",
-  "key": "DEMO",
-  "ownerUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "key": "DEMO"
 }
 
 ### Get Project Members
 GET http://localhost:5000/api/v1/projects/{{projectId}}/members
-Authorization: Bearer {{token}}
 
 ### Create Issue
 POST http://localhost:5000/api/v1/issues
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "projectId": "{{projectId}}",
   "title": "First issue",
   "description": "Issue description",
-  "priority": 1,
-  "createdByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "priority": 1
 }
 
 ### Assign Issue
 POST http://localhost:5000/api/v1/issues/{{issueId}}/assign
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "issueId": "{{issueId}}",
-  "assigneeUserId": "{{userId}}",
-  "assignedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "assigneeUserId": "{{userId}}"
 }
 
 ### Change Issue Status
 POST http://localhost:5000/api/v1/issues/{{issueId}}/status
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "issueId": "{{issueId}}",
-  "newStatus": 1,
-  "changedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "newStatus": 1
 }
 
 ### Get Issues By Sprint
 GET http://localhost:5000/api/v1/issues/sprint/{{sprintId}}
-Authorization: Bearer {{token}}
 
 ### Attach File To Issue (metadata only)
 POST http://localhost:5000/api/v1/issues/{{issueId}}/attachments
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -85,87 +80,58 @@ Content-Type: application/json
   "fileId": "{{fileId}}",
   "fileName": "spec.pdf",
   "contentType": "application/pdf",
-  "sizeBytes": 123456,
-  "uploadedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "sizeBytes": 123456
 }
 
 ### Get Issue Attachments
 GET http://localhost:5000/api/v1/issues/{{issueId}}/attachments
-Authorization: Bearer {{token}}
 
 ### Create Sprint
 POST http://localhost:5000/api/v1/sprints
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "projectId": "{{projectId}}",
   "name": "Sprint 1",
-  "goal": "Ship MVP",
-  "createdByUserId": "{{userId}}"
+  "goal": "Ship MVP"
 }
 
 ### Start Sprint
 POST http://localhost:5000/api/v1/sprints/{{sprintId}}/start
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "sprintId": "{{sprintId}}",
-  "startedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "sprintId": "{{sprintId}}"
 }
 
 ### Add Issue To Sprint
 POST http://localhost:5000/api/v1/sprints/{{sprintId}}/issues
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "sprintId": "{{sprintId}}",
-  "issueId": "{{issueId}}",
-  "addedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
+  "issueId": "{{issueId}}"
 }
 
 ### Remove Issue From Sprint
 DELETE http://localhost:5000/api/v1/sprints/{{sprintId}}/issues/{{issueId}}
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "sprintId": "{{sprintId}}",
-  "issueId": "{{issueId}}",
-  "removedByUserId": "{{userId}}",
-  "correlationId": "{{correlationId}}"
-}
 
 ### Get Active Sprint
 GET http://localhost:5000/api/v1/sprints/project/{{projectId}}/active
-Authorization: Bearer {{token}}
 
 ### Get Sprint Issues
 GET http://localhost:5000/api/v1/sprints/{{sprintId}}/issues
-Authorization: Bearer {{token}}
 
 ### Get Sprint Velocity
 GET http://localhost:5000/api/v1/sprints/{{sprintId}}/velocity
-Authorization: Bearer {{token}}
 
 ### Get Sprint Backlog
 GET http://localhost:5000/api/v1/sprints/project/{{projectId}}/backlog
-Authorization: Bearer {{token}}
 
 ### Upload File (Storage)
 POST http://localhost:5000/api/v1/storage/files
-Authorization: Bearer {{token}}
 Content-Type: multipart/form-data; boundary=boundary
 
---boundary
-Content-Disposition: form-data; name="uploadedByUserId"
-
-{{userId}}
 --boundary
 Content-Disposition: form-data; name="file"; filename="example.txt"
 Content-Type: text/plain
@@ -175,12 +141,9 @@ Hello storage
 
 ### Get File Metadata (Storage)
 GET http://localhost:5000/api/v1/storage/files/{{fileId}}
-Authorization: Bearer {{token}}
 
 ### Download File (Storage)
 GET http://localhost:5000/api/v1/storage/files/{{fileId}}/content
-Authorization: Bearer {{token}}
 
 ### Delete File (Storage)
 DELETE http://localhost:5000/api/v1/storage/files/{{fileId}}
-Authorization: Bearer {{token}}

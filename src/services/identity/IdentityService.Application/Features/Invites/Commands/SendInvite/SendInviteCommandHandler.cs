@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
@@ -5,6 +6,8 @@ using BitirmeProject.IdentityService.Domain.Entities;
 using BitirmeProject.IdentityService.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Shared.Abstractions.Messaging;
+using Shared.Contracts.Events;
 
 namespace BitirmeProject.IdentityService.Application.Features.Invites.Commands.SendInvite;
 
@@ -12,33 +15,39 @@ public sealed class SendInviteCommandHandler : IRequestHandler<SendInviteCommand
 {
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IInviteRepository _inviteRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IOutboxRepository _outboxRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<SendInviteCommandHandler> _logger;
 
     public SendInviteCommandHandler(
         IOrganizationRepository organizationRepository,
         IInviteRepository inviteRepository,
+        IUserRepository userRepository,
         IEmailService emailService,
         IUnitOfWork unitOfWork,
+        IOutboxRepository outboxRepository,
         IMapper mapper,
         ILogger<SendInviteCommandHandler> logger)
     {
         _organizationRepository = organizationRepository;
         _inviteRepository = inviteRepository;
+        _userRepository = userRepository;
         _emailService = emailService;
         _unitOfWork = unitOfWork;
+        _outboxRepository = outboxRepository;
         _mapper = mapper;
         _logger = logger;
     }
 
     public async Task<InviteDto> Handle(SendInviteCommand request, CancellationToken cancellationToken)
     {
-        var organization = await _organizationRepository.GetByIdAsync(request.OrganizationId, cancellationToken)
-            ?? throw new InvalidOperationException("Organization not found.");
+        var organization = await _organizationRepository.GetByIdAndUserIdAsync(request.OrganizationId, request.InvitedByUserId, cancellationToken)
+            ?? throw new UnauthorizedAccessException("Organization not found or you are not a member.");
 
-        var requesterRole = organization.GetMemberRole(request.InvitedByUserId)
+        var requesterRole = organization.Members.FirstOrDefault(m => m.UserId == request.InvitedByUserId)?.Role
             ?? throw new UnauthorizedAccessException("You are not a member of this organization.");
 
         if (requesterRole == OrganizationRole.Member)
@@ -57,6 +66,26 @@ public sealed class SendInviteCommandHandler : IRequestHandler<SendInviteCommand
             request.Role);
 
         await _inviteRepository.AddAsync(invite, cancellationToken);
+
+        // Look up the invited user's ID if they already have an account
+        var invitedUser = await _userRepository.GetByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken);
+        var invitedUserId = invitedUser?.Id;
+
+        var evt = new UserInvitedEvent(
+            request.Email,
+            organization.Id,
+            organization.Name,
+            request.InvitedByUserId,
+            request.Role.ToString(),
+            invitedUserId);
+
+        await _outboxRepository.AddAsync(new OutboxMessage
+        {
+            EventType = nameof(UserInvitedEvent),
+            Payload = JsonSerializer.Serialize(evt),
+            OccurredOn = evt.OccurredOn
+        }, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var inviteLink = $"{request.InviteLinkBaseUrl}/invite/accept?token={invite.Token}";

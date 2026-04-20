@@ -10,12 +10,9 @@ export function useSignalR(onNotification?: (data: unknown) => void) {
     const connectionRef = useRef<signalR.HubConnection | null>(null);
 
     const connect = useCallback(() => {
-        const token = localStorage.getItem('accessToken');
-        if (!token) return;
-
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(HUB_URL, {
-                accessTokenFactory: () => token,
+                withCredentials: true,
             })
             .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
             .configureLogging(signalR.LogLevel.Warning)

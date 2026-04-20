@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetSprintIssues;
@@ -18,8 +18,8 @@ public sealed class GetSprintIssuesQueryHandlerTests
 
         var items = new List<SprintIssue>
         {
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T1", "Task", "Low", "Open", Guid.NewGuid()),
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T2", "Task", "High", "Done", Guid.NewGuid())
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T1", "Task", "Low", "Open", Guid.NewGuid()),
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T2", "Task", "High", "Done", Guid.NewGuid())
         };
         repository.GetBySprintIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
 

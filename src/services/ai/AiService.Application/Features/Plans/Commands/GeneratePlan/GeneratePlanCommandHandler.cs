@@ -1,4 +1,5 @@
 using BitirmeProject.AiService.Application.Abstractions;
+using BitirmeProject.AiService.Application.Common;
 using BitirmeProject.AiService.Application.DTOs;
 using BitirmeProject.AiService.Domain.Entities;
 using BitirmeProject.AiService.Domain.Enums;
@@ -36,7 +37,7 @@ public sealed class GeneratePlanCommandHandler : IRequestHandler<GeneratePlanCom
         session.MarkProcessing();
         await _sessionRepository.SaveChangesAsync(cancellationToken);
 
-        string prompt = BuildPrompt(request.Description);
+        string prompt = BuildPrompt(PromptSanitizer.Sanitize(request.Description));
         string rawResponse;
         OllamaPlanResponse? plan;
 

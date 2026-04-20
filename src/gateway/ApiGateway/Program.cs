@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -16,6 +17,10 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("gateway", policy =>
@@ -23,7 +28,7 @@ builder.Services.AddCors(options =>
         policy.AllowAnyHeader();
         policy.AllowAnyMethod();
         policy.AllowCredentials();
-        policy.SetIsOriginAllowed(_ => true);
+        policy.WithOrigins(allowedOrigins);
     });
 });
 
@@ -63,6 +68,24 @@ builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<CorrelationContext>();
 
+// Per-IP, per-path rate limiter registered as a singleton
+var partitionedLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+{
+    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var path = context.Request.Path.Value ?? string.Empty;
+
+    if (path.Contains("/auth/login") || path.Contains("/auth/refresh"))
+        return RateLimitPartition.GetFixedWindowLimiter($"auth_strict:{ip}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+
+    if (path.Contains("/auth/register") || path.Contains("/invites/validate"))
+        return RateLimitPartition.GetFixedWindowLimiter($"auth_register:{ip}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+
+    return RateLimitPartition.GetNoLimiter("default");
+});
+builder.Services.AddSingleton(partitionedLimiter);
+
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(ctx =>
@@ -73,11 +96,14 @@ builder.Services.AddReverseProxy()
             var orgId = user.FindFirst("org_id")?.Value;
             var orgRole = user.FindFirst("org_role")?.Value;
 
+            transformCtx.ProxyRequest.Headers.Remove("X-Organization-Id");
+            transformCtx.ProxyRequest.Headers.Remove("X-Organization-Role");
+
             if (!string.IsNullOrEmpty(orgId))
-                transformCtx.ProxyRequest.Headers.TryAddWithoutValidation("X-Organization-Id", orgId);
+                transformCtx.ProxyRequest.Headers.Add("X-Organization-Id", orgId);
 
             if (!string.IsNullOrEmpty(orgRole))
-                transformCtx.ProxyRequest.Headers.TryAddWithoutValidation("X-Organization-Role", orgRole);
+                transformCtx.ProxyRequest.Headers.Add("X-Organization-Role", orgRole);
 
             await Task.CompletedTask;
         });
@@ -87,6 +113,22 @@ var app = builder.Build();
 
 app.UseCors("gateway");
 app.UseCorrelationId();
+
+// IP-based rate limiting for sensitive auth paths
+app.Use(async (context, next) =>
+{
+    var limiter = context.RequestServices.GetRequiredService<PartitionedRateLimiter<HttpContext>>();
+    using var lease = await limiter.AcquireAsync(context);
+    if (!lease.IsAcquired)
+    {
+        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.Response.Headers["Retry-After"] = "60";
+        await context.Response.WriteAsync("Too many requests. Please try again later.");
+        return;
+    }
+    await next(context);
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

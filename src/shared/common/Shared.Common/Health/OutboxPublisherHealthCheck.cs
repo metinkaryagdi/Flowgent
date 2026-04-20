@@ -21,6 +21,7 @@ public sealed class OutboxPublisherHealthCheck : IHealthCheck
             ["lastCompletedAt"] = _monitor.LastCompletedAt,
             ["lastProcessedCount"] = _monitor.LastProcessedCount,
             ["lastFailedCount"] = _monitor.LastFailedCount,
+            ["totalPermanentlyFailed"] = _monitor.TotalPermanentlyFailed,
             ["lastError"] = _monitor.LastError
         };
 
@@ -29,6 +30,10 @@ public sealed class OutboxPublisherHealthCheck : IHealthCheck
 
         if (_monitor.LastCompletedAt < DateTime.UtcNow.AddMinutes(-2))
             return Task.FromResult(HealthCheckResult.Unhealthy("Outbox worker appears stale.", data: data));
+
+        if (_monitor.TotalPermanentlyFailed > 0)
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                $"Outbox has {_monitor.TotalPermanentlyFailed} permanently failed message(s) — manual intervention required.", data: data));
 
         if (!string.IsNullOrWhiteSpace(_monitor.LastError))
             return Task.FromResult(HealthCheckResult.Degraded("Outbox worker reported an error.", data: data));

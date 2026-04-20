@@ -9,7 +9,7 @@ import type { NotificationDto, OrganizationDto } from '../types';
 import styles from './AppLayout.module.css';
 
 export default function AppLayout() {
-    const { user, roles, flags, logout, activeOrg, setActiveOrg } = useAuthStore();
+    const { user, roles, flags, logout, activeOrg, setActiveOrg, setFlags } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const navigate = useNavigate();
     const location = useLocation();
@@ -26,6 +26,8 @@ export default function AppLayout() {
     const [showOrgDropdown, setShowOrgDropdown] = useState(false);
     const [orgSwitching, setOrgSwitching] = useState(false);
     const orgDropdownRef = useRef<HTMLDivElement>(null);
+    // Prevents child pages from making API calls with a stale JWT before switchOrg completes
+    const [orgReady, setOrgReady] = useState(false);
 
     const fetchUnreadCount = useCallback(async () => {
         try {
@@ -47,21 +49,40 @@ export default function AppLayout() {
         }
     }, []);
 
-    // Load all orgs + set active org on mount
+    // Load all orgs + always refresh JWT by calling switchOrg on mount
     const loadOrgs = useCallback(async () => {
         try {
             const orgs = await organizationsApi.getAll();
             setAllOrgs(orgs);
 
-            // If no active org stored, set the first one (or the active JWT org)
-            if (orgs.length > 0 && !activeOrg) {
-                const currentOrg = await organizationsApi.getMy();
-                if (currentOrg) {
-                    const memberEntry = currentOrg;
-                    setActiveOrg({ id: memberEntry.id, name: memberEntry.name, role: '' });
+            if (orgs.length === 0) return;
+
+            // Determine which org to activate: prefer the currently stored one, else first
+            const storedId = activeOrg?.id;
+            const targetOrg = (storedId ? orgs.find((o) => o.id === storedId) : null) ?? orgs[0];
+
+            // Always call switchOrg to issue a fresh JWT with correct org_id/org_role claims
+            try {
+                const result = await organizationsApi.switchOrg(targetOrg.id);
+                setActiveOrg({ id: result.orgId, name: result.orgName, role: result.orgRole });
+
+                // Re-fetch UI flags after JWT refresh so canManageProjects reflects the new org_role
+                try {
+                    const updatedFlags = await authApi.getFlags();
+                    setFlags(updatedFlags);
+                } catch { /* flags fetch failure is non-fatal */ }
+            } catch {
+                // Fallback: keep existing org info if switch fails
+                if (!activeOrg) {
+                    setActiveOrg({ id: targetOrg.id, name: targetOrg.name, role: '' });
                 }
+            } finally {
+                setOrgReady(true);
             }
-        } catch { /* ignore */ }
+        } catch { /* ignore */ } finally {
+            // No orgs — still mark ready so pages can render their empty state
+            setOrgReady(true);
+        }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -182,7 +203,7 @@ export default function AppLayout() {
         ? user.userName.slice(0, 2).toUpperCase()
         : '??';
 
-    const roleLabel = roles.length > 0 ? roles.join(', ') : 'Member';
+    const roleLabel = activeOrg?.role || (roles.length > 0 ? roles.join(', ') : 'Member');
 
     const activeOrgName = activeOrg?.name ?? (allOrgs.length > 0 ? allOrgs[0].name : null);
     const activeOrgId = activeOrg?.id ?? (allOrgs.length > 0 ? allOrgs[0].id : null);
@@ -393,7 +414,9 @@ export default function AppLayout() {
                 </header>
 
                 <main id="main-content" className={styles.content}>
-                    <Outlet />
+                    {(!orgReady && !roles.includes('Admin'))
+                        ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>Yükleniyor...</div>
+                        : <Outlet />}
                 </main>
             </div>
         </div>

@@ -8,8 +8,11 @@ import type { ProjectDto } from '../../types';
 import styles from './Projects.module.css';
 
 export default function ProjectsPage() {
-    const { user, flags, activeOrg } = useAuthStore();
+    const { user, flags, activeOrg, roles } = useAuthStore();
     const navigate = useNavigate();
+    const isAdmin = roles.includes('Admin');
+    const isOrgManager = activeOrg?.role === 'Owner' || activeOrg?.role === 'Manager';
+    const canManageProjects = flags?.canManageProjects !== false || isOrgManager;
 
     const [projects, setProjects] = useState<ProjectDto[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -51,10 +54,10 @@ export default function ProjectsPage() {
 
     // ── Fetch projects ────────────
     useEffect(() => {
-        if (!activeOrg?.id && !user?.id) return;
+        if (!isAdmin && !activeOrg?.id) return;
         loadProjects();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeOrg?.id, page, searchTerm, showArchived]);
+    }, [isAdmin, activeOrg?.id, page, searchTerm, showArchived]);
 
     useEffect(() => {
         setPage(1);
@@ -63,12 +66,15 @@ export default function ProjectsPage() {
     const loadProjects = async () => {
         setLoading(true);
         try {
-            const result = await projectsApi.getByOrganizationPaged({
+            const options = {
                 page,
                 pageSize,
                 search: searchTerm.trim() || undefined,
                 includeArchived: showArchived,
-            });
+            };
+            const result = isAdmin
+                ? await projectsApi.getAllPaged(options)
+                : await projectsApi.getByOrganizationPaged(options);
             setProjects(result.items);
             setTotalCount(result.totalCount);
         } catch {
@@ -144,7 +150,7 @@ export default function ProjectsPage() {
                     <h1>Projeler</h1>
                     <p>{totalCount} proje</p>
                 </div>
-                {flags?.canManageProjects !== false && (
+                {!isAdmin && canManageProjects && (
                     <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
                         <span>+</span> Yeni Proje
                     </button>
@@ -192,7 +198,7 @@ export default function ProjectsPage() {
                                     ? 'İlk projenizi oluşturarak başlayın.'
                                     : 'Arama veya filtreleri değiştirin.'}
                             </p>
-                            {flags?.canManageProjects !== false && (
+                            {!isAdmin && canManageProjects && (
                                 <button className={styles.createBtn} data-testid="project-create-open" onClick={() => setShowCreateModal(true)}>
                                     <span>+</span> Yeni Proje Oluştur
                                 </button>
@@ -209,7 +215,7 @@ export default function ProjectsPage() {
                                     <div className={styles.cardIcon}>
                                         {project.key.slice(0, 2)}
                                     </div>
-                                    {flags?.canManageProjects !== false && (
+                                    {!isAdmin && canManageProjects && (
                                         <div className={styles.cardActions}>
                                             <button
                                                 className={styles.cardActionBtn}

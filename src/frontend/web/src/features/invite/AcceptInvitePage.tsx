@@ -10,7 +10,7 @@ export default function AcceptInvitePage() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token') ?? '';
     const navigate = useNavigate();
-    const { setAuth, setFlags, setActiveOrg } = useAuthStore();
+    const { setAuth, setFlags, setActiveOrg, user: loggedInUser } = useAuthStore();
 
     const [inviteInfo, setInviteInfo] = useState<ValidateInviteTokenResult | null>(null);
     const [validating, setValidating] = useState(true);
@@ -41,6 +41,31 @@ export default function AcceptInvitePage() {
                 setValidating(false);
             });
     }, [token]);
+
+    const handleJoinAsExisting = async () => {
+        setFormError('');
+        setLoading(true);
+        try {
+            await organizationsApi.acceptInviteExisting(token);
+            setSuccess(true);
+            setTimeout(async () => {
+                try {
+                    const flags = await authApi.getFlags();
+                    setFlags(flags);
+                } catch { /* ignore */ }
+                navigate('/projects');
+            }, 1500);
+        } catch (err: unknown) {
+            if (err && typeof err === 'object' && 'response' in err) {
+                const e = err as { response?: { data?: { message?: string } } };
+                setFormError(e.response?.data?.message || 'Davet kabul edilemedi.');
+            } else {
+                setFormError('Sunucuya bağlanılamadı.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -135,21 +160,49 @@ export default function AcceptInvitePage() {
 
     const roleLabel = inviteInfo?.role === 'Manager' ? 'Yönetici' : 'Üye';
 
+    const inviteHeader = (
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>📩</div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 4 }}>
+                Daveti Kabul Et
+            </h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                <strong>{inviteInfo?.organizationName}</strong> organizasyonuna{' '}
+                <strong>{roleLabel}</strong> olarak davet edildiniz.
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                E-posta: {inviteInfo?.email}
+            </p>
+        </div>
+    );
+
+    // Logged-in path: show a single "Join" button
+    if (loggedInUser) {
+        return (
+            <>
+                {inviteHeader}
+                {formError && (
+                    <div className={`${styles.formAlert} ${styles.formAlertError}`}>{formError}</div>
+                )}
+                <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
+                    <strong>{loggedInUser.userName}</strong> olarak giriş yaptınız.
+                </p>
+                <button
+                    className={styles.formButton}
+                    disabled={loading}
+                    onClick={handleJoinAsExisting}
+                    data-testid="accept-invite-join"
+                >
+                    {loading ? 'Katılınıyor...' : 'Organizasyona Katıl'}
+                </button>
+            </>
+        );
+    }
+
+    // Anonymous path: registration form
     return (
         <>
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                <div style={{ fontSize: 40, marginBottom: 8 }}>📩</div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 4 }}>
-                    Daveti Kabul Et
-                </h2>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    <strong>{inviteInfo?.organizationName}</strong> organizasyonuna{' '}
-                    <strong>{roleLabel}</strong> olarak davet edildiniz.
-                </p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
-                    E-posta: {inviteInfo?.email}
-                </p>
-            </div>
+            {inviteHeader}
 
             {formError && (
                 <div className={`${styles.formAlert} ${styles.formAlertError}`}>{formError}</div>

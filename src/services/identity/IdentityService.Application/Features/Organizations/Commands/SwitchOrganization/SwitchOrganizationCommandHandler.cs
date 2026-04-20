@@ -27,11 +27,9 @@ public sealed class SwitchOrganizationCommandHandler
         SwitchOrganizationCommand request,
         CancellationToken cancellationToken)
     {
-        var organization = await _organizationRepository.GetByIdAsync(request.OrganizationId, cancellationToken)
-            ?? throw new InvalidOperationException("Organization not found.");
-
-        if (!organization.HasMember(request.UserId))
-            throw new InvalidOperationException("User is not a member of this organization.");
+        // DB-level member check: returns org only if user is a member
+        var organization = await _organizationRepository.GetByIdAndUserIdAsync(request.OrganizationId, request.UserId, cancellationToken)
+            ?? throw new InvalidOperationException("Organization not found or user is not a member.");
 
         var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
@@ -43,7 +41,7 @@ public sealed class SwitchOrganizationCommandHandler
             .Cast<string>()
             .ToList();
 
-        var orgRole = organization.GetMemberRole(request.UserId)?.ToString()
+        var orgRole = organization.Members.FirstOrDefault(m => m.UserId == request.UserId)?.Role.ToString()
             ?? throw new InvalidOperationException("Could not determine member role.");
 
         // Persist so subsequent logins/refreshes restore the same org context

@@ -1,20 +1,17 @@
 namespace BitirmeProject.IssueService.Api.Middleware;
 
-/// <summary>
-/// Allows internal service-to-service calls (e.g. from AiService) to bypass JWT authentication.
-/// The caller must supply X-Internal-Service and X-User-Id headers.
-/// IMPORTANT: This middleware trusts only calls originating from the Docker internal network.
-/// In production, protect with mTLS or a shared secret instead.
-/// </summary>
 public sealed class InternalServiceMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly string _apiKey;
+    private readonly ILogger<InternalServiceMiddleware> _logger;
+    private static readonly HashSet<string> AllowedCallers = ["AiService", "SprintService", "ProjectService", "BffService"];
 
-    public InternalServiceMiddleware(RequestDelegate next, IConfiguration configuration)
+    public InternalServiceMiddleware(RequestDelegate next, IConfiguration configuration, ILogger<InternalServiceMiddleware> logger)
     {
         _next = next;
         _apiKey = configuration["InternalService:ApiKey"] ?? string.Empty;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -25,25 +22,47 @@ public sealed class InternalServiceMiddleware
         var organizationIdHeader = context.Request.Headers["X-Organization-Id"].FirstOrDefault();
         var organizationRoleHeader = context.Request.Headers["X-Organization-Role"].FirstOrDefault();
 
-        if (!string.IsNullOrWhiteSpace(internalHeader)
-            && !string.IsNullOrWhiteSpace(_apiKey)
-            && string.Equals(apiKeyHeader, _apiKey, StringComparison.Ordinal)
-            && Guid.TryParse(userIdHeader, out var userId))
+        if (!string.IsNullOrWhiteSpace(internalHeader))
         {
-            var claims = new List<System.Security.Claims.Claim>
+            var maskedKey = apiKeyHeader?.Length > 4
+                ? apiKeyHeader[..4] + "****"
+                : "****";
+
+            var isValid = !string.IsNullOrWhiteSpace(_apiKey)
+                && string.Equals(apiKeyHeader, _apiKey, StringComparison.Ordinal)
+                && Guid.TryParse(userIdHeader, out _)
+                && AllowedCallers.Contains(internalHeader);
+
+            if (!isValid)
             {
-                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()),
-                new System.Security.Claims.Claim("internal_call", "true")
-            };
+                _logger.LogWarning(
+                    "Internal service call rejected. Caller={Caller} Key={MaskedKey} Path={Path}",
+                    internalHeader, maskedKey, context.Request.Path);
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
 
-            if (Guid.TryParse(organizationIdHeader, out var organizationId))
-                claims.Add(new System.Security.Claims.Claim("org_id", organizationId.ToString()));
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                var claims = new List<System.Security.Claims.Claim>
+                {
+                    new(System.Security.Claims.ClaimTypes.NameIdentifier, userId.ToString()),
+                    new("internal_call", "true")
+                };
 
-            if (!string.IsNullOrWhiteSpace(organizationRoleHeader))
-                claims.Add(new System.Security.Claims.Claim("org_role", organizationRoleHeader));
+                if (Guid.TryParse(organizationIdHeader, out var organizationId))
+                    claims.Add(new("org_id", organizationId.ToString()));
 
-            var identity = new System.Security.Claims.ClaimsIdentity(claims, "Internal");
-            context.User = new System.Security.Claims.ClaimsPrincipal(identity);
+                if (!string.IsNullOrWhiteSpace(organizationRoleHeader))
+                    claims.Add(new("org_role", organizationRoleHeader));
+
+                var identity = new System.Security.Claims.ClaimsIdentity(claims, "Internal");
+                context.User = new System.Security.Claims.ClaimsPrincipal(identity);
+
+                _logger.LogInformation(
+                    "Internal service call accepted. Caller={Caller} UserId={UserId} Path={Path}",
+                    internalHeader, userId, context.Request.Path);
+            }
         }
 
         await _next(context);

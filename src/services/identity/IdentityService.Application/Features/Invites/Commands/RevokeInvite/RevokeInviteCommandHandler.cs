@@ -25,10 +25,10 @@ public sealed class RevokeInviteCommandHandler : IRequestHandler<RevokeInviteCom
         var invite = await _inviteRepository.GetByIdAsync(request.InviteId, cancellationToken)
             ?? throw new InvalidOperationException("Invite not found.");
 
-        var organization = await _organizationRepository.GetByIdAsync(invite.OrganizationId, cancellationToken)
-            ?? throw new InvalidOperationException("Organization not found.");
+        var organization = await _organizationRepository.GetByIdAndUserIdAsync(invite.OrganizationId, request.RequestedByUserId, cancellationToken)
+            ?? throw new UnauthorizedAccessException("Organization not found or you are not a member.");
 
-        var requesterRole = organization.GetMemberRole(request.RequestedByUserId)
+        var requesterRole = organization.Members.FirstOrDefault(m => m.UserId == request.RequestedByUserId)?.Role
             ?? throw new UnauthorizedAccessException("You are not a member of this organization.");
 
         if (requesterRole == OrganizationRole.Member)

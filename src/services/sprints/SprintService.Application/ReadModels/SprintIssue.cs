@@ -6,6 +6,7 @@ public sealed class SprintIssue
 {
     public Guid IssueId { get; set; }
     public Guid ProjectId { get; set; }
+    public Guid? OrganizationId { get; set; }
     public Guid? SprintId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string IssueType { get; set; } = string.Empty;
@@ -20,6 +21,7 @@ public sealed class SprintIssue
     public SprintIssue(
         Guid issueId,
         Guid projectId,
+        Guid? organizationId,
         string title,
         string issueType,
         string priority,
@@ -28,6 +30,7 @@ public sealed class SprintIssue
     {
         IssueId = issueId;
         ProjectId = projectId;
+        OrganizationId = organizationId;
         Title = title.Trim();
         IssueType = issueType.Trim();
         Priority = priority.Trim();
