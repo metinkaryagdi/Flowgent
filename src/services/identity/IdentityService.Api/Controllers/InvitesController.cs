@@ -1,5 +1,6 @@
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInvite;
+using BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInviteExisting;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.RevokeInvite;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.SendInvite;
 using BitirmeProject.IdentityService.Application.Features.Invites.Queries.GetPendingInvites;
@@ -85,6 +86,20 @@ public class InvitesController : ControllerBase
     }
 
     /// <summary>
+    /// Accepts an invite for an already-registered user. Requires authentication.
+    /// </summary>
+    [HttpPost("accept-existing")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> AcceptAsExisting([FromBody] AcceptAsExistingRequest request)
+    {
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var result = await _mediator.Send(new AcceptInviteExistingCommand(request.Token, userId));
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Lists pending (not yet accepted/expired) invites for the organization.
     /// </summary>
     [HttpGet("pending")]
@@ -128,3 +143,4 @@ public class InvitesController : ControllerBase
 
 public sealed record SendInviteRequest(Guid OrganizationId, string Email, OrganizationRole Role);
 public sealed record AcceptInviteRequest(Guid Token, string UserName, string Password);
+public sealed record AcceptAsExistingRequest(Guid Token);

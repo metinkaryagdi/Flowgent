@@ -45,7 +45,7 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
         var boardItem = new IssueBoardItem(issue);
         await _boardRepository.AddAsync(boardItem, cancellationToken);
 
-        var evt = new IssueCreatedEvent(issue.Id, issue.ProjectId, issue.Title, "Task", issue.Priority.ToString(), issue.CreatedByUserId, request.CorrelationId ?? Guid.Empty);
+        var evt = new IssueCreatedEvent(issue.Id, issue.ProjectId, issue.OrganizationId, issue.Title, "Task", issue.Priority.ToString(), issue.CreatedByUserId, request.CorrelationId ?? Guid.Empty);
         var outbox = new OutboxMessage
         {
             EventType = evt.GetType().Name,
@@ -56,7 +56,7 @@ public sealed class CreateIssueCommandHandler : IRequestHandler<CreateIssueComma
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}:{issue.OrganizationId}", cancellationToken); } catch { }
 
         sw.Stop();
         _logger.LogInformation(

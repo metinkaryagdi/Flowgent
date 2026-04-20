@@ -24,6 +24,7 @@ Thumbs.db
 
 # Local diagnostics / env
 build_issue_api*.txt
+.env
 src/frontend/web/.env
 src/frontend/web/errors*.txt
 src/frontend/web/out.txt

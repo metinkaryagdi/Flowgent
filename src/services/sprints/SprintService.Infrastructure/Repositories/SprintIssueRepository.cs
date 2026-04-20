@@ -27,10 +27,10 @@ public sealed class SprintIssueRepository : ISprintIssueRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SprintIssue>> GetBacklogByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SprintIssue>> GetBacklogByProjectIdAsync(Guid projectId, Guid organizationId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.SprintIssues
-            .Where(x => x.ProjectId == projectId && x.SprintId == null)
+            .Where(x => x.ProjectId == projectId && x.OrganizationId == organizationId && x.SprintId == null)
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }

@@ -36,6 +36,7 @@ public sealed class IssueCreatedEventHandler : IEventHandler<IssueCreatedEvent>
         var sprintIssue = new SprintIssue(
             @event.IssueId,
             @event.ProjectId,
+            @event.OrganizationId,
             @event.Title,
             @event.IssueType,
             @event.Priority,

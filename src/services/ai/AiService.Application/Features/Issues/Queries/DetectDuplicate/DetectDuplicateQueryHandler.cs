@@ -1,4 +1,5 @@
 using BitirmeProject.AiService.Application.Abstractions;
+using BitirmeProject.AiService.Application.Common;
 using BitirmeProject.AiService.Application.DTOs;
 using BitirmeProject.AiService.Domain.Entities;
 using BitirmeProject.AiService.Domain.Enums;
@@ -40,7 +41,7 @@ public sealed class DetectDuplicateQueryHandler : IRequestHandler<DetectDuplicat
         session.MarkProcessing();
         await _sessions.SaveChangesAsync(cancellationToken);
 
-        var prompt = BuildPrompt(request.Title, existingIssues);
+        var prompt = BuildPrompt(PromptSanitizer.Sanitize(request.Title), existingIssues);
         OllamaDuplicateResponse? response;
 
         try

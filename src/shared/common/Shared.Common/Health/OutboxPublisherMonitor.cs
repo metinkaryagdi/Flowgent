@@ -8,6 +8,7 @@ public sealed class OutboxPublisherMonitor
     public DateTime? LastCompletedAt { get; private set; }
     public int LastProcessedCount { get; private set; }
     public int LastFailedCount { get; private set; }
+    public int TotalPermanentlyFailed { get; private set; }
     public string? LastError { get; private set; }
 
     public void RecordStarted(DateTime startedAt)
@@ -19,13 +20,14 @@ public sealed class OutboxPublisherMonitor
         }
     }
 
-    public void RecordCompleted(DateTime completedAt, int processedCount, int failedCount)
+    public void RecordCompleted(DateTime completedAt, int processedCount, int failedCount, int permanentlyFailed = 0)
     {
         lock (_sync)
         {
             LastCompletedAt = completedAt;
             LastProcessedCount = processedCount;
             LastFailedCount = failedCount;
+            TotalPermanentlyFailed += permanentlyFailed;
             LastError = null;
         }
     }

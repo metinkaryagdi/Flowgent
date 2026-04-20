@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using BitirmeProject.IssueService.Application.Abstractions;
 using BitirmeProject.IssueService.Domain.Entities;
+using BitirmeProject.IssueService.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -93,9 +94,11 @@ public sealed class SprintEventsConsumer : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<IssueDbContext>();
             var processedRepo = scope.ServiceProvider.GetRequiredService<IProcessedEventRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
+            await using var tx = await dbContext.Database.BeginTransactionAsync();
             switch (eventType)
             {
                 case nameof(IssueAddedToSprintEvent):
@@ -139,6 +142,7 @@ public sealed class SprintEventsConsumer : BackgroundService
                     break;
             }
 
+            await tx.CommitAsync();
             _channel!.BasicAck(args.DeliveryTag, multiple: false);
         }
         catch (Exception ex)

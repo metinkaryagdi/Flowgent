@@ -28,26 +28,35 @@ public sealed class ExceptionHandlingMiddleware
 
     private static async Task WriteProblemDetailsAsync(HttpContext context, Exception exception)
     {
-        var (statusCode, title, detail) = exception switch
+        context.Response.ContentType = "application/json";
+
+        if (exception is ValidationException ve)
         {
-            ValidationException => (HttpStatusCode.BadRequest, "Validation Error", exception.Message),
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            var fieldErrors = ve.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(e => e.ErrorMessage).ToArray());
+
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                message = "Validation failed.",
+                errors = fieldErrors
+            }));
+            return;
+        }
+
+        var (statusCode, message) = exception switch
+        {
             InvalidOperationException ioe when ioe.Message.Contains("credentials", StringComparison.OrdinalIgnoreCase)
-                => (HttpStatusCode.Unauthorized, "Unauthorized", ioe.Message),
-            InvalidOperationException => (HttpStatusCode.BadRequest, "Bad Request", exception.Message),
-            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized", exception.Message),
-            _ => (HttpStatusCode.InternalServerError, "Server Error", "An unexpected error occurred.")
+                => (HttpStatusCode.Unauthorized, ioe.Message),
+            InvalidOperationException ioe => (HttpStatusCode.BadRequest, ioe.Message),
+            UnauthorizedAccessException uae => (HttpStatusCode.Unauthorized, uae.Message),
+            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
-        var problem = new ProblemDetails
-        {
-            Status = (int)statusCode,
-            Title = title,
-            Detail = detail,
-            Instance = context.Request.Path
-        };
-
-        context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = (int)statusCode;
-        await context.Response.WriteAsync(JsonSerializer.Serialize(problem));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { message }));
     }
 }

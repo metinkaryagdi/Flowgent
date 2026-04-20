@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '../../api/admin';
 import { useToastStore } from '../../store/toastStore';
-import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto } from '../../types';
+import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto, ProjectDto } from '../../types';
 import styles from './Admin.module.css';
 
 const formatDate = (d: string) =>
@@ -32,7 +32,7 @@ async function fetchSeqLogs(): Promise<SeqEvent[]> {
         .slice(0, 5);
 }
 
-type Tab = 'users' | 'orgs';
+type Tab = 'users' | 'orgs' | 'projects';
 
 export default function AdminPage() {
     const [tab, setTab] = useState<Tab>('users');
@@ -41,10 +41,13 @@ export default function AdminPage() {
     const [userRolesMap, setUserRolesMap] = useState<Record<string, string[]>>({});
     const [stats, setStats] = useState<AdminStatsDto | null>(null);
     const [orgs, setOrgs] = useState<OrganizationDto[]>([]);
+    const [projects, setProjects] = useState<ProjectDto[]>([]);
+    const [totalProjects, setTotalProjects] = useState(0);
     const [loading, setLoading] = useState(true);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [seqLogs, setSeqLogs] = useState<SeqEvent[]>([]);
     const [seqStatus, setSeqStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const { addToast: showToast } = useToastStore();
 
     useEffect(() => {
@@ -68,7 +71,6 @@ export default function AdminPage() {
             setStats(statsData);
             setOrgs(orgData);
 
-            // Load roles for each user
             const rolesMap: Record<string, string[]> = {};
             await Promise.all(
                 userData.map(async (u) => {
@@ -84,6 +86,15 @@ export default function AdminPage() {
             showToast('Veriler yüklenirken hata oluştu.', 'error');
         } finally {
             setLoading(false);
+        }
+
+        // Projects loaded separately — failure won't block other data
+        try {
+            const projectData = await adminApi.getAdminProjects({ page: 1, pageSize: 200 });
+            setProjects(projectData.items);
+            setTotalProjects(projectData.totalCount);
+        } catch {
+            // silently ignore — projects tab will show empty
         }
     };
 
@@ -104,10 +115,55 @@ export default function AdminPage() {
         }
     };
 
+    const handleDeleteUser = async (user: UserDto) => {
+        if (!window.confirm(`"${user.userName}" kullanıcısını kalıcı olarak silmek istiyor musunuz?`)) return;
+        if (deletingIds.has(user.id)) return;
+        setDeletingIds((p) => new Set(p).add(user.id));
+        try {
+            await adminApi.deleteUser(user.id);
+            setUsers((prev) => prev.filter((u) => u.id !== user.id));
+            showToast(`${user.userName} silindi.`);
+        } catch {
+            showToast('Kullanıcı silinemedi.', 'error');
+        } finally {
+            setDeletingIds((p) => { const n = new Set(p); n.delete(user.id); return n; });
+        }
+    };
+
+    const handleDeleteOrg = async (org: OrganizationDto) => {
+        if (!window.confirm(`"${org.name}" organizasyonunu ve tüm üyelerini kalıcı olarak silmek istiyor musunuz?`)) return;
+        if (deletingIds.has(org.id)) return;
+        setDeletingIds((p) => new Set(p).add(org.id));
+        try {
+            await adminApi.deleteOrg(org.id);
+            setOrgs((prev) => prev.filter((o) => o.id !== org.id));
+            showToast(`${org.name} silindi.`);
+        } catch {
+            showToast('Organizasyon silinemedi.', 'error');
+        } finally {
+            setDeletingIds((p) => { const n = new Set(p); n.delete(org.id); return n; });
+        }
+    };
+
+    const handleDeleteProject = async (project: ProjectDto) => {
+        if (!window.confirm(`"${project.name}" projesini kalıcı olarak silmek istiyor musunuz?`)) return;
+        if (deletingIds.has(project.id)) return;
+        setDeletingIds((p) => new Set(p).add(project.id));
+        try {
+            await adminApi.deleteProject(project.id);
+            setProjects((prev) => prev.filter((p) => p.id !== project.id));
+            setTotalProjects((c) => c - 1);
+            showToast(`${project.name} silindi.`);
+        } catch {
+            showToast('Proje silinemedi.', 'error');
+        } finally {
+            setDeletingIds((p) => { const n = new Set(p); n.delete(project.id); return n; });
+        }
+    };
+
     const handleToggleRole = async (userId: string, roleName: string) => {
         const currentRoles = userRolesMap[userId] || [];
         const hasRole = currentRoles.includes(roleName);
-
         try {
             if (hasRole) {
                 await adminApi.removeRole(userId, roleName);
@@ -151,7 +207,7 @@ export default function AdminPage() {
             <div className={styles.header}>
                 <div>
                     <h1 className={styles.title}>Yönetim Paneli</h1>
-                    <p className={styles.subtitle}>Sistem geneli kullanıcı ve organizasyon yönetimi</p>
+                    <p className={styles.subtitle}>Sistem geneli kullanıcı, organizasyon ve proje yönetimi</p>
                 </div>
             </div>
 
@@ -173,6 +229,11 @@ export default function AdminPage() {
                         <div className={styles.statValue}>{stats.totalOrgs}</div>
                         <div className={styles.statSub}>toplam kayıtlı</div>
                     </div>
+                    <div className={styles.statCard}>
+                        <div className={styles.statLabel}>Toplam Proje</div>
+                        <div className={styles.statValue}>{totalProjects}</div>
+                        <div className={styles.statSub}>tüm organizasyonlar</div>
+                    </div>
                 </div>
             )}
 
@@ -180,24 +241,13 @@ export default function AdminPage() {
             <div className={styles.seqWidget}>
                 <div className={styles.seqWidgetHeader}>
                     <span className={styles.seqWidgetTitle}>Son Sistem Hataları</span>
-                    <a
-                        href={SEQ_BASE}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={styles.seqWidgetLink}
-                    >
+                    <a href={SEQ_BASE} target="_blank" rel="noreferrer" className={styles.seqWidgetLink}>
                         Tüm Logları Gör →
                     </a>
                 </div>
-                {seqStatus === 'loading' && (
-                    <div className={styles.seqEmpty}>Yükleniyor...</div>
-                )}
-                {seqStatus === 'error' && (
-                    <div className={styles.seqEmpty}>Seq&apos;e bağlanılamadı (localhost:5341)</div>
-                )}
-                {seqStatus === 'ok' && seqLogs.length === 0 && (
-                    <div className={styles.seqEmpty}>Son dönemde hata logu yok.</div>
-                )}
+                {seqStatus === 'loading' && <div className={styles.seqEmpty}>Yükleniyor...</div>}
+                {seqStatus === 'error' && <div className={styles.seqEmpty}>Seq&apos;e bağlanılamadı (localhost:5341)</div>}
+                {seqStatus === 'ok' && seqLogs.length === 0 && <div className={styles.seqEmpty}>Son dönemde hata logu yok.</div>}
                 {seqStatus === 'ok' && seqLogs.length > 0 && (
                     <ul className={styles.seqList}>
                         {seqLogs.map((log) => (
@@ -226,6 +276,12 @@ export default function AdminPage() {
                     onClick={() => setTab('orgs')}
                 >
                     Organizasyonlar ({orgs.length})
+                </button>
+                <button
+                    className={`${styles.tab} ${tab === 'projects' ? styles.tabActive : ''}`}
+                    onClick={() => setTab('projects')}
+                >
+                    Projeler ({totalProjects})
                 </button>
             </div>
 
@@ -305,6 +361,13 @@ export default function AdminPage() {
                                                     >
                                                         {user.isActive ? 'Devre Dışı' : 'Aktif Et'}
                                                     </button>
+                                                    <button
+                                                        className={styles.actionBtnDelete}
+                                                        disabled={deletingIds.has(user.id)}
+                                                        onClick={() => handleDeleteUser(user)}
+                                                    >
+                                                        Sil
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );
@@ -329,6 +392,7 @@ export default function AdminPage() {
                                         <th>Organizasyon</th>
                                         <th>Üye Sayısı</th>
                                         <th>Oluşturulma</th>
+                                        <th>İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -342,6 +406,76 @@ export default function AdminPage() {
                                             </td>
                                             <td>{org.memberCount} üye</td>
                                             <td>{formatDate(org.createdAt)}</td>
+                                            <td>
+                                                <button
+                                                    className={styles.actionBtnDelete}
+                                                    disabled={deletingIds.has(org.id)}
+                                                    onClick={() => handleDeleteOrg(org)}
+                                                >
+                                                    Sil
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* ── Projects Tab ─────────── */}
+            {tab === 'projects' && (
+                <>
+                    {projects.length === 0 ? (
+                        <div className={styles.empty}>Proje bulunamadı.</div>
+                    ) : (
+                        <div className={styles.tableWrap}>
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th>Proje</th>
+                                        <th>Durum</th>
+                                        <th>Issue'lar</th>
+                                        <th>Oluşturulma</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {projects.map((project) => (
+                                        <tr key={project.id}>
+                                            <td>
+                                                <div style={{ fontWeight: 600 }}>{project.name}</div>
+                                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-tertiary)' }}>
+                                                    {project.key}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {project.isArchived ? (
+                                                    <span className={styles.statusInactive}>Arşivlendi</span>
+                                                ) : (
+                                                    <span className={styles.statusActive}>Aktif</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span style={{ color: 'var(--color-primary)', fontSize: 'var(--font-size-xs)' }}>
+                                                    {project.openIssueCount} açık
+                                                </span>
+                                                {' · '}
+                                                <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>
+                                                    {project.issueCount} toplam
+                                                </span>
+                                            </td>
+                                            <td>{formatDate(project.createdAt)}</td>
+                                            <td>
+                                                <button
+                                                    className={styles.actionBtnDelete}
+                                                    disabled={deletingIds.has(project.id)}
+                                                    onClick={() => handleDeleteProject(project)}
+                                                >
+                                                    Sil
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

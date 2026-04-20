@@ -1,4 +1,5 @@
 using BitirmeProject.AiService.Application.Abstractions;
+using BitirmeProject.AiService.Application.Common;
 using BitirmeProject.AiService.Application.DTOs;
 using BitirmeProject.AiService.Domain.Entities;
 using BitirmeProject.AiService.Domain.Enums;
@@ -30,7 +31,7 @@ public sealed class EnrichIssueCommandHandler : IRequestHandler<EnrichIssueComma
         session.MarkProcessing();
         await _sessions.SaveChangesAsync(cancellationToken);
 
-        var prompt = BuildPrompt(request.Title);
+        var prompt = BuildPrompt(PromptSanitizer.Sanitize(request.Title));
         OllamaEnrichResponse? enriched;
 
         try

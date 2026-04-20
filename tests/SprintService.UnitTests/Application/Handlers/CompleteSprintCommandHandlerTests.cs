@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Commands.CompleteSprint;
@@ -90,7 +90,7 @@ public sealed class CompleteSprintCommandHandlerTests
         sprint.Start();
         repository.GetByIdAsync(sprint.Id, Arg.Any<CancellationToken>()).Returns(sprint);
         issueRepository.GetBySprintIdAsync(sprint.Id, Arg.Any<CancellationToken>())
-            .Returns(new[] { new SprintIssue(Guid.NewGuid(), sprint.ProjectId, "Title", "Task", "Low", "Open", Guid.NewGuid()) });
+            .Returns(new[] { new SprintIssue(Guid.NewGuid(), sprint.ProjectId, null, "Title", "Task", "Low", "Open", Guid.NewGuid()) });
 
         var handler = new CompleteSprintCommandHandler(repository, issueRepository, summaryRepository, unitOfWork, outboxRepository, mapper);
         var command = new CompleteSprintCommand(sprint.Id, Guid.NewGuid(), null, SprintCarryOverPolicy.Manual, null);

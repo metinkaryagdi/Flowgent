@@ -22,6 +22,12 @@ public interface IProjectRepository
         string? search,
         bool includeArchived,
         CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Project> Items, int TotalCount)> GetAllPagedAsync(
+        int page,
+        int pageSize,
+        string? search,
+        bool includeArchived,
+        CancellationToken cancellationToken = default);
     Task<bool> ExistsByKeyAsync(
         string key,
         Guid? organizationId = null,

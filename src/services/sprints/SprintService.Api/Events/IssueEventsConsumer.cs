@@ -8,6 +8,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Domain.Entities;
+using BitirmeProject.SprintService.Infrastructure.Persistence;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Logging;
 using Shared.Common.Messaging;
@@ -94,9 +95,11 @@ public sealed class IssueEventsConsumer : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<SprintDbContext>();
             var processedRepo = scope.ServiceProvider.GetRequiredService<IProcessedEventRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
+            await using var tx = await dbContext.Database.BeginTransactionAsync();
             switch (eventType)
             {
                 case nameof(IssueCreatedEvent):
@@ -146,6 +149,7 @@ public sealed class IssueEventsConsumer : BackgroundService
                     break;
             }
 
+            await tx.CommitAsync();
             _channel!.BasicAck(args.DeliveryTag, multiple: false);
         }
         catch (Exception ex)

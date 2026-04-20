@@ -57,6 +57,7 @@ public sealed class AddIssueCommandHandler : IRequestHandler<AddIssueCommand, Sp
             sprintIssue = new SprintIssue(
                 metadata.Id,
                 metadata.ProjectId,
+                sprint.OrganizationId,
                 metadata.Title,
                 "Task",
                 metadata.Priority,

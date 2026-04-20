@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using BitirmeProject.SprintService.Application.Abstractions;
 using BitirmeProject.SprintService.Application.DTOs;
 using BitirmeProject.SprintService.Application.Features.Sprints.Queries.GetBacklog;
@@ -18,10 +18,10 @@ public sealed class GetBacklogQueryHandlerTests
 
         var items = new List<SprintIssue>
         {
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T1", "Task", "Low", "Open", Guid.NewGuid()),
-            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), "T2", "Task", "High", "Done", Guid.NewGuid())
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T1", "Task", "Low", "Open", Guid.NewGuid()),
+            new SprintIssue(Guid.NewGuid(), Guid.NewGuid(), null, "T2", "Task", "High", "Done", Guid.NewGuid())
         };
-        repository.GetBacklogByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
+        repository.GetBacklogByProjectIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(items);
 
         var dto1 = new SprintIssueDto { IssueId = items[0].IssueId };
         var dto2 = new SprintIssueDto { IssueId = items[1].IssueId };
@@ -29,7 +29,7 @@ public sealed class GetBacklogQueryHandlerTests
         mapper.Map<SprintIssueDto>(items[1]).Returns(dto2);
 
         var handler = new GetBacklogQueryHandler(repository, mapper);
-        var query = new GetBacklogQuery(Guid.NewGuid());
+        var query = new GetBacklogQuery(Guid.NewGuid(), Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);
 

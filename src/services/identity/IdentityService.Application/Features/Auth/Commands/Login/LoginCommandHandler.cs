@@ -65,17 +65,16 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
             .ToList();
 
         // Prefer the last-active org; fall back to any org the user belongs to.
+        // Uses DB-level member check to avoid relying on in-memory _members collection.
         Organization? organization = null;
         if (user.LastActiveOrganizationId.HasValue)
-        {
-            var candidate = await _organizationRepository.GetByIdAsync(user.LastActiveOrganizationId.Value, cancellationToken);
-            if (candidate?.HasMember(user.Id) == true)
-                organization = candidate;
-        }
+            organization = await _organizationRepository.GetByIdAndUserIdAsync(user.LastActiveOrganizationId.Value, user.Id, cancellationToken);
+
         organization ??= await _organizationRepository.GetByUserIdAsync(user.Id, cancellationToken);
 
         Guid? orgId = organization?.Id;
-        string? orgRole = organization?.GetMemberRole(user.Id)?.ToString();
+        // Determine role directly from the loaded Members collection (populated by Include).
+        string? orgRole = organization?.Members.FirstOrDefault(m => m.UserId == user.Id)?.Role.ToString();
         string? orgName = organization?.Name;
 
         var token = _jwtTokenGenerator.Generate(user, roles, orgId, orgRole);

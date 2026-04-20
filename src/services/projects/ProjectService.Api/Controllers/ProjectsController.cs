@@ -9,6 +9,7 @@ using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetPro
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByUser;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByUserPaged;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetProjectsByOrganizationPaged;
+using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetAllProjectsPaged;
 using BitirmeProject.ProjectService.Application.Features.Projects.Queries.GetTeamMembers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -62,6 +63,25 @@ public sealed class ProjectsController : ControllerBase
 
         var result = await _mediator.Send(new GetProjectsByOrganizationPagedQuery(
             orgId.Value, page, pageSize, search, includeArchived));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Admin-only: returns all projects across all organizations, paged.
+    /// </summary>
+    [HttpGet("admin/paged")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<PagedResult<ProjectDto>>> GetAllPaged(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12,
+        [FromQuery] string? search = null,
+        [FromQuery] bool includeArchived = false)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 12;
+        if (pageSize > 200) pageSize = 200;
+
+        var result = await _mediator.Send(new GetAllProjectsPagedQuery(page, pageSize, search, includeArchived));
         return Ok(result);
     }
 

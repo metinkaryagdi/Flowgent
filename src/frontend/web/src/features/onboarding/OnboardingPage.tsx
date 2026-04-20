@@ -8,7 +8,7 @@ export default function OnboardingPage() {
     const [orgName, setOrgName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { user, setActiveOrg } = useAuthStore();
+    const { user, setActiveOrg, skipOnboarding } = useAuthStore();
     const navigate = useNavigate();
 
     const handleCreate = async (e: FormEvent) => {
@@ -37,6 +37,7 @@ export default function OnboardingPage() {
     };
 
     const handleSkip = () => {
+        skipOnboarding();
         navigate('/projects');
     };
 

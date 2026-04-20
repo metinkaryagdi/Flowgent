@@ -28,6 +28,18 @@ const processQueue = (error: unknown) => {
     failedQueue = [];
 };
 
+// Multi-tab coordination: broadcast refresh state across tabs
+const authChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('auth_refresh') : null;
+
+authChannel?.addEventListener('message', (event: MessageEvent) => {
+    if (event.data === 'refresh_success') {
+        processQueue(null);
+    } else if (event.data === 'refresh_failure') {
+        processQueue(new Error('Refresh failed in another tab'));
+        window.location.href = '/login';
+    }
+});
+
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -64,9 +76,11 @@ apiClient.interceptors.response.use(
         try {
             // refreshToken cookie otomatik gönderilir (withCredentials: true)
             await apiClient.post('/api/v1/identity/refresh');
+            authChannel?.postMessage('refresh_success');
             processQueue(null);
             return apiClient(originalRequest);
         } catch (refreshError) {
+            authChannel?.postMessage('refresh_failure');
             processQueue(refreshError);
             localStorage.removeItem('user');
             localStorage.removeItem('roles');

@@ -29,10 +29,24 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:5173", "http://localhost:3000"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
 builder.Services.AddScoped<IEventHandler<IssueAssignedEvent>, IssueAssignedEventHandler>();
 builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusChangedEventHandler>();
 builder.Services.AddScoped<IEventHandler<CommentAddedEvent>, CommentAddedEventHandler>();
 builder.Services.AddScoped<IEventHandler<MemberAddedEvent>, MemberAddedEventHandler>();
+builder.Services.AddScoped<IEventHandler<UserInvitedEvent>, UserInvitedEventHandler>();
 builder.Services.AddHostedService<NotificationEventsConsumer>();
 builder.Services.AddHostedService<NotificationDeliveryWorker>();
 builder.Services.AddSingleton<NotificationDeliveryMonitor>();
@@ -52,8 +66,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,
             ValidAudience = audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };
+        options.MapInboundClaims = true;
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
@@ -87,6 +103,7 @@ builder.Services.AddRabbitMQ(builder.Configuration);
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseCors();
 app.UseCorrelationId();
 
 using (var scope = app.Services.CreateScope())

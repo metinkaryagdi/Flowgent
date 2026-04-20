@@ -50,6 +50,7 @@ public sealed class SprintDbContext : DbContext, IUnitOfWork
             entity.Property(x => x.Status).IsRequired().HasMaxLength(50);
             entity.HasIndex(x => x.ProjectId);
             entity.HasIndex(x => x.SprintId);
+            entity.HasIndex(x => x.OrganizationId);
         });
 
         modelBuilder.Entity<SprintSummary>(entity =>

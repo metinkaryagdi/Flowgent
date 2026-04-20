@@ -62,26 +62,26 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
         string? organizationRole = null;
         string? organizationName = null;
 
-        // 1. Explicit org from request (e.g. caller passing current org_id claim)
+        // 1. Explicit org from request (e.g. caller passing current org_id claim) — DB-level member check
         if (request.OrganizationId.HasValue)
         {
-            var requestedOrganization = await _organizationRepository.GetByIdAsync(request.OrganizationId.Value, cancellationToken);
-            if (requestedOrganization?.HasMember(user.Id) == true)
+            var requestedOrganization = await _organizationRepository.GetByIdAndUserIdAsync(request.OrganizationId.Value, user.Id, cancellationToken);
+            if (requestedOrganization is not null)
             {
                 organizationId = requestedOrganization.Id;
-                organizationRole = requestedOrganization.GetMemberRole(user.Id)?.ToString();
+                organizationRole = requestedOrganization.Members.FirstOrDefault(m => m.UserId == user.Id)?.Role.ToString();
                 organizationName = requestedOrganization.Name;
             }
         }
 
-        // 2. User's last-active org
+        // 2. User's last-active org — DB-level member check
         if (!organizationId.HasValue && user.LastActiveOrganizationId.HasValue)
         {
-            var lastActive = await _organizationRepository.GetByIdAsync(user.LastActiveOrganizationId.Value, cancellationToken);
-            if (lastActive?.HasMember(user.Id) == true)
+            var lastActive = await _organizationRepository.GetByIdAndUserIdAsync(user.LastActiveOrganizationId.Value, user.Id, cancellationToken);
+            if (lastActive is not null)
             {
                 organizationId = lastActive.Id;
-                organizationRole = lastActive.GetMemberRole(user.Id)?.ToString();
+                organizationRole = lastActive.Members.FirstOrDefault(m => m.UserId == user.Id)?.Role.ToString();
                 organizationName = lastActive.Name;
             }
         }
@@ -91,7 +91,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
         {
             var defaultOrganization = await _organizationRepository.GetByUserIdAsync(user.Id, cancellationToken);
             organizationId = defaultOrganization?.Id;
-            organizationRole = defaultOrganization?.GetMemberRole(user.Id)?.ToString();
+            organizationRole = defaultOrganization?.Members.FirstOrDefault(m => m.UserId == user.Id)?.Role.ToString();
             organizationName = defaultOrganization?.Name;
         }
 

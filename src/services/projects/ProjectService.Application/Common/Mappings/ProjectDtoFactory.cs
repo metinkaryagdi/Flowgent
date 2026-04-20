@@ -13,6 +13,7 @@ internal static class ProjectDtoFactory
             Name = project.Name,
             Key = project.Key,
             OwnerUserId = project.OwnerUserId,
+            OrganizationId = project.OrganizationId,
             IsArchived = project.IsArchived,
             IssueCount = summary?.IssueCount ?? 0,
             OpenIssueCount = summary?.OpenIssueCount ?? 0,

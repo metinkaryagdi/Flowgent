@@ -45,8 +45,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,
             ValidAudience = audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role
         };
+        options.MapInboundClaims = true;
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
@@ -87,7 +89,6 @@ builder.Services.AddHttpClient("StorageService", client =>
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseMiddleware<InternalServiceMiddleware>();
 app.UseCorrelationId();
 
 using (var scope = app.Services.CreateScope())
@@ -96,11 +97,16 @@ using (var scope = app.Services.CreateScope())
     if (app.Environment.IsEnvironment("Testing"))
         db.Database.EnsureCreated();
     else
-        db.Database.Migrate();
+    {
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(1)");
+        try { await db.Database.MigrateAsync(); }
+        finally { await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(1)"); }
+    }
 }
 
 app.UseRouting();
 app.UseAuthentication();
+app.UseMiddleware<InternalServiceMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
