@@ -20,6 +20,14 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
             .FirstOrDefaultAsync(x => x.Token == token, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        return await _dbContext.RefreshTokens
+            .Where(x => x.UserId == userId && x.RevokedAt == null && x.ExpiresAt > now)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default)
     {
         await _dbContext.RefreshTokens.AddAsync(token, cancellationToken);

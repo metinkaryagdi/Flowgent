@@ -318,6 +318,7 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
       RabbitMQ__Password: "${RABBITMQ_PASS}"
       RabbitMQ__VirtualHost: "/"
+      Services__StorageService: "http://storage-api:8080"
       Jwt__Secret: "${JWT_SECRET}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
@@ -498,7 +499,7 @@ services:
       Jwt__Secret: "${JWT_SECRET}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
-      Cors__AllowedOrigins__0: "http://localhost:5173"
+      Cors__AllowedOrigins__0: "http://localhost:5174"
       Cors__AllowedOrigins__1: "http://localhost:3000"
     ports:
       - "5000:8080"
@@ -517,11 +518,11 @@ services:
       VITE_API_BASE_URL: "http://localhost:5000"
       VITE_USE_MOCK_API: "false"
     ports:
-      - "5173:5173"
+      - "5174:5174"
     volumes:
       - ./src/frontend/web:/app
       - /app/node_modules
-    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5174"
     networks:
       - bitirme-net
 

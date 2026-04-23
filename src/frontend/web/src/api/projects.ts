@@ -68,6 +68,10 @@ export const projectsApi = {
         await apiClient.delete(`/api/v1/projects/${id}`);
     },
 
+    hardDelete: async (id: string): Promise<void> => {
+        await apiClient.delete(`/api/v1/projects/admin/${id}/hard-delete`);
+    },
+
     getMembers: async (projectId: string): Promise<ProjectMemberDto[]> => {
         if (useMockApi) return mockApi.projects.getMembers(projectId);
         const response = await apiClient.get<ProjectMemberDto[]>(`/api/v1/projects/${projectId}/members`);

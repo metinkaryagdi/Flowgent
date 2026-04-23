@@ -26,6 +26,22 @@ public sealed class InviteRepository : IInviteRepository
             .FirstOrDefaultAsync(i => i.Token == token, cancellationToken);
     }
 
+    public async Task<InviteToken?> GetPendingByEmailAndOrganizationAsync(
+        string email,
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        return await _dbContext.InviteTokens
+            .Where(i => i.Email == normalizedEmail
+                        && i.OrganizationId == organizationId
+                        && !i.IsUsed
+                        && !i.IsDeleted
+                        && i.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<InviteToken>> GetPendingByOrganizationAsync(
         Guid organizationId,
         CancellationToken cancellationToken = default)
@@ -33,6 +49,7 @@ public sealed class InviteRepository : IInviteRepository
         return await _dbContext.InviteTokens
             .Where(i => i.OrganizationId == organizationId
                         && !i.IsUsed
+                        && !i.IsDeleted
                         && i.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -47,6 +64,7 @@ public sealed class InviteRepository : IInviteRepository
             .AnyAsync(i => i.Email == email
                            && i.OrganizationId == organizationId
                            && !i.IsUsed
+                           && !i.IsDeleted
                            && i.ExpiresAt > DateTime.UtcNow,
                 cancellationToken);
     }

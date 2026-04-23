@@ -307,6 +307,15 @@
     color: #d97706;
 }
 
+.roleTagMuted {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--bg-surface-hover);
+    color: var(--text-tertiary);
+}
+
 /* ── Actions ─────────────────── */
 .actionBtn {
     padding: 4px 12px;
@@ -323,6 +332,17 @@
 .actionBtn:hover {
     background: var(--bg-surface-hover);
     color: var(--text-primary);
+}
+
+.actionBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.actionBtn:disabled:hover {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
 }
 
 .actionBtnDanger {
@@ -425,6 +445,14 @@
     font-weight: 500;
 }
 
+.roleRowDescription {
+    margin: 4px 0 0;
+    max-width: 260px;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
 .roleToggle {
     padding: 2px 10px;
     border: none;
@@ -432,6 +460,11 @@
     font-size: var(--font-size-xs);
     font-weight: 600;
     cursor: pointer;
+}
+
+.roleToggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .roleAssigned {

@@ -135,8 +135,11 @@ export default function AppLayout() {
         const path = location.pathname;
         if (path === '/projects') return 'Projeler';
         if (path === '/notifications') return 'Bildirimler';
+        if (path === '/ai-assistant') return 'AI Asistan';
         if (path === '/admin') return 'Yönetim Paneli';
-        if (path === '/settings/organization') return 'Organizasyon Ayarları';
+        if (path === '/settings/organization') {
+            return roles.includes('Admin') ? 'Organizasyon Yönetimi' : 'Organizasyon Ayarları';
+        }
         if (path.includes('/board')) return 'Projeler › Board';
         if (path.includes('/sprints')) return 'Projeler › Sprint';
         return 'Kontrol Paneli';
@@ -285,6 +288,17 @@ export default function AppLayout() {
                         <span className={styles.sidebar__linkIcon}>🔔</span>
                         Bildirimler
                         {unreadCount > 0 && <span className={styles.sidebar__badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                    </NavLink>
+
+                    <NavLink
+                        to="/ai-assistant"
+                        className={({ isActive }) =>
+                            `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
+                        }
+                        data-testid="nav-ai-assistant"
+                    >
+                        <span className={styles.sidebar__linkIcon}>✦</span>
+                        AI Asistan
                     </NavLink>
 
                     <span className={styles.sidebar__sectionLabel}>Ayarlar</span>

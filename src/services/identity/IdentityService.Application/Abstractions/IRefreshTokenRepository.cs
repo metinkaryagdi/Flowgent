@@ -5,6 +5,7 @@ namespace BitirmeProject.IdentityService.Application.Abstractions;
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByTokenAsync(string token, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RefreshToken>> GetActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task AddAsync(RefreshToken token, CancellationToken cancellationToken = default);
     Task UpdateAsync(RefreshToken token, CancellationToken cancellationToken = default);
 }

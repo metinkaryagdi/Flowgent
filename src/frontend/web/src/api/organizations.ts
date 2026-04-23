@@ -92,6 +92,17 @@ export const organizationsApi = {
         return response.data;
     },
 
+    acceptOrganizationInvite: async (organizationId: string): Promise<UserDto> => {
+        const response = await apiClient.post<UserDto>(
+            `/api/v1/identity/invites/organizations/${organizationId}/accept-existing`
+        );
+        return response.data;
+    },
+
+    declineOrganizationInvite: async (organizationId: string): Promise<void> => {
+        await apiClient.post(`/api/v1/identity/invites/organizations/${organizationId}/decline`);
+    },
+
     getPendingInvites: async (organizationId: string): Promise<InviteDto[]> => {
         const response = await apiClient.get<InviteDto[]>(
             `/api/v1/identity/invites/pending?organizationId=${organizationId}`

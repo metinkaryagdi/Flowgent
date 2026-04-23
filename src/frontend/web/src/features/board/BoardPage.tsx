@@ -22,7 +22,7 @@ import { aiApi } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import { IssueStatus, IssuePriority } from '../../types';
-import type { IssueBoardItemDto, BoardColumn, BoardResponse, SprintDto } from '../../types';
+import type { IssueBoardItemDto, BoardColumn, BoardResponse, SprintDto, IssueDto } from '../../types';
 import IssueDetailPanel from '../issues/IssueDetailPanel';
 import { useUserLookup } from '../../hooks/useUserLookup';
 import styles from './Board.module.css';
@@ -445,6 +445,10 @@ export default function BoardPage() {
                     setTimeout(() => loadBoard(), 1500);
                     return;
                 }
+                if (axiosErr.response?.status === 403) {
+                    showToast('Bu işlem için yetkiniz yok.', 'warning');
+                    return;
+                }
             }
             showToast('Durum güncellenirken hata oluştu.', 'error');
         }
@@ -459,6 +463,30 @@ export default function BoardPage() {
         setShowCreateModal(false);
         await loadBoard();
     };
+
+    // ── Issue updated from detail panel: optimistic patch + background reload ──
+    const handleIssueUpdated = useCallback((updated: IssueDto) => {
+        setBoard((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                items: prev.items.map((item) =>
+                    item.issueId === updated.id
+                        ? {
+                            ...item,
+                            title: updated.title,
+                            status: updated.status,
+                            priority: updated.priority,
+                            assigneeUserId: updated.assigneeUserId,
+                            sprintId: updated.sprintId ?? item.sprintId,
+                            version: updated.version,
+                        }
+                        : item
+                ),
+            };
+        });
+        void loadBoard();
+    }, [loadBoard]);
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ Assign Sprint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleAssignSprint = async (issueId: string, sprintId: string) => {
@@ -662,7 +690,7 @@ export default function BoardPage() {
                 <IssueDetailPanel
                     issueId={selectedIssueId}
                     onClose={() => setSelectedIssueId(null)}
-                    onUpdated={loadBoard}
+                    onUpdated={handleIssueUpdated}
                 />
             )}
         </div>

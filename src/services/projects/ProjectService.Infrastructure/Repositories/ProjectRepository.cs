@@ -175,4 +175,13 @@ public sealed class ProjectRepository : IProjectRepository
         _dbContext.Projects.Update(project);
         return Task.CompletedTask;
     }
+
+    public async Task DeleteAsync(Project project, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.ProjectMembers
+            .Where(member => member.ProjectId == project.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        _dbContext.Projects.Remove(project);
+    }
 }

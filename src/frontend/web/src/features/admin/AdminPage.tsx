@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '../../api/admin';
 import { useToastStore } from '../../store/toastStore';
-import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto, ProjectDto } from '../../types';
+import { useAuthStore } from '../../store/authStore';
+import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto, ProjectDto, SeqLogEventDto } from '../../types';
 import styles from './Admin.module.css';
 
 const formatDate = (d: string) =>
@@ -11,26 +12,7 @@ const formatDateTime = (d: string) =>
     new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 const SEQ_BASE = 'http://localhost:5341';
-
-interface SeqEvent {
-    id: string;
-    timestamp: string;
-    level: string;
-    renderedMessage: string;
-    exception?: string;
-}
-
-async function fetchSeqLogs(): Promise<SeqEvent[]> {
-    const res = await fetch(`${SEQ_BASE}/api/events?count=50`, {
-        signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const events: SeqEvent[] = Array.isArray(data) ? data : (data.events ?? []);
-    return events
-        .filter((e) => e.level === 'Error' || e.level === 'Fatal')
-        .slice(0, 5);
-}
+const SYSTEM_ADMIN_ROLE = 'Admin';
 
 type Tab = 'users' | 'orgs' | 'projects';
 
@@ -45,14 +27,15 @@ export default function AdminPage() {
     const [totalProjects, setTotalProjects] = useState(0);
     const [loading, setLoading] = useState(true);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-    const [seqLogs, setSeqLogs] = useState<SeqEvent[]>([]);
+    const [seqLogs, setSeqLogs] = useState<SeqLogEventDto[]>([]);
     const [seqStatus, setSeqStatus] = useState<'loading' | 'ok' | 'error'>('loading');
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const { addToast: showToast } = useToastStore();
+    const { user: currentUser } = useAuthStore();
 
     useEffect(() => {
         loadData();
-        fetchSeqLogs()
+        adminApi.getSeqErrors()
             .then((logs) => { setSeqLogs(logs); setSeqStatus('ok'); })
             .catch(() => setSeqStatus('error'));
     }, []);
@@ -99,6 +82,11 @@ export default function AdminPage() {
     };
 
     const handleToggleActive = async (user: UserDto) => {
+        if (user.id === currentUser?.id) {
+            showToast('Kendi hesabınızı bu panelden devre dışı bırakamazsınız.', 'error');
+            return;
+        }
+
         try {
             if (user.isActive) {
                 await adminApi.deactivateUser(user.id);
@@ -116,6 +104,11 @@ export default function AdminPage() {
     };
 
     const handleDeleteUser = async (user: UserDto) => {
+        if (user.id === currentUser?.id) {
+            showToast('Kendi hesabınızı bu panelden silemezsiniz.', 'error');
+            return;
+        }
+
         if (!window.confirm(`"${user.userName}" kullanıcısını kalıcı olarak silmek istiyor musunuz?`)) return;
         if (deletingIds.has(user.id)) return;
         setDeletingIds((p) => new Set(p).add(user.id));
@@ -164,6 +157,11 @@ export default function AdminPage() {
     const handleToggleRole = async (userId: string, roleName: string) => {
         const currentRoles = userRolesMap[userId] || [];
         const hasRole = currentRoles.includes(roleName);
+        if (userId === currentUser?.id && roleName === SYSTEM_ADMIN_ROLE && hasRole) {
+            showToast('Kendi sistem yöneticisi yetkinizi kaldıramazsınız.', 'error');
+            return;
+        }
+
         try {
             if (hasRole) {
                 await adminApi.removeRole(userId, roleName);
@@ -246,7 +244,7 @@ export default function AdminPage() {
                     </a>
                 </div>
                 {seqStatus === 'loading' && <div className={styles.seqEmpty}>Yükleniyor...</div>}
-                {seqStatus === 'error' && <div className={styles.seqEmpty}>Seq&apos;e bağlanılamadı (localhost:5341)</div>}
+                {seqStatus === 'error' && <div className={styles.seqEmpty}>Seq logları alınamadı.</div>}
                 {seqStatus === 'ok' && seqLogs.length === 0 && <div className={styles.seqEmpty}>Son dönemde hata logu yok.</div>}
                 {seqStatus === 'ok' && seqLogs.length > 0 && (
                     <ul className={styles.seqList}>
@@ -298,7 +296,7 @@ export default function AdminPage() {
                                         <th>Kullanıcı</th>
                                         <th>Organizasyon</th>
                                         <th>Durum</th>
-                                        <th>Roller</th>
+                                        <th>Sistem Yetkisi</th>
                                         <th>Kayıt Tarihi</th>
                                         <th>İşlemler</th>
                                     </tr>
@@ -306,6 +304,8 @@ export default function AdminPage() {
                                 <tbody>
                                     {users.map((user) => {
                                         const userRoles = userRolesMap[user.id] || [];
+                                        const hasSystemAdmin = userRoles.includes(SYSTEM_ADMIN_ROLE);
+                                        const isCurrentUser = user.id === currentUser?.id;
                                         return (
                                             <tr key={user.id}>
                                                 <td>
@@ -333,17 +333,12 @@ export default function AdminPage() {
                                                 </td>
                                                 <td>
                                                     <div className={styles.roleTags}>
-                                                        {userRoles.length === 0 ? (
-                                                            <span style={{ color: 'var(--text-tertiary)', fontSize: 'var(--font-size-xs)' }}>—</span>
+                                                        {hasSystemAdmin ? (
+                                                            <span className={`${styles.roleTag} ${styles.roleTagAdmin}`}>
+                                                                Sistem yöneticisi
+                                                            </span>
                                                         ) : (
-                                                            userRoles.map((r) => (
-                                                                <span
-                                                                    key={r}
-                                                                    className={`${styles.roleTag} ${r.toLowerCase() === 'admin' ? styles.roleTagAdmin : ''}`}
-                                                                >
-                                                                    {r}
-                                                                </span>
-                                                            ))
+                                                            <span className={styles.roleTagMuted}>Standart kullanıcı</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -353,17 +348,20 @@ export default function AdminPage() {
                                                         className={styles.actionBtn}
                                                         onClick={() => setSelectedUserId(user.id)}
                                                     >
-                                                        Roller
+                                                        Yetki
                                                     </button>
                                                     <button
                                                         className={styles.actionBtnDanger}
+                                                        disabled={isCurrentUser}
+                                                        title={isCurrentUser ? 'Kendi hesabınızı devre dışı bırakamazsınız.' : undefined}
                                                         onClick={() => handleToggleActive(user)}
                                                     >
                                                         {user.isActive ? 'Devre Dışı' : 'Aktif Et'}
                                                     </button>
                                                     <button
                                                         className={styles.actionBtnDelete}
-                                                        disabled={deletingIds.has(user.id)}
+                                                        disabled={deletingIds.has(user.id) || isCurrentUser}
+                                                        title={isCurrentUser ? 'Kendi hesabınızı silemezsiniz.' : undefined}
                                                         onClick={() => handleDeleteUser(user)}
                                                     >
                                                         Sil
@@ -485,28 +483,41 @@ export default function AdminPage() {
                 </>
             )}
 
-            {/* ── Role Modal ─────────── */}
+            {/* ── System Permission Modal ─────────── */}
             {selectedUserId && (
                 <div className={styles.modalOverlay} onClick={() => setSelectedUserId(null)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
                         <h2 className={styles.modalTitle}>
-                            Rol Yönetimi — {users.find((u) => u.id === selectedUserId)?.userName}
+                            Sistem Yetkisi — {users.find((u) => u.id === selectedUserId)?.userName}
                         </h2>
                         <div className={styles.roleList}>
-                            {roles.map((role) => {
-                                const isAssigned = (userRolesMap[selectedUserId] || []).includes(role.name);
+                            {(() => {
+                                const adminRole = roles.find((role) => role.name === SYSTEM_ADMIN_ROLE);
+                                if (!adminRole) {
+                                    return <div className={styles.seqEmpty}>Admin rolü bulunamadı.</div>;
+                                }
+
+                                const isAssigned = (userRolesMap[selectedUserId] || []).includes(SYSTEM_ADMIN_ROLE);
+                                const isCurrentUser = selectedUserId === currentUser?.id;
                                 return (
-                                    <div key={role.id} className={styles.roleRow}>
-                                        <span className={styles.roleRowName}>{role.name}</span>
+                                    <div className={styles.roleRow}>
+                                        <div>
+                                            <span className={styles.roleRowName}>Sistem yöneticisi</span>
+                                            <p className={styles.roleRowDescription}>
+                                                Yönetim paneli, tüm kullanıcılar, organizasyonlar ve projeler üzerinde sistem geneli yetki verir.
+                                            </p>
+                                        </div>
                                         <button
                                             className={`${styles.roleToggle} ${isAssigned ? styles.roleAssigned : styles.roleUnassigned}`}
-                                            onClick={() => handleToggleRole(selectedUserId, role.name)}
+                                            disabled={isAssigned && isCurrentUser}
+                                            title={isAssigned && isCurrentUser ? 'Kendi admin yetkinizi kaldıramazsınız.' : undefined}
+                                            onClick={() => handleToggleRole(selectedUserId, SYSTEM_ADMIN_ROLE)}
                                         >
-                                            {isAssigned ? '✓ Atandı' : 'Ata'}
+                                            {isAssigned ? 'Atandı' : 'Ata'}
                                         </button>
                                     </div>
                                 );
-                            })}
+                            })()}
                         </div>
                         <button className={styles.modalClose} onClick={() => setSelectedUserId(null)}>
                             Kapat

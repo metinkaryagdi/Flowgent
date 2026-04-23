@@ -22,6 +22,7 @@ import AdminPage from './features/admin/AdminPage';
 import OnboardingPage from './features/onboarding/OnboardingPage';
 import OrganizationSettingsPage from './features/organization/OrganizationSettingsPage';
 import AiPlannerPage from './features/ai/AiPlannerPage';
+import AiAssistantPage from './features/ai-assistant/AiAssistantPage';
 
 export default function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="/projects/:projectId/board" element={<BoardPage />} />
                 <Route path="/projects/:projectId/sprints" element={<SprintPage />} />
                 <Route path="/projects/:projectId/ai-planner" element={<AiPlannerPage />} />
+                <Route path="/ai-assistant" element={<AiAssistantPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/settings/organization" element={<OrganizationSettingsPage />} />
               </Route>

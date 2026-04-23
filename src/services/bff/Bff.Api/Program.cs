@@ -62,6 +62,12 @@ builder.Services.AddHttpClient("NotificationService", (sp, client) =>
 }).AddPolicyHandler(GetRetryPolicy())
   .AddHttpMessageHandler<OrganizationContextHandler>();
 
+builder.Services.AddHttpClient("Seq", (sp, client) =>
+{
+    var endpoints = sp.GetRequiredService<IOptions<ServiceEndpoints>>().Value;
+    client.BaseAddress = new Uri(endpoints.Seq);
+}).AddPolicyHandler(GetRetryPolicy());
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

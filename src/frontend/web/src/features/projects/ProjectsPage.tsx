@@ -8,11 +8,12 @@ import type { ProjectDto } from '../../types';
 import styles from './Projects.module.css';
 
 export default function ProjectsPage() {
-    const { user, flags, activeOrg, roles } = useAuthStore();
+    const { flags, activeOrg, roles } = useAuthStore();
     const navigate = useNavigate();
     const isAdmin = roles.includes('Admin');
     const isOrgManager = activeOrg?.role === 'Owner' || activeOrg?.role === 'Manager';
     const canManageProjects = flags?.canManageProjects !== false || isOrgManager;
+    const canDeleteProjects = isAdmin || canManageProjects;
 
     const [projects, setProjects] = useState<ProjectDto[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -113,12 +114,17 @@ export default function ProjectsPage() {
     const handleDelete = async () => {
         if (!deleteProject) return;
         try {
-            await projectsApi.delete(deleteProject.id);
-            showToast('Proje arşivlendi.');
+            if (isAdmin) {
+                await projectsApi.hardDelete(deleteProject.id);
+                showToast('Proje kalici olarak silindi.');
+            } else {
+                await projectsApi.delete(deleteProject.id);
+                showToast('Proje arsivlendi.');
+            }
             setDeleteProject(null);
             await loadProjects();
         } catch {
-            showToast('Proje silinirken hata oluştu.', 'error');
+            showToast('Proje silinirken hata olustu.', 'error');
         }
     };
 
@@ -215,9 +221,10 @@ export default function ProjectsPage() {
                                     <div className={styles.cardIcon}>
                                         {project.key.slice(0, 2)}
                                     </div>
-                                    {!isAdmin && canManageProjects && (
+                                    {canDeleteProjects && (
                                         <div className={styles.cardActions}>
-                                            <button
+                                            {!isAdmin && canManageProjects && (
+                                                <button
                                                 className={styles.cardActionBtn}
                                                 title="Düzenle"
                                                 onClick={(e) => {
@@ -226,10 +233,11 @@ export default function ProjectsPage() {
                                                 }}
                                             >
                                                 ✏️
-                                            </button>
+                                                </button>
+                                            )}
                                             <button
                                                 className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`}
-                                                title="Arşivle"
+                                                title={isAdmin ? 'Kalici sil' : 'Arsivle'}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setDeleteProject(project);
@@ -318,17 +326,21 @@ export default function ProjectsPage() {
             {deleteProject && (
                 <div className={styles.modalOverlay} onClick={() => setDeleteProject(null)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <h2 className={styles.modalTitle}>Projeyi Arşivle</h2>
+                        <h2 className={styles.modalTitle}>
+                            {isAdmin ? 'Projeyi Kalici Sil' : 'Projeyi Arsivle'}
+                        </h2>
                         <p className={styles.confirmText}>
                             <span className={styles.confirmProjectName}>{deleteProject.name}</span> projesini
-                            arşivlemek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                            {isAdmin
+                                ? ' kalici olarak silmek istediginize emin misiniz? Bu islem geri alinamaz.'
+                                : ' arsivlemek istediginize emin misiniz?'}
                         </p>
                         <div className={styles.modalFooter}>
                             <button className={styles.btnSecondary} onClick={() => setDeleteProject(null)}>
                                 İptal
                             </button>
                             <button className={styles.btnDanger} onClick={handleDelete}>
-                                Arşivle
+                                {isAdmin ? 'Kalici Sil' : 'Arsivle'}
                             </button>
                         </div>
                     </div>

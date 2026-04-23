@@ -46,6 +46,6 @@ public sealed class DeleteIssueCommandHandler : IRequestHandler<DeleteIssueComma
         await _issueRepository.RemoveAsync(issue, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}:{issue.OrganizationId}", cancellationToken); } catch { }
     }
 }
