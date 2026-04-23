@@ -245,7 +245,9 @@ public sealed class IssuesController : ControllerBase
         [FromHeader(Name = "If-Match")] string? ifMatch,
         [FromHeader(Name = "X-Expected-Version")] string? expectedVersionHeader)
     {
-        var (_, error) = await AuthorizeIssueMutationAsync(id);
+        // Status change is intentionally more permissive than other mutations:
+        // any member of the issue's organization may move it across the board.
+        var (_, error) = await AuthorizeIssueScopeAsync(id);
         if (error is not null)
             return error;
 

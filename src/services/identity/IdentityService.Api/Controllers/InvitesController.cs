@@ -1,3 +1,4 @@
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInvite;
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInviteExisting;
@@ -5,6 +6,7 @@ using BitirmeProject.IdentityService.Application.Features.Invites.Commands.Revok
 using BitirmeProject.IdentityService.Application.Features.Invites.Commands.SendInvite;
 using BitirmeProject.IdentityService.Application.Features.Invites.Queries.GetPendingInvites;
 using BitirmeProject.IdentityService.Application.Features.Invites.Queries.ValidateInviteToken;
+using BitirmeProject.IdentityService.Domain.Entities;
 using BitirmeProject.IdentityService.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -19,11 +21,22 @@ public class InvitesController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IConfiguration _configuration;
+    private readonly IInviteRepository _inviteRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public InvitesController(IMediator mediator, IConfiguration configuration)
+    public InvitesController(
+        IMediator mediator,
+        IConfiguration configuration,
+        IInviteRepository inviteRepository,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
         _configuration = configuration;
+        _inviteRepository = inviteRepository;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -45,7 +58,7 @@ public class InvitesController : ControllerBase
         if (!Guid.TryParse(jwtOrgId, out var activeOrgId) || activeOrgId != request.OrganizationId)
             return Forbid();
 
-        var baseUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5173";
+        var baseUrl = _configuration["App:BaseUrl"] ?? request.InviteLinkBaseUrl ?? "http://localhost:5174";
 
         var result = await _mediator.Send(new SendInviteCommand(
             request.OrganizationId,
@@ -100,6 +113,44 @@ public class InvitesController : ControllerBase
     }
 
     /// <summary>
+    /// Accepts a pending invite for the current user by organization id. Used by in-app notifications.
+    /// </summary>
+    [HttpPost("organizations/{organizationId:guid}/accept-existing")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> AcceptOrganizationInvite(Guid organizationId)
+    {
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var invite = await GetCurrentUserPendingInviteAsync(userId, organizationId, HttpContext.RequestAborted);
+        if (invite is null)
+            return NotFound(new { message = "Pending invite not found." });
+
+        var result = await _mediator.Send(new AcceptInviteExistingCommand(invite.Token, userId));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Declines a pending invite for the current user by organization id.
+    /// </summary>
+    [HttpPost("organizations/{organizationId:guid}/decline")]
+    [Authorize]
+    public async Task<IActionResult> DeclineOrganizationInvite(Guid organizationId)
+    {
+        var userId = User.TryGetUserId() ?? Guid.Empty;
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var invite = await GetCurrentUserPendingInviteAsync(userId, organizationId, HttpContext.RequestAborted);
+        if (invite is null)
+            return NotFound(new { message = "Pending invite not found." });
+
+        invite.Revoke();
+        await _inviteRepository.UpdateAsync(invite, HttpContext.RequestAborted);
+        await _unitOfWork.SaveChangesAsync(HttpContext.RequestAborted);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Lists pending (not yet accepted/expired) invites for the organization.
     /// </summary>
     [HttpGet("pending")]
@@ -139,8 +190,22 @@ public class InvitesController : ControllerBase
         await _mediator.Send(new RevokeInviteCommand(id, userId));
         return NoContent();
     }
+
+    private async Task<InviteToken?> GetCurrentUserPendingInviteAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken cancellationToken)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null) return null;
+
+        return await _inviteRepository.GetPendingByEmailAndOrganizationAsync(
+            user.Email,
+            organizationId,
+            cancellationToken);
+    }
 }
 
-public sealed record SendInviteRequest(Guid OrganizationId, string Email, OrganizationRole Role);
+public sealed record SendInviteRequest(Guid OrganizationId, string Email, OrganizationRole Role, string? InviteLinkBaseUrl = null);
 public sealed record AcceptInviteRequest(Guid Token, string UserName, string Password);
 public sealed record AcceptAsExistingRequest(Guid Token);

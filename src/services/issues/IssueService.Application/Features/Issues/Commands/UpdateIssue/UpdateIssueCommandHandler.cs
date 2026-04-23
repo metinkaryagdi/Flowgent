@@ -62,7 +62,7 @@ public sealed class UpdateIssueCommandHandler : IRequestHandler<UpdateIssueComma
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}:{issue.OrganizationId}", cancellationToken); } catch { }
 
         return IssueDtoFactory.Create(issue, boardItem.SprintId);
     }

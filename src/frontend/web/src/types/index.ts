@@ -71,6 +71,14 @@ export interface RoleDto {
   name: string;
 }
 
+export interface SeqLogEventDto {
+  id: string;
+  timestamp: string;
+  level: string;
+  renderedMessage: string;
+  exception?: string;
+}
+
 export interface LoginRequest {
   userNameOrEmail: string;
   password: string;

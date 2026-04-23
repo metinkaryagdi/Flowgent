@@ -235,3 +235,224 @@
     max-width: 400px;
     margin: 0 auto;
 }
+
+.pageWide {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.adminHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.adminStats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.adminStat {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.adminStatLabel {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.adminStat strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 1.35rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.sectionMeta {
+    margin: -10px 0 0;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+}
+
+.searchInput {
+    width: 240px;
+    max-width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.searchInput:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.tableWrap {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    padding: 10px 12px;
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover td {
+    background: var(--bg-surface-hover);
+}
+
+.selectedRow td {
+    background: var(--color-primary-50);
+}
+
+.orgNameCell {
+    max-width: 320px;
+    color: var(--text-primary);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orgIdCell {
+    margin-top: 3px;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+.actionGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btnSecondary,
+.btnTable,
+.btnTableDanger {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.btnSecondary {
+    padding: 8px 14px;
+}
+
+.btnTable,
+.btnTableDanger {
+    padding: 5px 10px;
+}
+
+.btnSecondary:hover:not(:disabled),
+.btnTable:hover:not(:disabled) {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.btnTableDanger {
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.btnTableDanger:hover:not(:disabled) {
+    background: var(--color-error);
+    color: #fff;
+}
+
+.btnSecondary:disabled,
+.btnTable:disabled,
+.btnTableDanger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.emptyInline {
+    padding: 28px;
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .pageWide {
+        padding: 16px;
+    }
+
+    .adminHeader,
+    .sectionHeader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .adminStats {
+        grid-template-columns: 1fr;
+    }
+
+    .searchInput {
+        width: 100%;
+    }
+
+    .tableWrap {
+        overflow-x: auto;
+    }
+
+    .table {
+        min-width: 680px;
+    }
+}

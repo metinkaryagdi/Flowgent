@@ -89,7 +89,7 @@ public sealed class AssignIssueCommandHandler : IRequestHandler<AssignIssueComma
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}", cancellationToken); } catch { }
+        try { await _cache.RemoveAsync($"board:project:{issue.ProjectId}:{issue.OrganizationId}", cancellationToken); } catch { }
 
         sw.Stop();
         _logger.LogInformation(

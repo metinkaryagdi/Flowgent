@@ -1,5 +1,6 @@
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.AssignRoleToUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.RegisterUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.UpdateUser;
@@ -23,14 +24,22 @@ public class UsersController : ControllerBase
     private readonly IRoleRepository _roleRepository;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRefreshTokenRepository? _refreshTokenRepository;
 
-    public UsersController(IMediator mediator, IUserRepository userRepository, IRoleRepository roleRepository, IOrganizationRepository organizationRepository, IUnitOfWork unitOfWork)
+    public UsersController(
+        IMediator mediator,
+        IUserRepository userRepository,
+        IRoleRepository roleRepository,
+        IOrganizationRepository organizationRepository,
+        IUnitOfWork unitOfWork,
+        IRefreshTokenRepository? refreshTokenRepository = null)
     {
         _mediator = mediator;
         _userRepository = userRepository;
         _roleRepository = roleRepository;
         _organizationRepository = organizationRepository;
         _unitOfWork = unitOfWork;
+        _refreshTokenRepository = refreshTokenRepository;
     }
 
     /// <summary>
@@ -89,10 +98,18 @@ public class UsersController : ControllerBase
     /// </summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> DeleteUser(Guid id)
+    public async Task<IActionResult> DeleteUser(Guid id, CancellationToken cancellationToken = default)
     {
+        if (User.TryGetUserId() == id)
+            return BadRequest("You cannot delete your own account from the admin panel.");
+
+        var targetUser = await _userRepository.GetByIdAsync(id, cancellationToken);
+        if (targetUser is not null && IsAdmin(targetUser) && targetUser.IsActive
+            && !await HasAnotherActiveAdminAsync(id, cancellationToken))
+            return BadRequest("At least one active admin must remain.");
+
         var command = new DeleteUserCommand(id);
-        await _mediator.Send(command);
+        await _mediator.Send(command, cancellationToken);
         return NoContent();
     }
 
@@ -179,6 +196,16 @@ public class UsersController : ControllerBase
         if (user is null) return NotFound();
         var role = await _roleRepository.GetByNameAsync(roleName, cancellationToken);
         if (role is null) return NotFound($"Role '{roleName}' not found.");
+
+        if (role.Name.Equals(DefaultIdentityRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            if (User.TryGetUserId() == id)
+                return BadRequest("You cannot remove your own admin role.");
+
+            if (user.IsActive && !await HasAnotherActiveAdminAsync(id, cancellationToken))
+                return BadRequest("At least one active admin must remain.");
+        }
+
         user.RemoveRole(role.Id);
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -192,9 +219,24 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
+        if (User.TryGetUserId() == id)
+            return BadRequest("You cannot deactivate your own account.");
+
         var user = await _userRepository.GetByIdAsync(id, cancellationToken);
         if (user is null) return NotFound();
+
+        if (IsAdmin(user) && user.IsActive && !await HasAnotherActiveAdminAsync(id, cancellationToken))
+            return BadRequest("At least one active admin must remain.");
+
         user.ChangeStatus(UserStatus.Deactivated);
+
+        if (_refreshTokenRepository is not null)
+        {
+            var activeTokens = await _refreshTokenRepository.GetActiveByUserIdAsync(id, cancellationToken);
+            foreach (var token in activeTokens)
+                token.Revoke();
+        }
+
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return NoContent();
@@ -213,6 +255,21 @@ public class UsersController : ControllerBase
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return NoContent();
+    }
+
+    private async Task<bool> HasAnotherActiveAdminAsync(Guid excludedUserId, CancellationToken cancellationToken)
+    {
+        var users = await _userRepository.GetAllAsync(cancellationToken);
+        return users.Any(user =>
+            user.Id != excludedUserId
+            && user.IsActive
+            && IsAdmin(user));
+    }
+
+    private static bool IsAdmin(global::User user)
+    {
+        return user.UserRoles.Any(userRole =>
+            userRole.Role?.Name.Equals(DefaultIdentityRoles.Admin, StringComparison.OrdinalIgnoreCase) == true);
     }
 }
 

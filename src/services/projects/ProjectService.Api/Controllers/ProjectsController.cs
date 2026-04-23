@@ -25,11 +25,13 @@ public sealed class ProjectsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IProjectRepository _projectRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public ProjectsController(IMediator mediator, IProjectRepository projectRepository)
+    public ProjectsController(IMediator mediator, IProjectRepository projectRepository, IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
         _projectRepository = projectRepository;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpPost]
@@ -192,6 +194,19 @@ public sealed class ProjectsController : ControllerBase
 
         var result = await _mediator.Send(new DeleteProjectCommand(id));
         return Ok(result);
+    }
+
+    [HttpDelete("admin/{id:guid}/hard-delete")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> HardDelete(Guid id)
+    {
+        var project = await _projectRepository.GetByIdAsync(id, HttpContext.RequestAborted);
+        if (project is null)
+            return NotFound();
+
+        await _projectRepository.DeleteAsync(project, HttpContext.RequestAborted);
+        await _unitOfWork.SaveChangesAsync(HttpContext.RequestAborted);
+        return NoContent();
     }
 
     [HttpPost("{id:guid}/members")]

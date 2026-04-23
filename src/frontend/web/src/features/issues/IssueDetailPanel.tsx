@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { issuesApi } from '../../api/issues';
-import { projectsApi } from '../../api/projects';
-import { adminApi } from '../../api/admin';
+import { organizationsApi } from '../../api/organizations';
 import { aiApi } from '../../api/ai';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
+import { useUserLookup } from '../../hooks/useUserLookup';
 import { IssueStatus, IssuePriority } from '../../types';
-import type { IssueDto, IssueCommentDto, IssueAttachmentDto, IssueAuditDto, UserDto } from '../../types';
+import type { IssueDto, IssueCommentDto, IssueAttachmentDto, IssueAuditDto } from '../../types';
 import styles from './IssueDetail.module.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -59,7 +59,7 @@ export default function IssueDetailPanel({
 }: {
     issueId: string;
     onClose: () => void;
-    onUpdated?: () => void;
+    onUpdated?: (updated: IssueDto) => void;
 }) {
     const { user, flags } = useAuthStore();
     const [issue, setIssue] = useState<IssueDto | null>(null);
@@ -186,7 +186,7 @@ export default function IssueDetailPanel({
                 {/* ── Body ──────────────── */}
                 <div className={styles.panelBody}>
                     {activeTab === 'details' && (
-                        <DetailsTab issue={issue} flags={flags} onUpdated={(updated) => { setIssue(updated); onUpdated?.(); }} />
+                        <DetailsTab issue={issue} flags={flags} onUpdated={(updated) => { setIssue(updated); onUpdated?.(updated); }} />
                     )}
                     {activeTab === 'comments' && (
                         <CommentsTab
@@ -233,12 +233,18 @@ function DetailsTab({
     const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
     const [assigning, setAssigning] = useState(false);
     const [showAssignInput, setShowAssignInput] = useState(false);
-    const [memberUsers, setMemberUsers] = useState<UserDto[]>([]);
+    const [memberUsers, setMemberUsers] = useState<{ id: string; userName: string }[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [aiEnriching, setAiEnriching] = useState(false);
     const [aiResult, setAiResult] = useState<{ description: string; acceptanceCriteria: string; edgeCases: string; storyPoints: number } | null>(null);
     const { addToast: showToast } = useToastStore();
+    const { activeOrg } = useAuthStore();
+    const assigneeLookupIds = useMemo(
+        () => (issue.assigneeUserId ? [issue.assigneeUserId] : []),
+        [issue.assigneeUserId]
+    );
+    const { getUserName: getAssigneeName, getInitials: getAssigneeInitials } = useUserLookup(assigneeLookupIds);
 
     const handleEnrich = async () => {
         setAiEnriching(true);
@@ -306,14 +312,11 @@ function DetailsTab({
     };
 
     const loadMembers = async () => {
+        if (!activeOrg?.id) return;
         setMembersLoading(true);
         try {
-            const [members, allUsers] = await Promise.all([
-                projectsApi.getMembers(issue.projectId),
-                adminApi.getUsers(),
-            ]);
-            const memberIds = new Set(members.map(m => m.userId));
-            setMemberUsers(allUsers.filter(u => memberIds.has(u.id)));
+            const orgMembers = await organizationsApi.getMembers(activeOrg.id);
+            setMemberUsers(orgMembers.map(m => ({ id: m.userId, userName: m.userName })));
         } catch {
             // fall back to empty list
         } finally {
@@ -444,10 +447,11 @@ function DetailsTab({
                     {issue.assigneeUserId ? (
                         <>
                             <div className={styles.assigneeAvatar}>
-                                {issue.assigneeUserId.slice(0, 2).toUpperCase()}
+                                {getAssigneeInitials(issue.assigneeUserId)}
                             </div>
                             <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500 }}>
-                                {memberUsers.find(u => u.id === issue.assigneeUserId)?.userName ?? issue.assigneeUserId.slice(0, 8) + '...'}
+                                {memberUsers.find(u => u.id === issue.assigneeUserId)?.userName
+                                    ?? getAssigneeName(issue.assigneeUserId)}
                             </span>
                             {canAssign && (
                                 <button className={styles.assignBtn} onClick={() => { setShowAssignInput((v) => !v); if (!showAssignInput) loadMembers(); }}>
@@ -620,6 +624,9 @@ function AttachmentsTab({
     const { addToast: showToast } = useToastStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const uploaderIds = useMemo(() => attachments.map((a) => a.uploadedByUserId), [attachments]);
+    const { getUserName, getInitials } = useUserLookup(uploaderIds);
+
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -628,23 +635,20 @@ function AttachmentsTab({
         formData.append('file', file);
 
         try {
-            // 1. Upload file to StorageService (temporary)
             const uploadResponse = await fetch(`${API_BASE}/api/v1/storage/files`, {
                 method: 'POST',
                 credentials: 'include',
                 body: formData,
             });
-            if (!uploadResponse.ok) throw new Error('Upload failed');
+            if (!uploadResponse.ok) throw new Error(`Upload failed (${uploadResponse.status})`);
             const stored = await uploadResponse.json();
 
-            // 2. Finalize the file so IssueService can validate it server-side
             const finalizeResponse = await fetch(`${API_BASE}/api/v1/storage/files/${stored.id}/finalize`, {
                 method: 'POST',
                 credentials: 'include',
             });
-            if (!finalizeResponse.ok) throw new Error('Finalize failed');
+            if (!finalizeResponse.ok) throw new Error(`Finalize failed (${finalizeResponse.status})`);
 
-            // 3. Attach to issue — only fileId is sent; metadata is resolved server-side
             const attachResponse = await fetch(`${API_BASE}/api/v1/issues/${issueId}/attachments`, {
                 method: 'POST',
                 credentials: 'include',
@@ -653,11 +657,13 @@ function AttachmentsTab({
                 },
                 body: JSON.stringify({ fileId: stored.id }),
             });
-            if (!attachResponse.ok) throw new Error('Attach failed');
+            if (!attachResponse.ok) throw new Error(`Attach failed (${attachResponse.status})`);
 
             onReload();
-        } catch {
-            showToast('Dosya yüklenirken hata oluştu.', 'error');
+            showToast('Dosya yüklendi.');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Dosya yüklenirken hata oluştu.';
+            showToast(`Dosya yüklenemedi: ${message}`, 'error');
         }
 
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -677,7 +683,16 @@ function AttachmentsTab({
                             <div className={styles.attachmentIcon}>📄</div>
                             <div className={styles.attachmentInfo}>
                                 <div className={styles.attachmentName}>{a.fileName}</div>
-                                <div className={styles.attachmentSize}>{formatSize(a.sizeBytes)}</div>
+                                <div className={styles.attachmentSize}>
+                                    {formatSize(a.sizeBytes)} · {getUserName(a.uploadedByUserId)} · {formatDate(a.uploadedAt)}
+                                </div>
+                            </div>
+                            <div
+                                className={styles.assigneeAvatar}
+                                title={getUserName(a.uploadedByUserId)}
+                                style={{ marginRight: 8 }}
+                            >
+                                {getInitials(a.uploadedByUserId)}
                             </div>
                             <a
                                 href={`${API_BASE}/api/v1/storage/files/${a.fileId}/content`}
@@ -696,6 +711,7 @@ function AttachmentsTab({
                 ref={fileInputRef}
                 type="file"
                 style={{ display: 'none' }}
+                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.svg,.txt,.md,.csv,.json,.xml,.log,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.tar,.gz"
                 onChange={handleUpload}
             />
             <button className={styles.uploadBtn} onClick={() => fileInputRef.current?.click()}>

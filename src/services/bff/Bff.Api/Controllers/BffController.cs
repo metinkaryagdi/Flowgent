@@ -81,6 +81,36 @@ public sealed class BffController : ControllerBase
         return Ok(flags);
     }
 
+    [HttpGet("admin/seq-errors")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IReadOnlyList<SeqLogEventDto>>> GetSeqErrors(CancellationToken cancellationToken)
+    {
+        var seqClient = _httpClientFactory.CreateClient("Seq");
+
+        using var response = await seqClient.GetAsync("/api/events?count=100", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return Ok(Array.Empty<SeqLogEventDto>());
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        var events = document.RootElement.ValueKind == JsonValueKind.Array
+            ? document.RootElement.EnumerateArray()
+            : document.RootElement.TryGetProperty("events", out var eventsElement) && eventsElement.ValueKind == JsonValueKind.Array
+                ? eventsElement.EnumerateArray()
+                : Enumerable.Empty<JsonElement>();
+
+        var result = events
+            .Select(ToSeqLogEvent)
+            .Where(e => e is not null)
+            .Cast<SeqLogEventDto>()
+            .Where(e => e.Level is "Error" or "Fatal")
+            .Take(5)
+            .ToList();
+
+        return Ok(result);
+    }
+
     [HttpGet("sprint/active/{projectId:guid}")]
     public async Task<ActionResult<SprintDto?>> GetActiveSprint(Guid projectId, CancellationToken cancellationToken)
     {
@@ -130,6 +160,41 @@ public sealed class BffController : ControllerBase
                 .ToArray(),
             AllowedTransitions = workflow.AllowedTransitions
         };
+    }
+
+    private static SeqLogEventDto? ToSeqLogEvent(JsonElement item)
+    {
+        var timestamp = GetString(item, "Timestamp") ?? GetString(item, "timestamp");
+        if (string.IsNullOrWhiteSpace(timestamp))
+            return null;
+
+        var level = GetString(item, "Level") ?? GetString(item, "level") ?? "Information";
+        var renderedMessage = GetString(item, "RenderedMessage")
+            ?? GetString(item, "renderedMessage")
+            ?? GetString(item, "MessageTemplate")
+            ?? GetString(item, "messageTemplate")
+            ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(renderedMessage))
+            renderedMessage = "(no message)";
+
+        var id = GetString(item, "Id")
+            ?? GetString(item, "id")
+            ?? $"{timestamp}:{level}:{renderedMessage}".GetHashCode().ToString("X");
+
+        return new SeqLogEventDto(
+            id,
+            timestamp,
+            level,
+            renderedMessage,
+            GetString(item, "Exception") ?? GetString(item, "exception"));
+    }
+
+    private static string? GetString(JsonElement item, string propertyName)
+    {
+        return item.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
     }
 
     private static string ToDisplayTitle(string status)
@@ -190,3 +255,10 @@ public sealed class BffController : ControllerBase
         return Guid.TryParse(sub, out var id) ? id : null;
     }
 }
+
+public sealed record SeqLogEventDto(
+    string Id,
+    string Timestamp,
+    string Level,
+    string RenderedMessage,
+    string? Exception);

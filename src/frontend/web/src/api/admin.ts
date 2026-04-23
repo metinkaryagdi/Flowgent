@@ -1,6 +1,16 @@
 import apiClient from './client';
 import { mockApi, useMockApi } from './mock';
-import type { UserDto, RoleDto, AdminStatsDto, OrganizationDto, ProjectDto, PagedResult } from '../types';
+import type {
+    UserDto,
+    RoleDto,
+    AdminStatsDto,
+    OrganizationDto,
+    OrganizationMemberDto,
+    OrganizationRole,
+    ProjectDto,
+    PagedResult,
+    SeqLogEventDto,
+} from '../types';
 
 export const adminApi = {
     getUsers: async (): Promise<UserDto[]> => {
@@ -61,6 +71,21 @@ export const adminApi = {
         await apiClient.delete(`/api/v1/identity/organizations/${orgId}`);
     },
 
+    getOrgMembers: async (orgId: string): Promise<OrganizationMemberDto[]> => {
+        const response = await apiClient.get<OrganizationMemberDto[]>(
+            `/api/v1/identity/organizations/admin/${orgId}/members`
+        );
+        return response.data;
+    },
+
+    removeOrgMember: async (orgId: string, userId: string): Promise<void> => {
+        await apiClient.delete(`/api/v1/identity/organizations/admin/${orgId}/members/${userId}`);
+    },
+
+    changeOrgMemberRole: async (orgId: string, userId: string, newRole: OrganizationRole): Promise<void> => {
+        await apiClient.put(`/api/v1/identity/organizations/admin/${orgId}/members/${userId}/role`, { newRole });
+    },
+
     getAdminProjects: async (options: { page?: number; pageSize?: number } = {}): Promise<PagedResult<ProjectDto>> => {
         const response = await apiClient.get<PagedResult<ProjectDto>>('/api/v1/projects/admin/paged', { params: options });
         return response.data;
@@ -68,5 +93,10 @@ export const adminApi = {
 
     deleteProject: async (projectId: string): Promise<void> => {
         await apiClient.delete(`/api/v1/projects/${projectId}`);
+    },
+
+    getSeqErrors: async (): Promise<SeqLogEventDto[]> => {
+        const response = await apiClient.get<SeqLogEventDto[]>('/api/v1/bff/admin/seq-errors');
+        return response.data;
     },
 };

@@ -45,6 +45,15 @@ public sealed class StorageController : ControllerBase
         _fileStorage = fileStorage;
     }
 
+    private static readonly HashSet<string> _allowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf",
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+        ".txt", ".md", ".csv", ".json", ".xml", ".log",
+        ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        ".zip", ".rar", ".7z", ".tar", ".gz"
+    };
+
     [HttpPost("files")]
     [RequestSizeLimit(50_000_000)]
     public async Task<ActionResult<StoredFileDto>> Upload(
@@ -53,6 +62,11 @@ public sealed class StorageController : ControllerBase
     {
         if (file.Length <= 0)
             throw new BusinessRuleException("File is empty.");
+
+        var extension = Path.GetExtension(file.FileName);
+        if (string.IsNullOrWhiteSpace(extension) || !_allowedExtensions.Contains(extension))
+            throw new BusinessRuleException(
+                $"Unsupported file type '{extension}'. Allowed: {string.Join(", ", _allowedExtensions)}.");
 
         // UploadedByUserId must come from authenticated Claims, never from the request body.
         var uploadedByUserId = User.GetUserId();

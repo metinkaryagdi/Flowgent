@@ -9,13 +9,13 @@ using BitirmeProject.IdentityService.Application.Features.Organizations.Queries.
 using BitirmeProject.IdentityService.Application.Features.Organizations.Queries.GetMyOrganizations;
 using BitirmeProject.IdentityService.Application.Features.Organizations.Queries.GetOrganizationMembers;
 using BitirmeProject.IdentityService.Application.Options;
+using BitirmeProject.IdentityService.Domain.Entities;
 using BitirmeProject.IdentityService.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Shared.Common.Extensions;
-using System.Security.Claims;
 
 namespace BitirmeProject.IdentityService.Api.Controllers;
 
@@ -28,14 +28,22 @@ public class OrganizationsController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly JwtOptions _jwtOptions;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public OrganizationsController(IMediator mediator, IWebHostEnvironment env, IOptions<JwtOptions> jwtOptions, IOrganizationRepository organizationRepository, IUnitOfWork unitOfWork)
+    public OrganizationsController(
+        IMediator mediator,
+        IWebHostEnvironment env,
+        IOptions<JwtOptions> jwtOptions,
+        IOrganizationRepository organizationRepository,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork)
     {
         _mediator = mediator;
         _env = env;
         _jwtOptions = jwtOptions.Value;
         _organizationRepository = organizationRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -180,6 +188,80 @@ public class OrganizationsController : ControllerBase
     }
 
     /// <summary>
+    /// Admin-only: lists members for any organization in the system.
+    /// </summary>
+    [HttpGet("admin/{id:guid}/members")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<IReadOnlyList<OrganizationMemberDto>>> GetMembersForAdmin(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var org = await _organizationRepository.GetByIdAsync(id, cancellationToken);
+        if (org is null) return NotFound();
+
+        return Ok(await BuildMemberDtosAsync(org, cancellationToken));
+    }
+
+    /// <summary>
+    /// Admin-only: removes a non-owner member from any organization.
+    /// </summary>
+    [HttpDelete("admin/{id:guid}/members/{targetUserId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RemoveMemberForAdmin(
+        Guid id,
+        Guid targetUserId,
+        CancellationToken cancellationToken)
+    {
+        var org = await _organizationRepository.GetByIdAsync(id, cancellationToken);
+        if (org is null) return NotFound();
+
+        try
+        {
+            org.RemoveMember(targetUserId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        await _organizationRepository.UpdateAsync(org, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Admin-only: changes a non-owner member's organization role.
+    /// </summary>
+    [HttpPut("admin/{id:guid}/members/{targetUserId:guid}/role")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ChangeMemberRoleForAdmin(
+        Guid id,
+        Guid targetUserId,
+        [FromBody] ChangeMemberRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        var org = await _organizationRepository.GetByIdAsync(id, cancellationToken);
+        if (org is null) return NotFound();
+
+        var role = request.Role ?? request.NewRole;
+        if (!role.HasValue)
+            return BadRequest("Role is required.");
+
+        try
+        {
+            org.ChangeMemberRole(targetUserId, role.Value);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        await _organizationRepository.UpdateAsync(org, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Admin-only: hard-deletes an organization and all its members.
     /// </summary>
     [HttpDelete("{id:guid}")]
@@ -220,6 +302,31 @@ public class OrganizationsController : ControllerBase
 
         await _mediator.Send(new ChangeMemberRoleCommand(id, userId, targetUserId, role.Value));
         return NoContent();
+    }
+
+    private async Task<List<OrganizationMemberDto>> BuildMemberDtosAsync(
+        Organization organization,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<OrganizationMemberDto>();
+        foreach (var member in organization.Members)
+        {
+            var user = await _userRepository.GetByIdAsync(member.UserId, cancellationToken);
+
+            result.Add(new OrganizationMemberDto
+            {
+                UserId = member.UserId,
+                UserName = user?.UserName ?? "Silinmis kullanici",
+                Email = user?.Email ?? "-",
+                Role = member.Role.ToString(),
+                JoinedAt = member.JoinedAt
+            });
+        }
+
+        return result
+            .OrderByDescending(m => m.Role == OrganizationRole.Owner.ToString())
+            .ThenBy(m => m.UserName)
+            .ToList();
     }
 }
 

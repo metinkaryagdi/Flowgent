@@ -1,4 +1,5 @@
 using BitirmeProject.IdentityService.Application.DTOs;
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
@@ -19,12 +20,18 @@ public sealed class AuthController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IWebHostEnvironment _env;
     private readonly JwtOptions _jwtOptions;
+    private readonly IUserRepository? _userRepository;
 
-    public AuthController(IMediator mediator, IWebHostEnvironment env, IOptions<JwtOptions> jwtOptions)
+    public AuthController(
+        IMediator mediator,
+        IWebHostEnvironment env,
+        IOptions<JwtOptions> jwtOptions,
+        IUserRepository? userRepository = null)
     {
         _mediator = mediator;
         _env = env;
         _jwtOptions = jwtOptions.Value;
+        _userRepository = userRepository;
     }
 
     [AllowAnonymous]
@@ -71,6 +78,24 @@ public sealed class AuthController : ControllerBase
         Response.Cookies.Delete("accessToken");
         Response.Cookies.Delete("refreshToken");
         return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("token-status")]
+    public async Task<ActionResult<TokenStatusResponse>> GetTokenStatus(
+        [FromQuery] Guid userId,
+        [FromQuery] Guid securityStamp,
+        CancellationToken cancellationToken)
+    {
+        if (_userRepository is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new TokenStatusResponse(false));
+
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        var isValid = user is not null
+            && user.IsActive
+            && user.SecurityStamp == securityStamp;
+
+        return Ok(new TokenStatusResponse(isValid));
     }
 
     // ── Helper: JWT + Refresh token'ları HttpOnly cookie olarak ekle ──
@@ -135,3 +160,4 @@ public sealed class AuthController : ControllerBase
     }
 }
 
+public sealed record TokenStatusResponse(bool IsValid);

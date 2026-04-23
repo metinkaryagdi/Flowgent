@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationsApi } from '../../api/notifications';
 import { issuesApi } from '../../api/issues';
+import { authApi } from '../../api/auth';
+import { organizationsApi } from '../../api/organizations';
 import { useToastStore } from '../../store/toastStore';
+import { useAuthStore } from '../../store/authStore';
 import { useSignalR } from '../../hooks/useSignalR';
 import type { NotificationDto } from '../../types';
 import styles from './Notifications.module.css';
@@ -24,11 +27,19 @@ const formatDate = (d: string) => {
 
 const PAGE_SIZE = 20;
 
+const isOrganizationInvite = (notif: NotificationDto) =>
+    notif.entityType === 'Organization' &&
+    Boolean(notif.entityId) &&
+    notif.title.toLocaleLowerCase('tr-TR').includes('davet');
+
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [selectedInvite, setSelectedInvite] = useState<NotificationDto | null>(null);
+    const [inviteActionLoading, setInviteActionLoading] = useState<'accept' | 'decline' | null>(null);
     const { addToast: showToast } = useToastStore();
+    const { setActiveOrg, setFlags } = useAuthStore();
     const navigate = useNavigate();
 
     const loadNotifications = useCallback(async () => {
@@ -68,6 +79,10 @@ export default function NotificationsPage() {
         if (!notif.isRead) {
             handleMarkAsRead(notif.id);
         }
+        if (isOrganizationInvite(notif)) {
+            setSelectedInvite(notif);
+            return;
+        }
         if (notif.entityType === 'Issue' && notif.entityId) {
             try {
                 const issue = await issuesApi.getById(notif.entityId);
@@ -79,6 +94,65 @@ export default function NotificationsPage() {
             }
         }
     }, [navigate, showToast]);
+
+    const removeNotificationFromList = (id: string) => {
+        setNotifications((prev) => prev.filter((item) => item.id !== id));
+    };
+
+    const handleAcceptInvite = async () => {
+        if (!selectedInvite?.entityId) return;
+
+        setInviteActionLoading('accept');
+        try {
+            await organizationsApi.acceptOrganizationInvite(selectedInvite.entityId);
+            const switchResult = await organizationsApi.switchOrg(selectedInvite.entityId);
+            setActiveOrg({
+                id: switchResult.orgId,
+                name: switchResult.orgName,
+                role: switchResult.orgRole,
+            });
+            try {
+                const flags = await authApi.getFlags();
+                setFlags(flags);
+            } catch { /* flags refresh is non-fatal */ }
+            await notificationsApi.markAsRead(selectedInvite.id);
+            removeNotificationFromList(selectedInvite.id);
+            setSelectedInvite(null);
+            showToast('Organizasyona katildiniz.');
+            navigate('/projects');
+        } catch (err: unknown) {
+            if (err && typeof err === 'object' && 'response' in err) {
+                const e = err as { response?: { data?: { message?: string } } };
+                showToast(e.response?.data?.message || 'Davet kabul edilemedi.', 'error');
+            } else {
+                showToast('Sunucuya baglanilamadi.', 'error');
+            }
+        } finally {
+            setInviteActionLoading(null);
+        }
+    };
+
+    const handleDeclineInvite = async () => {
+        if (!selectedInvite?.entityId) return;
+
+        setInviteActionLoading('decline');
+        try {
+            await organizationsApi.declineOrganizationInvite(selectedInvite.entityId);
+            await notificationsApi.markAsRead(selectedInvite.id);
+            removeNotificationFromList(selectedInvite.id);
+            setSelectedInvite(null);
+            showToast('Davet reddedildi.');
+        } catch (err: unknown) {
+            if (err && typeof err === 'object' && 'response' in err) {
+                const e = err as { response?: { data?: { message?: string } } };
+                showToast(e.response?.data?.message || 'Davet reddedilemedi.', 'error');
+            } else {
+                showToast('Sunucuya baglanilamadi.', 'error');
+            }
+        } finally {
+            setInviteActionLoading(null);
+        }
+    };
 
     const handleMarkAllAsRead = async () => {
         try {
@@ -139,10 +213,11 @@ export default function NotificationsPage() {
                     <div className={styles.list} data-testid="notifications-list">
                         {pagedNotifications.map((notif) => {
                             const isUnread = !notif.isRead;
+                            const canOpen = (notif.entityType === 'Issue' && notif.entityId) || isOrganizationInvite(notif);
                             return (
                                 <div
                                     key={notif.id}
-                                    className={`${styles.item} ${isUnread ? styles.itemUnread : ''} ${notif.entityType === 'Issue' && notif.entityId ? styles.itemClickable : ''}`}
+                                    className={`${styles.item} ${isUnread ? styles.itemUnread : ''} ${canOpen ? styles.itemClickable : ''}`}
                                     data-testid="notification-item"
                                     onClick={() => handleNotificationClick(notif)}
                                 >
@@ -181,6 +256,31 @@ export default function NotificationsPage() {
                         </div>
                     )}
                 </>
+            )}
+
+            {selectedInvite && (
+                <div className={styles.modalOverlay} onClick={() => setSelectedInvite(null)}>
+                    <div className={styles.modal} onClick={(event) => event.stopPropagation()}>
+                        <h2 className={styles.modalTitle}>{selectedInvite.title}</h2>
+                        <p className={styles.modalText}>{selectedInvite.message}</p>
+                        <div className={styles.modalFooter}>
+                            <button
+                                className={styles.btnSecondary}
+                                disabled={inviteActionLoading !== null}
+                                onClick={handleDeclineInvite}
+                            >
+                                {inviteActionLoading === 'decline' ? 'Isleniyor...' : 'Katilma'}
+                            </button>
+                            <button
+                                className={styles.btnPrimary}
+                                disabled={inviteActionLoading !== null}
+                                onClick={handleAcceptInvite}
+                            >
+                                {inviteActionLoading === 'accept' ? 'Katiliniyor...' : 'Katil'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
         </div>
