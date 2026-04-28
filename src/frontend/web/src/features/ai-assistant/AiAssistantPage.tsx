@@ -1,51 +1,87 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
+import { aiApi, type AgentTurn, type ProjectScaffoldDraft } from '../../api/ai';
+import { projectsApi } from '../../api/projects';
+import { sprintsApi } from '../../api/sprints';
+import { issuesApi } from '../../api/issues';
+import { IssuePriority } from '../../types';
+import type { ProjectDto } from '../../types';
 import styles from './AiAssistant.module.css';
+
+type Mode = 'agent' | 'scaffold';
 
 interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
     text: string;
-    draft?: ProjectDraft;
+    turns?: AgentTurn[];
+    iterations?: number;
+    hitLimit?: boolean;
     timestamp: string;
 }
 
-interface DraftIssue {
-    title: string;
-    priority: 'Low' | 'Medium' | 'High' | 'Critical';
-}
-
-interface DraftSprint {
-    name: string;
-    goal: string;
-    issues: DraftIssue[];
-}
-
-interface ProjectDraft {
-    projectName: string;
-    projectKey: string;
-    description: string;
-    sprints: DraftSprint[];
-}
-
-const priorityClass = (p: string) => {
-    switch (p) {
-        case 'Critical': return { background: 'rgba(124, 58, 237, 0.15)', color: '#7c3aed' };
-        case 'High': return { background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' };
-        case 'Medium': return { background: 'rgba(245, 158, 11, 0.15)', color: '#b45309' };
-        default: return { background: 'rgba(34, 197, 94, 0.15)', color: '#16a34a' };
-    }
-};
-
 export default function AiAssistantPage() {
+    const [mode, setMode] = useState<Mode>('agent');
+
+    return (
+        <div className={styles.page}>
+            <div className={styles.header}>
+                <h1 className={styles.title}>
+                    <span>✦</span> AI Asistan
+                </h1>
+                <p className={styles.subtitle}>
+                    Mevcut bir projede iş yaptır veya doğal dilde tarif ederek yeni proje oluştur.
+                </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', paddingBottom: 0 }}>
+                <ModeTab active={mode === 'agent'} onClick={() => setMode('agent')} icon="🛠️" label="Mevcut Projede İşlem" />
+                <ModeTab active={mode === 'scaffold'} onClick={() => setMode('scaffold')} icon="🆕" label="Yeni Proje Oluştur" />
+            </div>
+
+            {mode === 'agent' ? <AgentMode /> : <ScaffoldMode />}
+        </div>
+    );
+}
+
+function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: string; label: string }) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                padding: '10px 18px',
+                background: 'none',
+                border: 'none',
+                borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
+                color: active ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                fontWeight: 600,
+                fontSize: 'var(--font-size-sm)',
+                cursor: 'pointer',
+                marginBottom: -1,
+            }}
+        >
+            {icon} {label}
+        </button>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Mode 1: Agent (mevcut, korundu)
+// ─────────────────────────────────────────────────────────────────────
+function AgentMode() {
     const { addToast } = useToastStore();
     const { user, activeOrg } = useAuthStore();
+
+    const [projects, setProjects] = useState<ProjectDto[]>([]);
+    const [projectId, setProjectId] = useState<string>('');
+    const [projectsLoading, setProjectsLoading] = useState(false);
+    const [sessionId, setSessionId] = useState<string | undefined>(undefined);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [thinking, setThinking] = useState(false);
-    const [creating, setCreating] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -53,37 +89,57 @@ export default function AiAssistantPage() {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, thinking]);
 
+    useEffect(() => {
+        if (!activeOrg?.id) return;
+        setProjectsLoading(true);
+        projectsApi
+            .getByOrganizationPaged({ page: 1, pageSize: 100 })
+            .then((res) => {
+                setProjects(res.items);
+                if (res.items.length > 0 && !projectId) {
+                    setProjectId(res.items[0].id);
+                }
+            })
+            .catch(() => addToast('Projeler yüklenemedi.', 'error'))
+            .finally(() => setProjectsLoading(false));
+    }, [activeOrg?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const send = async (e?: FormEvent) => {
         e?.preventDefault();
         const text = input.trim();
         if (!text || thinking) return;
+        if (!projectId) {
+            addToast('Önce bir proje seç.', 'warning');
+            return;
+        }
 
-        const userMsg: ChatMessage = {
-            id: `u-${Date.now()}`,
-            role: 'user',
-            text,
-            timestamp: new Date().toISOString(),
-        };
+        const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', text, timestamp: new Date().toISOString() };
         setMessages((prev) => [...prev, userMsg]);
         setInput('');
         setThinking(true);
 
         try {
-            // TODO(AI integration): replace this stub with a real call to /api/v1/ai/scaffold-project.
-            // The endpoint should accept the user's free-text description and return a ProjectDraft.
-            await new Promise((r) => setTimeout(r, 800));
-
-            const draft: ProjectDraft = mockDraftFor(text);
+            const res = await aiApi.agent(projectId, text, sessionId);
+            const displayText = res.hitIterationLimit
+                ? `🤖 Model ${res.iterationsUsed} adım çalıştırdı ama özet üretemedi. Tool çağrı sonuçlarını "🔧" panelinden inceleyebilirsin. (Base gemma3:4b bu adımda zorlanıyor — fine-tune sonrası daha tutarlı sonuç bekleniyor.)`
+                : (res.finalText || '(boş yanıt)');
             const aiMsg: ChatMessage = {
                 id: `a-${Date.now()}`,
                 role: 'assistant',
-                text: 'Anlattıklarına göre aşağıdaki proje yapısını öneriyorum. Onaylarsan proje, sprint\'ler ve issue\'lar otomatik oluşturulur. Detayları değiştirmek istersen mesajla söyle, taslağı güncellerim.',
-                draft,
+                text: displayText,
+                turns: res.turns,
+                iterations: res.iterationsUsed,
+                hitLimit: res.hitIterationLimit,
                 timestamp: new Date().toISOString(),
             };
             setMessages((prev) => [...prev, aiMsg]);
         } catch {
             addToast('AI yanıtı alınamadı.', 'error');
+            setMessages((prev) => [...prev, {
+                id: `e-${Date.now()}`, role: 'assistant',
+                text: 'Üzgünüm, şu an yanıt veremiyorum. Lütfen tekrar deneyin.',
+                timestamp: new Date().toISOString(),
+            }]);
         } finally {
             setThinking(false);
             inputRef.current?.focus();
@@ -97,43 +153,47 @@ export default function AiAssistantPage() {
         }
     };
 
-    const handleApprove = async (draft: ProjectDraft) => {
-        if (creating) return;
-        setCreating(true);
-        try {
-            // TODO(AI integration): call /api/v1/ai/scaffold-project/apply with the approved draft.
-            // Backend should create the project, sprints, and issues atomically and return the project id.
-            await new Promise((r) => setTimeout(r, 1000));
-            addToast('Bu özellik henüz aktif değil — backend entegrasyonu yakında.', 'warning');
-        } finally {
-            setCreating(false);
-        }
-    };
-
-    const handleReject = (msgId: string) => {
-        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, draft: undefined } : m)));
-        setInput('Şu noktayı değiştirmek istiyorum: ');
+    const handleNewSession = () => {
+        setSessionId(undefined);
+        setMessages([]);
         inputRef.current?.focus();
     };
 
     return (
-        <div className={styles.page}>
-            <div className={styles.header}>
-                <h1 className={styles.title}>
-                    <span>✦</span> AI Proje Asistanı
-                </h1>
-                <p className={styles.subtitle}>
-                    Hedeflediğin projeyi anlat — AI senin için proje, sprint ve issue taslağı oluştursun.
-                </p>
-                <div className={styles.badgeRow}>
-                    {activeOrg?.name && <span className={styles.badge}>🏢 {activeOrg.name}</span>}
-                    {user?.userName && <span className={styles.badge}>👤 {user.userName}</span>}
-                    <span className={styles.badge}>🤖 gemma3:4b</span>
-                </div>
+        <>
+            <div className={styles.badgeRow}>
+                {activeOrg?.name && <span className={styles.badge}>🏢 {activeOrg.name}</span>}
+                {user?.userName && <span className={styles.badge}>👤 {user.userName}</span>}
+                <span className={styles.badge}>🤖 gemma3:4b (base)</span>
             </div>
 
-            <div className={styles.warning}>
-                ⚠ Bu özellik şu an UI iskeleti olarak hazır. AI entegrasyonu ve gerçek proje oluşturma yakında devreye girecek.
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                    Proje:
+                </label>
+                <select
+                    value={projectId}
+                    onChange={(e) => { setProjectId(e.target.value); handleNewSession(); }}
+                    disabled={projectsLoading || thinking}
+                    style={{
+                        padding: '8px 12px', borderRadius: 'var(--border-radius-md)',
+                        border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                        color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)', minWidth: 220,
+                    }}
+                >
+                    {projects.length === 0 && <option value="">— Proje yok —</option>}
+                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.key})</option>)}
+                </select>
+                {messages.length > 0 && (
+                    <button type="button" onClick={handleNewSession}
+                        style={{
+                            padding: '6px 14px', borderRadius: 'var(--border-radius-md)',
+                            border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                            color: 'var(--color-text-primary)', fontSize: 'var(--font-size-xs)', cursor: 'pointer',
+                        }}>
+                        🗑️ Yeni Sohbet
+                    </button>
+                )}
             </div>
 
             <div className={styles.chatPanel}>
@@ -141,176 +201,274 @@ export default function AiAssistantPage() {
                     {messages.length === 0 && !thinking && (
                         <div className={styles.empty}>
                             <div className={styles.emptyIcon}>✦</div>
-                            <p className={styles.emptyTitle}>Yeni bir proje başlatalım</p>
+                            <p className={styles.emptyTitle}>Mevcut projede iş yap</p>
                             <p className={styles.emptyHint}>
-                                "E-ticaret backend'i kurmak istiyoruz, .NET 9 + PostgreSQL, sepet, ödeme,
-                                kullanıcı yönetimi modülleri olsun" gibi serbest metinle anlat. AI sana
-                                önerilen proje yapısını çıkarır.
+                                Örn: "Login bug'ı için yüksek öncelikli issue oluştur" veya "Aktif sprint'te kaç açık issue var?"
                             </p>
                         </div>
                     )}
-
                     {messages.map((msg) => (
-                        <div
-                            key={msg.id}
-                            className={`${styles.message} ${msg.role === 'user' ? styles.messageUser : styles.messageAi}`}
-                        >
-                            <div
-                                className={`${styles.avatar} ${msg.role === 'user' ? styles.avatarUser : styles.avatarAi}`}
-                            >
+                        <div key={msg.id} className={`${styles.message} ${msg.role === 'user' ? styles.messageUser : styles.messageAi}`}>
+                            <div className={`${styles.avatar} ${msg.role === 'user' ? styles.avatarUser : styles.avatarAi}`}>
                                 {msg.role === 'user' ? (user?.userName?.slice(0, 2).toUpperCase() ?? '??') : '✦'}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                                <div
-                                    className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleAi}`}
-                                >
-                                    {msg.text}
-                                </div>
-                                {msg.draft && (
-                                    <DraftPreview
-                                        draft={msg.draft}
-                                        onApprove={() => handleApprove(msg.draft!)}
-                                        onReject={() => handleReject(msg.id)}
-                                        creating={creating}
-                                    />
+                                <div className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleAi}`}>{msg.text}</div>
+                                {msg.role === 'assistant' && msg.turns && msg.turns.length > 0 && (
+                                    <TurnsDetail turns={msg.turns} iterations={msg.iterations ?? 0} hitLimit={msg.hitLimit ?? false} />
                                 )}
                             </div>
                         </div>
                     ))}
-
                     {thinking && (
                         <div className={`${styles.message} ${styles.messageAi}`}>
                             <div className={`${styles.avatar} ${styles.avatarAi}`}>✦</div>
                             <div className={`${styles.bubble} ${styles.bubbleAi}`}>
-                                <span className={styles.thinking}>düşünüyorum...</span>
+                                <span className={styles.thinking}>AI düşünüyor — tool çağrıları sürebilir...</span>
                             </div>
                         </div>
                     )}
-
                     <div ref={chatEndRef} />
                 </div>
-
                 <form className={styles.composer} onSubmit={send}>
-                    <textarea
-                        ref={inputRef}
-                        className={styles.composerInput}
-                        placeholder="Projeyi tarif et... (Enter = gönder, Shift+Enter = yeni satır)"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        disabled={thinking}
-                        rows={1}
-                    />
-                    <button
-                        type="submit"
-                        className={styles.sendBtn}
-                        disabled={!input.trim() || thinking}
-                    >
+                    <textarea ref={inputRef} className={styles.composerInput}
+                        placeholder={projectId ? 'AI\'ya bir şey söyle... (Enter = gönder, Shift+Enter = yeni satır)' : 'Önce bir proje seç...'}
+                        value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+                        disabled={thinking || !projectId} rows={1} />
+                    <button type="submit" className={styles.sendBtn} disabled={!input.trim() || thinking || !projectId}>
                         {thinking ? '...' : 'Gönder'}
                     </button>
                 </form>
             </div>
-        </div>
+        </>
     );
 }
 
-function DraftPreview({
-    draft,
-    onApprove,
-    onReject,
-    creating,
-}: {
-    draft: ProjectDraft;
-    onApprove: () => void;
-    onReject: () => void;
-    creating: boolean;
-}) {
-    const totalIssues = draft.sprints.reduce((acc, s) => acc + s.issues.length, 0);
-
+function TurnsDetail({ turns, iterations, hitLimit }: { turns: AgentTurn[]; iterations: number; hitLimit: boolean }) {
+    const [open, setOpen] = useState(false);
+    const toolTurns = turns.filter((t) => t.kind === 'tool');
     return (
-        <div className={styles.draftCard}>
-            <div>
-                <h3 className={styles.draftTitle}>
-                    📋 {draft.projectName} <span className={styles.draftMeta}>({draft.projectKey})</span>
-                </h3>
-                <div className={styles.draftMeta}>
-                    {draft.sprints.length} sprint · {totalIssues} issue
+        <div style={{
+            background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)',
+            borderRadius: 'var(--border-radius-md)', padding: '8px 12px', fontSize: 'var(--font-size-xs)',
+        }}>
+            <button onClick={() => setOpen((v) => !v)}
+                style={{
+                    background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer',
+                    fontSize: 'var(--font-size-xs)', fontWeight: 600, padding: 0,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                <span>{open ? '▼' : '▶'}</span>
+                <span>🔧 {iterations} adım, {toolTurns.length} tool çağrısı{hitLimit ? ' — model "final" üretemedi (base model limiti)' : ''}</span>
+            </button>
+            {open && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {turns.map((t, i) => (
+                        <div key={i} style={{
+                            padding: '6px 8px', background: 'var(--color-surface)',
+                            borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--color-border)',
+                            fontFamily: 'var(--font-mono, monospace)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        }}>
+                            <div style={{ fontWeight: 700, marginBottom: 2, color: 'var(--color-primary)' }}>{t.kind}</div>
+                            <div style={{ color: 'var(--color-text-secondary)' }}>{t.content.length > 400 ? t.content.slice(0, 400) + '…' : t.content}</div>
+                        </div>
+                    ))}
                 </div>
-            </div>
-
-            {draft.description && (
-                <div className={styles.draftMeta} style={{ lineHeight: 1.5 }}>{draft.description}</div>
             )}
-
-            {draft.sprints.map((sprint, i) => (
-                <div key={i} className={styles.sprintBlock}>
-                    <div className={styles.sprintName}>Sprint {i + 1}: {sprint.name}</div>
-                    <div className={styles.sprintGoal}>{sprint.goal}</div>
-                    <div className={styles.issueList}>
-                        {sprint.issues.map((issue, j) => (
-                            <div key={j} className={styles.issueItem}>
-                                <span className={styles.issuePriority} style={priorityClass(issue.priority)}>
-                                    {issue.priority}
-                                </span>
-                                <span>{issue.title}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ))}
-
-            <div className={styles.actions}>
-                <button className={styles.btnPrimary} onClick={onApprove} disabled={creating}>
-                    {creating ? 'Oluşturuluyor...' : '✓ Onayla ve Oluştur'}
-                </button>
-                <button className={styles.btnSecondary} onClick={onReject} disabled={creating}>
-                    Değişiklik İste
-                </button>
-            </div>
         </div>
     );
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// TODO: Remove once /api/v1/ai/scaffold-project is wired.
-// Generates a deterministic placeholder draft so the UI flow is testable.
-function mockDraftFor(description: string): ProjectDraft {
-    const words = description.split(/\s+/).filter(Boolean);
-    const guessName = words.slice(0, 3).join(' ') || 'Yeni Proje';
-    const key = (words[0] ?? 'NP').slice(0, 4).toUpperCase();
+// Mode 2: Scaffold (yeni proje oluştur)
+// ─────────────────────────────────────────────────────────────────────
+function ScaffoldMode() {
+    const { addToast } = useToastStore();
+    const { user, activeOrg } = useAuthStore();
+    const navigate = useNavigate();
 
-    return {
-        projectName: guessName.charAt(0).toUpperCase() + guessName.slice(1),
-        projectKey: key,
-        description: `AI tarafından öneri olarak hazırlanmıştır. Asıl içerik: "${description.slice(0, 140)}${description.length > 140 ? '…' : ''}"`,
-        sprints: [
-            {
-                name: 'Temel Altyapı',
-                goal: 'Proje iskeletini ve temel servisleri kurmak',
-                issues: [
-                    { title: 'Repository ve CI/CD pipeline kurulumu', priority: 'High' },
-                    { title: 'Veritabanı şeması ve migration', priority: 'High' },
-                    { title: 'Authentication / Authorization yapısı', priority: 'Critical' },
-                ],
-            },
-            {
-                name: 'Çekirdek Özellikler',
-                goal: 'Ana iş akışlarını implement etmek',
-                issues: [
-                    { title: 'Domain modelleri ve repository\'ler', priority: 'High' },
-                    { title: 'API endpoint\'leri ve validation', priority: 'Medium' },
-                    { title: 'Birim test kapsamı', priority: 'Medium' },
-                ],
-            },
-            {
-                name: 'Cilalama ve Hazırlık',
-                goal: 'Üretim ortamına hazırlık',
-                issues: [
-                    { title: 'Logging ve monitoring entegrasyonu', priority: 'Medium' },
-                    { title: 'Performans testi', priority: 'Low' },
-                    { title: 'Dokümantasyon', priority: 'Low' },
-                ],
-            },
-        ],
+    const [description, setDescription] = useState('');
+    const [draftLoading, setDraftLoading] = useState(false);
+    const [draft, setDraft] = useState<ProjectScaffoldDraft | null>(null);
+    const [creating, setCreating] = useState(false);
+    const [progress, setProgress] = useState<string>('');
+
+    const handleGenerate = async () => {
+        if (!description.trim() || draftLoading) return;
+        setDraftLoading(true);
+        setDraft(null);
+        try {
+            const res = await aiApi.scaffoldDraft(description.trim());
+            setDraft(res);
+        } catch {
+            addToast('AI taslağı üretemedi. Açıklamayı yeniden ifade edip tekrar dene.', 'error');
+        } finally {
+            setDraftLoading(false);
+        }
     };
+
+    const handleApprove = async () => {
+        if (!draft || creating) return;
+        setCreating(true);
+        try {
+            // 1) Proje oluştur
+            setProgress('Proje oluşturuluyor...');
+            const project = await projectsApi.create({
+                name: draft.projectName,
+                key: draft.projectKey,
+                ownerUserId: user?.id,
+            });
+
+            // 2) Sprint'leri ve issue'leri sıralı oluştur (her sprint 14 gün)
+            const today = new Date();
+            for (let s = 0; s < draft.sprints.length; s++) {
+                const sprintDraft = draft.sprints[s];
+                setProgress(`Sprint ${s + 1}/${draft.sprints.length} oluşturuluyor: ${sprintDraft.name}`);
+
+                const startDate = new Date(today);
+                startDate.setDate(today.getDate() + s * 14);
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 13);
+
+                const sprint = await sprintsApi.create({
+                    projectId: project.id,
+                    name: sprintDraft.name,
+                    goal: sprintDraft.goal,
+                    startDate: startDate.toISOString().slice(0, 10),
+                    endDate: endDate.toISOString().slice(0, 10),
+                });
+
+                for (let i = 0; i < sprintDraft.issues.length; i++) {
+                    const issueDraft = sprintDraft.issues[i];
+                    setProgress(`Sprint ${s + 1}: issue ${i + 1}/${sprintDraft.issues.length} — ${issueDraft.title}`);
+                    const issue = await issuesApi.create({
+                        projectId: project.id,
+                        title: issueDraft.title,
+                        description: issueDraft.description,
+                        priority: issueDraft.priority as IssuePriority,
+                    });
+                    await sprintsApi.addIssue(sprint.id, issue.id);
+                }
+            }
+
+            const totalIssues = draft.sprints.reduce((acc, s) => acc + s.issues.length, 0);
+            addToast(`✓ "${draft.projectName}" oluşturuldu — ${draft.sprints.length} sprint, ${totalIssues} issue.`);
+            navigate(`/projects/${project.id}`);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Oluşturma başarısız.';
+            addToast(`Hata: ${msg}. Bazı kayıtlar oluşmuş olabilir.`, 'error');
+        } finally {
+            setCreating(false);
+            setProgress('');
+        }
+    };
+
+    const handleReject = () => {
+        setDraft(null);
+        setDescription((prev) => prev + '\n\nDeğişiklik isteği: ');
+    };
+
+    const totalIssues = draft?.sprints.reduce((acc, s) => acc + s.issues.length, 0) ?? 0;
+
+    return (
+        <>
+            <div className={styles.badgeRow}>
+                {activeOrg?.name && <span className={styles.badge}>🏢 {activeOrg.name}</span>}
+                {user?.userName && <span className={styles.badge}>👤 {user.userName}</span>}
+                <span className={styles.badge}>🤖 gemma3:4b (base)</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                    Yeni proje için doğal dilde tarif et:
+                </label>
+                <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Örn: E-ticaret platformu kurmak istiyoruz, .NET 9 + PostgreSQL + React. Sepet, ödeme, kullanıcı yönetimi, ürün katalog ve admin paneli olsun."
+                    rows={5}
+                    disabled={draftLoading || creating || !!draft}
+                    style={{
+                        padding: '12px', borderRadius: 'var(--border-radius-md)',
+                        border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                        color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)',
+                        fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5,
+                    }}
+                />
+                {!draft && (
+                    <button
+                        onClick={handleGenerate}
+                        disabled={!description.trim() || draftLoading}
+                        style={{
+                            padding: '10px 20px', borderRadius: 'var(--border-radius-md)',
+                            background: 'var(--color-primary)', color: 'white', border: 'none',
+                            fontWeight: 600, fontSize: 'var(--font-size-sm)', cursor: 'pointer',
+                            opacity: (!description.trim() || draftLoading) ? 0.5 : 1, alignSelf: 'flex-start',
+                        }}>
+                        {draftLoading ? '✦ AI taslak hazırlıyor (10-30s)...' : '✦ Taslak Oluştur'}
+                    </button>
+                )}
+            </div>
+
+            {draft && (
+                <div className={styles.draftCard}>
+                    <div>
+                        <h3 className={styles.draftTitle}>
+                            📋 {draft.projectName} <span className={styles.draftMeta}>({draft.projectKey})</span>
+                        </h3>
+                        <div className={styles.draftMeta}>
+                            {draft.sprints.length} sprint · {totalIssues} issue
+                        </div>
+                    </div>
+                    {draft.description && (
+                        <div className={styles.draftMeta} style={{ lineHeight: 1.5 }}>{draft.description}</div>
+                    )}
+                    {draft.sprints.map((sprint, i) => (
+                        <div key={i} className={styles.sprintBlock}>
+                            <div className={styles.sprintName}>Sprint {i + 1}: {sprint.name}</div>
+                            <div className={styles.sprintGoal}>{sprint.goal}</div>
+                            <div className={styles.issueList}>
+                                {sprint.issues.map((issue, j) => (
+                                    <div key={j} className={styles.issueItem}>
+                                        <span className={styles.issuePriority} style={priorityStyle(issue.priority)}>
+                                            {issue.priority}
+                                        </span>
+                                        <span>{issue.title}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+
+                    {progress && (
+                        <div style={{
+                            padding: '8px 12px', background: 'var(--color-surface)',
+                            borderRadius: 'var(--border-radius-sm)', fontSize: 'var(--font-size-xs)',
+                            color: 'var(--color-text-secondary)', fontStyle: 'italic',
+                        }}>
+                            {progress}
+                        </div>
+                    )}
+
+                    <div className={styles.actions}>
+                        <button className={styles.btnPrimary} onClick={handleApprove} disabled={creating}>
+                            {creating ? 'Oluşturuluyor...' : '✓ Onayla ve Oluştur'}
+                        </button>
+                        <button className={styles.btnSecondary} onClick={handleReject} disabled={creating}>
+                            Değişiklik İste
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+function priorityStyle(p: string): React.CSSProperties {
+    switch (p) {
+        case 'Critical': return { background: 'rgba(124, 58, 237, 0.15)', color: '#7c3aed' };
+        case 'High': return { background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' };
+        case 'Medium': return { background: 'rgba(245, 158, 11, 0.15)', color: '#b45309' };
+        default: return { background: 'rgba(34, 197, 94, 0.15)', color: '#16a34a' };
+    }
 }

@@ -428,6 +428,8 @@ services:
       Ollama__BaseUrl: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
       Ollama__Model: "gemma3:4b"
       Ollama__FallbackModel: "llama3.2:3b"
+      Ollama__UseFinetuned: "${OLLAMA_USE_FINETUNED:-false}"
+      Ollama__FinetunedModel: "${OLLAMA_FINETUNED_MODEL:-bp-agent}"
       Services__SprintService: "http://sprint-api:8080"
       Services__IssueService: "http://issue-api:8080"
       RabbitMQ__Host: "rabbitmq"

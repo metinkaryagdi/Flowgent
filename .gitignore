@@ -28,3 +28,11 @@ build_issue_api*.txt
 src/frontend/web/.env
 src/frontend/web/errors*.txt
 src/frontend/web/out.txt
+
+# AI fine-tune training data (generated, not committed — ref docs/ai-agent-fine-tuning-plan.md)
+tools/ai_data_collector/output/
+tools/ai_data_collector/golden/*.jsonl
+tools/ai-finetune/datasets/
+tools/ai-finetune/adapters/
+tools/ai-finetune/checkpoints/
+*.gguf

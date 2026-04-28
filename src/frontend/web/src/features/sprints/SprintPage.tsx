@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { sprintsApi } from '../../api/sprints';
 import { useToastStore } from '../../store/toastStore';
 import { issuesApi } from '../../api/issues';
-import { aiApi, type SprintRiskResult, type SuggestBalanceResult } from '../../api/ai';
+import { aiApi, type SprintRiskResult, type SuggestBalanceResult, type RetrospectiveResult } from '../../api/ai';
 import { IssuePriority, SprintStatus } from '../../types';
 import type { SprintDto, IssueBoardItemDto } from '../../types';
 import styles from './Sprint.module.css';
@@ -27,6 +27,8 @@ export default function SprintPage() {
     const [riskLoading, setRiskLoading] = useState(false);
     const [balanceResult, setBalanceResult] = useState<SuggestBalanceResult | null>(null);
     const [balanceLoading, setBalanceLoading] = useState(false);
+    const [retroResults, setRetroResults] = useState<Record<string, RetrospectiveResult>>({});
+    const [retroLoading, setRetroLoading] = useState<Record<string, boolean>>({});
     const [backlog, setBacklog] = useState<{ items: IssueBoardItemDto[]; page: number; total: number; loading: boolean }>({
         items: [],
         page: 1,
@@ -195,6 +197,19 @@ export default function SprintPage() {
             showToast('Yük analizi başarısız. Tekrar deneyin.', 'error');
         } finally {
             setBalanceLoading(false);
+        }
+    };
+
+    const handleRetrospective = async (sprintId: string) => {
+        if (!projectId) return;
+        setRetroLoading((prev) => ({ ...prev, [sprintId]: true }));
+        try {
+            const result = await aiApi.retrospective(sprintId, projectId);
+            setRetroResults((prev) => ({ ...prev, [sprintId]: result }));
+        } catch {
+            showToast('Retrospektif oluşturulamadı.', 'error');
+        } finally {
+            setRetroLoading((prev) => ({ ...prev, [sprintId]: false }));
         }
     };
 
@@ -407,15 +422,40 @@ export default function SprintPage() {
                 <>
                     <h3 className={styles.sectionTitle}>Tamamlanan Sprint'ler</h3>
                     <div className={styles.sprintList}>
-                        {completedSprints.slice(0, 5).map((sprint) => (
-                            <div key={sprint.id} className={styles.sprintCard}>
-                                <div className={styles.sprintCardInfo}>
-                                    <h3>{sprint.name}</h3>
-                                    <p>{formatDate(sprint.startDate)} â€” {formatDate(sprint.endDate)}</p>
+                        {completedSprints.slice(0, 5).map((sprint) => {
+                            const retro = retroResults[sprint.id];
+                            const retroLoad = retroLoading[sprint.id];
+                            return (
+                                <div key={sprint.id} className={styles.sprintCard} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                        <div className={styles.sprintCardInfo}>
+                                            <h3>{sprint.name}</h3>
+                                            <p>{formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}</p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>Tamamlandı</span>
+                                            <button
+                                                className={styles.startBtn}
+                                                style={{ background: 'var(--color-primary)', color: '#fff', opacity: retroLoad ? 0.6 : 1 }}
+                                                onClick={() => handleRetrospective(sprint.id)}
+                                                disabled={retroLoad}
+                                            >
+                                                {retroLoad ? '...' : '✦ Retrospektif'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {retro && (
+                                        <div style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-primary)', borderRadius: 'var(--border-radius-md)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            <div style={{ fontWeight: 700, fontSize: 'var(--font-size-sm)' }}>✦ Sprint Retrospektifi</div>
+                                            <div style={{ fontSize: 'var(--font-size-xs)' }}><strong>Özet:</strong> {retro.summary}</div>
+                                            <div style={{ fontSize: 'var(--font-size-xs)' }}><strong>İyi giden:</strong> {retro.wentWell}</div>
+                                            <div style={{ fontSize: 'var(--font-size-xs)' }}><strong>İyileştirilecek:</strong> {retro.improvements}</div>
+                                            <div style={{ fontSize: 'var(--font-size-xs)' }}><strong>Aksiyon Maddeleri:</strong> {retro.actionItems}</div>
+                                        </div>
+                                    )}
                                 </div>
-                                <span className={`${styles.statusBadge} ${styles.statusCompleted}`}>Tamamlandı</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </>
             )}

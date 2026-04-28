@@ -20,9 +20,15 @@ public sealed class OllamaClient : IOllamaClient
     public OllamaClient(HttpClient http, IConfiguration configuration, ILogger<OllamaClient> logger)
     {
         _http = http;
-        _model = configuration["Ollama:Model"] ?? "gemma3:4b";
+        var baseModel = configuration["Ollama:Model"] ?? "gemma3:4b";
+        var useFinetuned = configuration.GetValue("Ollama:UseFinetuned", false);
+        var finetunedModel = configuration["Ollama:FinetunedModel"] ?? "bp-agent";
+        _model = useFinetuned ? finetunedModel : baseModel;
         _fallbackModel = configuration["Ollama:FallbackModel"] ?? "llama3.2:3b";
         _logger = logger;
+
+        if (useFinetuned)
+            logger.LogInformation("Ollama using fine-tuned model {Model} (base: {Base})", _model, baseModel);
     }
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken ct = default)

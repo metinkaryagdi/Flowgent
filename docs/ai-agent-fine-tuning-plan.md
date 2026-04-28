@@ -47,12 +47,9 @@ Mevcut `gemma3:4b` (Ollama, yerel) modelini, **BitirmeProject domain'ine** (Issu
 - [x] **v1 kapsamı kararı:** `scaffold-project`, `enrich-issue`, `generate-plan`. (Karar: 2026-04-23)
 - [x] **Veri kaynak dağılımı kararı:** %70 sentetik (Groq + Ollama), %20 mevcut sessions, %10 manuel golden. (Karar: 2026-04-23)
 - [x] **Eğitim altyapısı kararı:** Colab Free + lokal RTX 4050. Bütçe $0. (Karar: 2026-04-23)
-- [ ] **Auth bug'larını kapat:** Memory'deki `bug_authorization_issues.md` 3 cross-org sızıntısı + org_role enforce eksiği. Bunlar bitmeden mevcut sessions'a dokunma — training set zehirlenir.
-- [ ] **Hedef davranışı 5-10 örnekle yazıp danışman/jüriye sunulabilecek formda dökümanla.** Bu eval setinin temeli olur.
-- [ ] **Eval seti hazırla** (60 örnek başlangıç). Bu fine-tune'dan ÖNCE yapılır — yoksa "iyileştirme" ölçemeyiz.
-  - 3 özelliğe 20'şer örnek: `scaffold-project` (20), `enrich-issue` (20), `generate-plan` (20).
-  - Format: `{ feature, input, expected_json_shape, must_contain, must_not_contain }`.
-  - Konum: `tests/AiEvalDataset/v1/*.jsonl`.
+- [x] **Auth bug'larını kapat:** Tamamlandı 2026-04-10 — memory'deki `bug_authorization_issues.md` kaydı. 3 cross-org sızıntısı kapatıldı (Issue/Sprint için `OrganizationId` denormalizasyonu + `X-Organization-Id` header filtresi), `org_role` controller fast-fail eklendi.
+- [x] **Hedef davranış dökümanı:** [`ai-agent-target-behaviors.md`](./ai-agent-target-behaviors.md) yazıldı (2026-04-24). 3 özellik için şema + örnek + negatif örnek.
+- [x] **Eval seti iskeleti:** `tests/AiEvalDataset/v1/` altında 3 JSONL dosyası (her biri 10 starter örnek — Faz 1 başında 20'ye çıkarılacak). Format: `{id, feature, input, expected_json_shape, must_contain, must_not_contain}`. README eşlik ediyor.
   - **Bitirme bağlamında:** Bu eval seti aynı zamanda savunma sunumunda "metriklerle iyileştirdim" demenin kanıtıdır. Önemli.
 
 ### Faz 1 — Veri Toplama (2 hafta)
@@ -69,9 +66,11 @@ Mevcut `gemma3:4b` (Ollama, yerel) modelini, **BitirmeProject domain'ine** (Issu
 - Üretim sonrası dedup (cosine similarity > 0.9 olanlar elenir).
 
 **Tooling:**
-- [ ] `tools/ai-data-collector/` script'i: `AiSessions`'tan veri çek, PII maskele, JSONL'e dök.
-- [ ] **PII filtresi şart**: kullanıcı adları, email, gerçek müşteri adları, organizasyon isimleri scrub edilir. Memory'de `bug_authorization_issues.md` notuna göre cross-org sızıntı riski mevcut — buradan eğitim datası akarsa katlanır.
-- [ ] Schema validasyonu: çıktının `ProjectDraft`/`EnrichResult` JSON şemasına uyduğunu doğrula, uymayanları at.
+- [x] `tools/ai_data_collector/` paketi kuruldu (2026-04-24). Python package (tire → underscore). İçerik: `config.py`, `domains.py`, `prompts/{scaffold_project,enrich_issue,generate_plan}.py` (her biri 8 template), `providers/{groq_client,ollama_client}.py`, `validation/{schema,pii,dedup}.py`, `synthetic_gen.py`, `collect_sessions.py`.
+- [x] **PII filtresi**: `validation/pii.py` — email, telefon, TCKN, kredi kartı, IBAN, URL regex scrub. Hem `synthetic_gen` hem `collect_sessions` çıktısında aktif.
+- [x] Schema validasyonu: `validation/schema.py` — 3 özellik için elle yazılmış hafif validator. Sprint count, issue count, priority enum, Fibonacci story points kontrolleri. Geçemeyen örnek `[drop:schema]` olarak düşer.
+- [x] Dedup: `validation/dedup.py` — TF-IDF char-ngram + cosine similarity (threshold 0.90). `should_add` incremental — resume-safe.
+- [x] **Smoke test geçti (2026-04-24)**: 3 özellik × 3 örnek = 9 örnek Groq `llama-3.3-70b-versatile` ile ~30sn toplam. 0 drop, tüm şemalar geçti. Çıktılar `tools/ai_data_collector/output/synthetic-*.jsonl` (git-ignored).
 
 **Hedef boyut:** 1000-2000 high-quality örnek. Gemma 4B için fazlası overfitting.
 
@@ -294,17 +293,11 @@ Aşağıdakilerin tamamı sağlanırsa savunmada **"AI agent fine-tuning yaptım
 
 Sıralı, atomik adımlar — her biri 1-2 saat:
 
-1. [ ] **Auth bug'larını kapat** (memory: `bug_authorization_issues.md`):
-   - Issue/Sprint/Project GetById'ye org_id kontrolü ekle
-   - org_role enforce et (Owner/Manager/Member)
-   - Test: başka org'un issue ID'si ile istek → 403 dönmeli
-2. [ ] **Hedef davranış dökümanı yaz:** `docs/ai-agent-target-behaviors.md` — 5 örnek input → istenen output (JSON şemasıyla).
-3. [ ] **Eval seti iskeletini oluştur:**
-   - Dosya: `tests/AiEvalDataset/v1/scaffold-project.jsonl` (20 örnek)
-   - Dosya: `tests/AiEvalDataset/v1/enrich-issue.jsonl` (20 örnek)
-   - Dosya: `tests/AiEvalDataset/v1/generate-plan.jsonl` (20 örnek)
-4. [ ] **Groq API key al** (ücretsiz): [console.groq.com](https://console.groq.com) → key'i `.env`'e ekle (`GROQ_API_KEY`), `.env.example`'a placeholder ekle.
-5. [ ] **Colab notebook iskeleti:** `tools/ai-finetune/colab/train.ipynb` — boş hücreler, sadece bağımlılık install + Drive mount + Unsloth import test.
-6. [ ] Faz 0 sonu: Bu plan dökümanına "Faz 0 ✅ tamamlandı, Faz 1'e geçiliyor" notu düş.
+1. [x] **Auth bug'larını kapat** — 2026-04-10 tarihinde tamamlandı. Memory'deki `bug_authorization_issues.md` ("TAMAMEN ÇÖZÜLDÜ"). Denormalizasyon + controller fast-fail + handler DB kontrolü üçlüsü yerli yerinde.
+2. [x] **Hedef davranış dökümanı:** [`ai-agent-target-behaviors.md`](./ai-agent-target-behaviors.md) — 3 özellik, her biri için şema + örnek girdi-çıktı + ortak kurallar + negatif örnekler. (2026-04-24)
+3. [x] **Eval seti iskeleti:** `tests/AiEvalDataset/v1/` altında 3 JSONL + README. Her dosya 10 starter örnek (domain-çeşitli: e-ticaret, eğitim, fintech, sağlık, oyun, devops, mobil, kurumsal içi, SaaS B2B, IoT). Faz 1 başında 20'ye çıkarılacak. (2026-04-24)
+4. [x] **Groq API key placeholder:** `.env.example`'da `GROQ_API_KEY=` ve `HF_TOKEN=` satırları eklendi. **Kullanıcı aksiyonu:** [console.groq.com](https://console.groq.com) → ücretsiz key al → lokal `.env`'e yaz. (2026-04-24)
+5. [x] **Colab notebook iskeleti:** `tools/ai-finetune/colab/train.ipynb` — GPU kontrolü + Unsloth install + Drive mount + import smoke test çalışır; training/eval/export hücreleri Faz 2 için `TODO` placeholder. (2026-04-24)
+6. [x] **Faz 0 tamamlandı.** (2026-04-24) Faz 1'e geçiş için ön-koşul: Groq API key kullanıcıdan alınır, sonra `tools/ai-data-collector/` script'leri yazılır.
 
-Kod yazımı 1. adımdan sonra başlar — auth bug'ları kapanmadan veri toplama yok.
+**Kalan kullanıcı aksiyonu:** Groq API key'i almak (3 dk'lık iş), yoksa Faz 1 sentetik üretim lokal Ollama'ya düşer — plan dökümanındaki "trade-off" bölümü geçerli olur.

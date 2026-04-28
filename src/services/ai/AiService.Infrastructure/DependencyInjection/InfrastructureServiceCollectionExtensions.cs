@@ -21,6 +21,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Repository
         services.AddScoped<IAiSessionRepository, AiSessionRepository>();
+        services.AddScoped<IAiToolExecutionRepository, AiToolExecutionRepository>();
         services.Configure<InternalServiceOptions>(configuration.GetSection("InternalService"));
 
         // Ollama HTTP client

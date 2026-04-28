@@ -7,5 +7,6 @@ public enum AiSessionType
     Chat,
     Retrospective,
     BalanceSuggestion,
-    RiskAssessment
+    RiskAssessment,
+    ProjectScaffold
 }
