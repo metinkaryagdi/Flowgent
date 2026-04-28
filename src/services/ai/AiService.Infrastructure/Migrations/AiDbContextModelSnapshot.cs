@@ -99,6 +99,63 @@ namespace AiService.Infrastructure.Migrations
                     b.ToTable("AiSessions", (string)null);
                 });
 
+            modelBuilder.Entity("BitirmeProject.AiService.Domain.Entities.AiToolExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("InputJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OutputJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("IX_AiToolExecutions_SessionId");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "CreatedAt")
+                        .HasDatabaseName("IX_AiToolExecutions_Org_Project_CreatedAt");
+
+                    b.ToTable("AiToolExecutions", (string)null);
+                });
+
             modelBuilder.Entity("BitirmeProject.AiService.Domain.Entities.AiPlanResult", b =>
                 {
                     b.HasOne("BitirmeProject.AiService.Domain.Entities.AiSession", "Session")

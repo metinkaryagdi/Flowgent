@@ -1,0 +1,23 @@
+# Ollama Modelfile — bp-agent (BitirmeProject fine-tuned)
+#
+# Bu dosya Faz 4 deploy adımı için iskelet. Adapter dosyası henüz üretilmedi
+# (Faz 2 Colab eğitimi sonrası gguf burada referanslanacak).
+#
+# Üretim adımları (adapter hazır olduğunda):
+#   1. tools/ai-finetune/colab/train.ipynb → MyDrive/bp-finetune/adapters/gemma3-4b-bp-v1-q4_k_m.gguf üretir
+#   2. dosyayı bu klasöre kopyala: docker/ollama/gemma3-4b-bp-v1-q4_k_m.gguf
+#   3. ADAPTER satırının yorumunu kaldır
+#   4. docker-compose ollama service'ine volume mount ekle (aşağı bak)
+#   5. ollama create bp-agent -f /modelfiles/Modelfile
+#
+# Feature flag: Ollama:UseFinetuned (appsettings/env). false → gemma3:4b base, true → bp-agent.
+
+FROM gemma3:4b
+
+# ADAPTER ./gemma3-4b-bp-v1-q4_k_m.gguf
+
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 4096
+
+SYSTEM """Sen BitirmeProject AI agent'ısın. Yalnızca geçerli JSON döndürürsün. Markdown fence, açıklama metni, "Elbette, işte..." gevezeliği yasak. Türkçe yanıt ver."""

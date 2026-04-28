@@ -64,6 +64,38 @@ export interface SprintRiskResult {
     openIssues: number;
 }
 
+export interface AgentTurn {
+    kind: string;
+    content: string;
+}
+
+export interface AgentResponse {
+    finalText: string;
+    iterationsUsed: number;
+    hitIterationLimit: boolean;
+    turns: AgentTurn[];
+}
+
+export interface DraftIssue {
+    title: string;
+    description: string;
+    priority: 'Low' | 'Medium' | 'High' | 'Critical';
+}
+
+export interface DraftSprint {
+    name: string;
+    goal: string;
+    issues: DraftIssue[];
+}
+
+export interface ProjectScaffoldDraft {
+    sessionId: string;
+    projectName: string;
+    projectKey: string;
+    description: string;
+    sprints: DraftSprint[];
+}
+
 export const aiApi = {
     generatePlan: async (projectId: string, description: string): Promise<GeneratePlanResult> => {
         const res = await apiClient.post('/api/v1/ai/generate-plan', { projectId, description });
@@ -97,6 +129,16 @@ export const aiApi = {
 
     sprintRisk: async (sprintId: string, projectId: string): Promise<SprintRiskResult> => {
         const res = await apiClient.post('/api/v1/ai/sprint-risk', { sprintId, projectId });
+        return res.data;
+    },
+
+    agent: async (projectId: string, message: string, sessionId?: string): Promise<AgentResponse> => {
+        const res = await apiClient.post('/api/v1/ai/agent', { projectId, message, sessionId });
+        return res.data;
+    },
+
+    scaffoldDraft: async (description: string): Promise<ProjectScaffoldDraft> => {
+        const res = await apiClient.post('/api/v1/ai/scaffold-project', { description });
         return res.data;
     },
 };

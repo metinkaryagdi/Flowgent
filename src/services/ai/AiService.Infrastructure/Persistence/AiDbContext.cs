@@ -9,6 +9,7 @@ public sealed class AiDbContext : DbContext
 
     public DbSet<AiSession> AiSessions => Set<AiSession>();
     public DbSet<AiPlanResult> AiPlanResults => Set<AiPlanResult>();
+    public DbSet<AiToolExecution> AiToolExecutions => Set<AiToolExecution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

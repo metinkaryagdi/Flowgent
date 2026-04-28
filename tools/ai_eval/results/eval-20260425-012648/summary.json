@@ -1,0 +1,23 @@
+{
+  "timestamp": "eval-20260425-012648",
+  "models": [
+    "gemma3:4b"
+  ],
+  "features": [
+    "enrich-issue"
+  ],
+  "dataset_dir": "tests\\AiEvalDataset\\v1",
+  "rows": [
+    {
+      "model": "gemma3:4b",
+      "feature": "enrich-issue",
+      "n": 2,
+      "format_compliance_pct": 100.0,
+      "schema_compliance_pct": 0.0,
+      "field_accuracy_pct": 50.0,
+      "latency_p50_ms": 14216.0,
+      "latency_p95_ms": 14216.0
+    }
+  ],
+  "total_duration_s": 25.9
+}
