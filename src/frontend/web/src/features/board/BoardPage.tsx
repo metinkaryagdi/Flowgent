@@ -427,13 +427,24 @@ export default function BoardPage() {
 
         // Ã¢â€â‚¬Ã¢â€â‚¬ API call Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         try {
-            await issuesApi.changeStatus(draggedId, {
+            const updated = await issuesApi.changeStatus(draggedId, {
                 newStatus,
                 expectedVersion: draggedItem.version,
             });
             showToast('Durum güncellendi!');
-            // Reload to get fresh versions
-            await loadBoard();
+            // Patch new version from server response. Avoid full loadBoard() —
+            // out-of-order responses can overwrite fresh optimistic state.
+            setBoard((prev) => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    items: prev.items.map((item) =>
+                        item.issueId === draggedId
+                            ? { ...item, status: updated.status, version: updated.version }
+                            : item
+                    ),
+                };
+            });
         } catch (err: unknown) {
             // Rollback on error
             setBoard((prev) => (prev ? { ...prev, items: previousItems } : prev));
@@ -464,7 +475,10 @@ export default function BoardPage() {
         await loadBoard();
     };
 
-    // ── Issue updated from detail panel: optimistic patch + background reload ──
+    // ── Issue updated from detail panel: optimistic patch only ──
+    // Background loadBoard() removed: out-of-order responses were overwriting fresh
+    // optimistic state with stale snapshots. The API response already contains the
+    // authoritative new state (status/assignee/version), so the patch is sufficient.
     const handleIssueUpdated = useCallback((updated: IssueDto) => {
         setBoard((prev) => {
             if (!prev) return prev;
@@ -485,8 +499,7 @@ export default function BoardPage() {
                 ),
             };
         });
-        void loadBoard();
-    }, [loadBoard]);
+    }, []);
 
     // Ã¢â€â‚¬Ã¢â€â‚¬ Assign Sprint Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     const handleAssignSprint = async (issueId: string, sprintId: string) => {
@@ -567,7 +580,7 @@ export default function BoardPage() {
                         style={{ background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                         onClick={() => navigate(`/projects/${projectId}/sprints`)}
                     >
-                        ÄŸÅ¸â€œÅ  Sprint'ler
+                        Sprint'ler
                     </button>
                     {flags?.canEditIssues !== false && (
                         <button className={styles.addIssueBtn} data-testid="issue-create-open" onClick={() => setShowCreateModal(true)} aria-label="Yeni issue oluştur (N)">
