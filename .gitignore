@@ -36,3 +36,4 @@ tools/ai-finetune/datasets/
 tools/ai-finetune/adapters/
 tools/ai-finetune/checkpoints/
 *.gguf
+login.txt
