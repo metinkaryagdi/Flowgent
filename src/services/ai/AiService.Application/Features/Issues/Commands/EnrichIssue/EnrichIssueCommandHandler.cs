@@ -27,9 +27,8 @@ public sealed class EnrichIssueCommandHandler : IRequestHandler<EnrichIssueComma
     public async Task<EnrichIssueResultDto> Handle(EnrichIssueCommand request, CancellationToken cancellationToken)
     {
         var session = new AiSession(request.ProjectId, request.UserId, request.OrganizationId, AiSessionType.IssueEnrichment);
-        await _sessions.AddAsync(session, cancellationToken);
         session.MarkProcessing();
-        await _sessions.SaveChangesAsync(cancellationToken);
+        await _sessions.AddAsync(session, cancellationToken);
 
         var prompt = BuildPrompt(PromptSanitizer.Sanitize(request.Title));
         OllamaEnrichResponse? enriched;
@@ -56,6 +55,7 @@ public sealed class EnrichIssueCommandHandler : IRequestHandler<EnrichIssueComma
         var rawJson = System.Text.Json.JsonSerializer.Serialize(enriched);
         var result = new AiPlanResult(session.Id, prompt, rawJson, rawJson);
         result.MarkApplied();
+        await _sessions.AddResultAsync(result, cancellationToken);
         session.Complete(result);
         await _sessions.SaveChangesAsync(cancellationToken);
 
@@ -70,21 +70,22 @@ public sealed class EnrichIssueCommandHandler : IRequestHandler<EnrichIssueComma
     }
 
     private static string BuildPrompt(string title) => $$"""
-        You are a software project assistant. Enrich the following issue title into a complete issue specification.
+        Sen BitirmeProject AI agent'ısın. Aşağıdaki issue başlığını eksiksiz bir issue tanımına zenginleştirirsin.
 
-        Rules:
-        - Return ONLY valid JSON — no markdown, no explanation, no code blocks.
-        - storyPoints must be an integer between 1 and 13 (Fibonacci: 1,2,3,5,8,13).
-        - Be concise but complete.
+        Kurallar:
+        - Yalnızca geçerli JSON döndür — markdown fence, açıklama, kod bloğu YASAK.
+        - Tüm metinler TÜRKÇE olmalı. İngilizce sızıntı yasak.
+        - storyPoints 1-13 arası tam sayı olmalı (Fibonacci: 1,2,3,5,8,13).
+        - Kısa ama eksiksiz ol.
 
-        Required JSON format:
+        Zorunlu JSON formatı:
         {
-          "description": "Detailed description of what needs to be implemented",
-          "acceptanceCriteria": "- Criterion 1\n- Criterion 2\n- Criterion 3",
-          "edgeCases": "- Edge case 1\n- Edge case 2",
+          "description": "Yapılması gerekenin ayrıntılı Türkçe açıklaması",
+          "acceptanceCriteria": "- Kriter 1\n- Kriter 2\n- Kriter 3",
+          "edgeCases": "- Uç durum 1\n- Uç durum 2",
           "storyPoints": 3
         }
 
-        Issue title: {{title}}
+        Issue başlığı: {{title}}
         """;
 }

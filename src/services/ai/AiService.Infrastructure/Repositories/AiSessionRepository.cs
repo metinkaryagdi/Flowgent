@@ -26,6 +26,9 @@ public sealed class AiSessionRepository : IAiSessionRepository
     public async Task AddAsync(AiSession session, CancellationToken ct = default)
         => await _db.AiSessions.AddAsync(session, ct);
 
+    public async Task AddResultAsync(AiPlanResult result, CancellationToken ct = default)
+        => await _db.AiPlanResults.AddAsync(result, ct);
+
     public Task UpdateAsync(AiSession session, CancellationToken ct = default)
     {
         _db.AiSessions.Update(session);
