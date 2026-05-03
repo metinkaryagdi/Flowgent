@@ -35,7 +35,6 @@ public sealed class GenerateRetrospectiveCommandHandler
             AiSessionType.Retrospective);
         session.MarkProcessing();
         await _sessions.AddAsync(session, cancellationToken);
-        await _sessions.SaveChangesAsync(cancellationToken);
 
         SprintDetailDto? sprint = null;
         try
@@ -72,6 +71,7 @@ public sealed class GenerateRetrospectiveCommandHandler
             prompt,
             rawResponse: parsed.Summary,
             parsedJson: System.Text.Json.JsonSerializer.Serialize(parsed));
+        await _sessions.AddResultAsync(result, cancellationToken);
         session.Complete(result);
         await _sessions.SaveChangesAsync(cancellationToken);
 
@@ -91,13 +91,16 @@ public sealed class GenerateRetrospectiveCommandHandler
         if (sprint is null)
         {
             return $$"""
-You are a scrum master assistant generating a sprint retrospective.
+Sen BitirmeProject AI agent'ısın. Sprint retrospektifi üreten bir scrum master gibi davranırsın.
 Sprint ID: {{sprintId}}
-No detailed data was available for this sprint.
+Bu sprint için detaylı veri bulunamadı.
 
-Generate a generic sprint retrospective in JSON:
+Kurallar:
+- Yalnızca geçerli JSON döndür — markdown fence, açıklama, kod bloğu YASAK.
+- Tüm metinler TÜRKÇE olmalı. İngilizce sızıntı yasak.
+
+Zorunlu JSON formatı:
 {"summary":"...","wentWell":"...","improvements":"...","actionItems":"..."}
-Respond ONLY with the JSON object, no markdown.
 """;
         }
 
@@ -110,24 +113,27 @@ Respond ONLY with the JSON object, no markdown.
             $"- [{i.Status}] [{i.Priority}] {i.Title}"));
 
         return $$"""
-You are a scrum master assistant. Generate a retrospective for the completed sprint.
+Sen BitirmeProject AI agent'ısın. Tamamlanan sprint için retrospektif üretirsin.
 
 Sprint: {{sprint.Name}}
-Goal: {{sprint.Goal ?? "No goal set"}}
-Total Issues: {{total}} | Done: {{done}} | In Progress: {{inProgress}} | Open: {{open}}
-Completion Rate: {{(total > 0 ? (done * 100 / total) : 0)}}%
+Hedef: {{sprint.Goal ?? "Hedef tanımlanmamış"}}
+Toplam Issue: {{total}} | Tamamlanan: {{done}} | Devam Eden: {{inProgress}} | Açık: {{open}}
+Tamamlanma Oranı: {{(total > 0 ? (done * 100 / total) : 0)}}%
 
-Issues:
+Issue'lar:
 {{issueLines}}
 
-Generate a concise retrospective in JSON format:
+Kurallar:
+- Yalnızca geçerli JSON döndür — markdown fence, açıklama, kod bloğu YASAK.
+- Tüm metinler TÜRKÇE olmalı. İngilizce sızıntı yasak.
+
+Zorunlu JSON formatı:
 {
-  "summary": "2-3 sentence sprint summary",
-  "wentWell": "What went well in this sprint",
-  "improvements": "What could be improved",
-  "actionItems": "Concrete next steps for the team"
+  "summary": "Sprint'in 2-3 cümlelik Türkçe özeti",
+  "wentWell": "Bu sprint'te neyin iyi gittiği (Türkçe)",
+  "improvements": "Neyin iyileştirilebileceği (Türkçe)",
+  "actionItems": "Ekip için somut sonraki adımlar (Türkçe)"
 }
-Respond ONLY with the JSON object, no markdown, no explanation.
 """;
     }
 }

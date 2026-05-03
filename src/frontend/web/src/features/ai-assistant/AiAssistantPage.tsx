@@ -293,6 +293,19 @@ function ScaffoldMode() {
     const [creating, setCreating] = useState(false);
     const [progress, setProgress] = useState<string>('');
 
+    const addIssueWithRetry = async (sprintId: string, issueId: string, attempt = 0): Promise<void> => {
+        try {
+            await sprintsApi.addIssue(sprintId, issueId);
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            if (status === 409 && attempt < 3) {
+                await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+                return addIssueWithRetry(sprintId, issueId, attempt + 1);
+            }
+            throw err;
+        }
+    };
+
     const handleGenerate = async () => {
         if (!description.trim() || draftLoading) return;
         setDraftLoading(true);
@@ -347,7 +360,7 @@ function ScaffoldMode() {
                         description: issueDraft.description,
                         priority: issueDraft.priority as IssuePriority,
                     });
-                    await sprintsApi.addIssue(sprint.id, issue.id);
+                    await addIssueWithRetry(sprint.id, issue.id);
                 }
             }
 

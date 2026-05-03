@@ -35,7 +35,6 @@ public sealed class AssessSprintRiskQueryHandler
             AiSessionType.RiskAssessment);
         session.MarkProcessing();
         await _sessions.AddAsync(session, cancellationToken);
-        await _sessions.SaveChangesAsync(cancellationToken);
 
         SprintDetailDto? sprint = null;
         try
@@ -76,18 +75,23 @@ public sealed class AssessSprintRiskQueryHandler
             !i.Status.Equals("Done", StringComparison.OrdinalIgnoreCase));
 
         var prompt = $$"""
-You are a risk assessment specialist for agile sprints.
+Sen BitirmeProject AI agent'ısın. Agile sprint gecikme riskini değerlendirirsin.
 
 Sprint: {{sprint.Name}}
-Total Issues: {{total}} | Done: {{done}} | In Progress: {{inProgress}} | Open: {{open}}
-Critical issues not done: {{criticalOpen}}
-Completion Rate: {{(total > 0 ? (done * 100 / total) : 0)}}%
+Toplam Issue: {{total}} | Tamamlanan: {{done}} | Devam Eden: {{inProgress}} | Açık: {{open}}
+Tamamlanmamış kritik issue: {{criticalOpen}}
+Tamamlanma Oranı: {{(total > 0 ? (done * 100 / total) : 0)}}%
 
-Assess the sprint delay risk. Respond ONLY with this JSON (no markdown):
+Kurallar:
+- Yalnızca geçerli JSON döndür — markdown fence, açıklama, kod bloğu YASAK.
+- Tüm metinler TÜRKÇE olmalı. İngilizce sızıntı yasak.
+- riskLevel alanı yalnızca şu değerlerden biri olmalı: "Low", "Medium", "High", "Critical".
+
+Zorunlu JSON formatı:
 {
   "riskLevel": "Low|Medium|High|Critical",
-  "reason": "Brief explanation of the risk level",
-  "recommendation": "What the team should do to mitigate the risk"
+  "reason": "Risk seviyesinin Türkçe kısa açıklaması",
+  "recommendation": "Riski azaltmak için ekibin yapması gerekenler (Türkçe)"
 }
 """;
 
@@ -109,6 +113,7 @@ Assess the sprint delay risk. Respond ONLY with this JSON (no markdown):
             prompt,
             rawResponse: parsed.RiskLevel,
             parsedJson: System.Text.Json.JsonSerializer.Serialize(parsed));
+        await _sessions.AddResultAsync(planResult, cancellationToken);
         session.Complete(planResult);
         await _sessions.SaveChangesAsync(cancellationToken);
 

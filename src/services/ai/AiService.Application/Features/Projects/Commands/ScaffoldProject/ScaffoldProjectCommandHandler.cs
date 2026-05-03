@@ -111,15 +111,17 @@ public sealed class ScaffoldProjectCommandHandler : IRequestHandler<ScaffoldProj
         string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..].ToLowerInvariant();
 
     private static string BuildPrompt(string description) => $$"""
-        You are a software project planning assistant. Generate a complete project scaffold from the description below.
+        Sen BitirmeProject AI agent'ısın. Aşağıdaki açıklamadan eksiksiz bir proje iskeleti üretirsin.
 
-        Rules:
-        - Return ONLY valid JSON. No markdown, no code fences, no explanation.
-        - Project key: 2-4 uppercase letters derived from the name (e.g. "ECOM", "CRM", "FNT").
-        - Create 2-4 sprints, each with 3-6 issues.
-        - Issue priority must be exactly one of: Low, Medium, High, Critical.
-        - Sprint names should be concise and descriptive (e.g. "Sprint 1: Foundation").
-        - Use Turkish for project name, description, sprint names/goals, and issue titles/descriptions.
+        Kurallar:
+        - Yalnızca geçerli JSON döndür. Markdown, kod bloğu, açıklama YASAK.
+        - Project key: 2-4 büyük harf, isimden türetilmiş (örn. "ECOM", "CRM", "DEPO").
+        - **Tam olarak 3 ile 5 arasında sprint üret. Her sprint en az 5, en fazla 8 issue içermeli.** Daha azını üretme.
+        - Issue önceliği yalnızca şunlardan biri olmalı: Low, Medium, High, Critical.
+        - Issue başlıkları somut ve spesifik olmalı — "Veri girişi" gibi jenerik placeholder yerine "Ürün barkod tarayıcı entegrasyonu" gibi.
+        - Issue açıklamaları en az 1-2 cümle olmalı; ne yapılacağı net belirtilmeli.
+        - Sprint isimleri kısa ve açıklayıcı (örn. "Sprint 1: Temel Altyapı").
+        - Proje adı, açıklama, sprint adları/hedefleri ve issue başlıkları/açıklamaları TÜRKÇE olmalı.
 
         Required JSON shape:
         {
