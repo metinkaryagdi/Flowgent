@@ -35,7 +35,6 @@ public sealed class SuggestBalanceCommandHandler
             AiSessionType.BalanceSuggestion);
         session.MarkProcessing();
         await _sessions.AddAsync(session, cancellationToken);
-        await _sessions.SaveChangesAsync(cancellationToken);
 
         SprintDetailDto? sprint = null;
         try
@@ -84,6 +83,7 @@ public sealed class SuggestBalanceCommandHandler
             prompt,
             rawResponse: parsed.Analysis,
             parsedJson: System.Text.Json.JsonSerializer.Serialize(parsed));
+        await _sessions.AddResultAsync(result, cancellationToken);
         session.Complete(result);
         await _sessions.SaveChangesAsync(cancellationToken);
 
@@ -113,25 +113,32 @@ public sealed class SuggestBalanceCommandHandler
             $"- [{i.Priority}] [{i.Status}] {i.Title}"));
 
         return $$"""
-You are a scrum master analyzing sprint workload balance.
+Sen BitirmeProject AI agent'ısın. Sprint iş yükü dengesini analiz eden bir scrum master gibi davranırsın.
 
 Sprint: {{sprint.Name}}
-Total Issues: {{sprint.Issues.Count}}
-Priority breakdown: Critical={{critical}}, High={{high}}, Medium={{medium}}, Low={{low}}
+Toplam Issue: {{sprint.Issues.Count}}
+Öncelik dağılımı: Critical={{critical}}, High={{high}}, Medium={{medium}}, Low={{low}}
 
-Issues:
+Issue'lar:
 {{issueLines}}
 
-Analyze if the sprint is overloaded or unbalanced and suggest improvements.
-Respond ONLY with this JSON (no markdown):
+Sprint'in aşırı yüklü veya dengesiz olup olmadığını değerlendir ve iyileştirme öner.
+
+Kurallar:
+- Yalnızca geçerli JSON döndür — markdown fence, açıklama, kod bloğu YASAK.
+- Tüm metinler TÜRKÇE olmalı. İngilizce sızıntı yasak.
+- En fazla 5 öneri ver. Critical ve High öncelikli aşırı yüklenmeye odaklan.
+- "currentPriority" alanı issue'nun mevcut önceliği olmalı (Critical/High/Medium/Low).
+- "suggestedAction" Türkçe ve eyleme dönük olmalı (örn. "ertele", "böl", "öncelik düşür").
+
+Zorunlu JSON formatı:
 {
-  "analysis": "Brief analysis of the sprint workload distribution",
-  "recommendation": "Overall recommendation for the team",
+  "analysis": "Sprint iş yükü dağılımının kısa Türkçe analizi",
+  "recommendation": "Ekip için genel Türkçe öneri",
   "suggestions": [
-    {"issueTitle": "...", "currentPriority": "...", "suggestedAction": "defer/keep/elevate or short description"}
+    {"issueTitle": "...", "currentPriority": "...", "suggestedAction": "kısa Türkçe öneri"}
   ]
 }
-Include at most 5 suggestions. Focus on Critical and High priority overload.
 """;
     }
 }

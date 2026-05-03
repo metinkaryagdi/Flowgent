@@ -33,23 +33,28 @@ public sealed class OllamaClient : IOllamaClient
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken ct = default)
     {
-        return await GenerateWithRetryAsync(prompt, _model, ct);
+        return await GenerateWithRetryAsync(prompt, _model, jsonFormat: false, ct);
     }
 
     public async Task<T?> GenerateJsonAsync<T>(string prompt, CancellationToken ct = default) where T : class
     {
-        var raw = await GenerateWithRetryAsync(prompt, _model, ct);
+        var raw = await GenerateWithRetryAsync(prompt, _model, jsonFormat: true, ct);
 
         var parsed = TryParseJson<T>(raw);
         if (parsed is not null)
             return parsed;
 
-        _logger.LogWarning("Primary model JSON parse failed, retrying with fallback model {Model}", _fallbackModel);
-        var rawFallback = await GenerateWithRetryAsync(prompt, _fallbackModel, ct);
-        return TryParseJson<T>(rawFallback);
+        _logger.LogWarning("Primary model JSON parse failed (raw len={Len}), retrying with fallback model {Model}. Raw start: {Snippet}",
+            raw.Length, _fallbackModel, raw.Length > 200 ? raw[..200] : raw);
+        var rawFallback = await GenerateWithRetryAsync(prompt, _fallbackModel, jsonFormat: true, ct);
+        var fallbackParsed = TryParseJson<T>(rawFallback);
+        if (fallbackParsed is null)
+            _logger.LogWarning("Fallback model JSON parse also failed (raw len={Len}). Raw start: {Snippet}",
+                rawFallback.Length, rawFallback.Length > 200 ? rawFallback[..200] : rawFallback);
+        return fallbackParsed;
     }
 
-    private async Task<string> GenerateWithRetryAsync(string prompt, string model, CancellationToken ct)
+    private async Task<string> GenerateWithRetryAsync(string prompt, string model, bool jsonFormat, CancellationToken ct)
     {
         await _concurrencyLimit.WaitAsync(ct);
         try
@@ -58,7 +63,7 @@ public sealed class OllamaClient : IOllamaClient
             {
                 try
                 {
-                    return await GenerateWithModelAsync(prompt, model, ct);
+                    return await GenerateWithModelAsync(prompt, model, jsonFormat, ct);
                 }
                 catch (Exception ex) when (attempt < MaxRetries)
                 {
@@ -67,7 +72,7 @@ public sealed class OllamaClient : IOllamaClient
                     await Task.Delay(delay, ct);
                 }
             }
-            return await GenerateWithModelAsync(prompt, model, ct);
+            return await GenerateWithModelAsync(prompt, model, jsonFormat, ct);
         }
         finally
         {
@@ -75,14 +80,11 @@ public sealed class OllamaClient : IOllamaClient
         }
     }
 
-    private async Task<string> GenerateWithModelAsync(string prompt, string model, CancellationToken ct)
+    private async Task<string> GenerateWithModelAsync(string prompt, string model, bool jsonFormat, CancellationToken ct)
     {
-        var payload = new
-        {
-            model,
-            prompt,
-            stream = false
-        };
+        object payload = jsonFormat
+            ? new { model, prompt, stream = false, format = "json" }
+            : new { model, prompt, stream = false };
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
         var response = await _http.PostAsync("/api/generate", content, ct);
