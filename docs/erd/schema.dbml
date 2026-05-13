@@ -1,0 +1,332 @@
+// BitirmeProject — Database Schema (DBML)
+// dbdiagram.io'da: New Diagram → bu dosyayı yapıştır → PNG/SVG/PDF export
+// Mikroservis mimarisi: TableGroup'lar her servisin kendi DB'sini temsil eder.
+// Servisler arası referanslar yorum satırı olarak işaretlendi (fiziksel FK yok).
+
+Project bitirme_project {
+  database_type: 'PostgreSQL'
+  Note: 'Mikroservis mimarisi — 7 ayrı veritabanı'
+}
+
+// ============================================================
+// IDENTITY SERVICE
+// ============================================================
+
+Table users [headercolor: #3B82F6] {
+  id uuid [pk]
+  user_name varchar [unique, not null]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  status int [not null, note: 'UserStatus enum']
+  failed_login_count int [not null, default: 0]
+  lockout_end timestamp
+  security_stamp uuid [not null]
+  password_changed_at timestamp
+  last_active_organization_id uuid [ref: > organizations.id]
+  created_at timestamp [not null]
+  updated_at timestamp
+  is_deleted boolean [not null, default: false]
+}
+
+Table roles [headercolor: #3B82F6] {
+  id uuid [pk]
+  name varchar [unique, not null]
+  description varchar
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table user_roles [headercolor: #3B82F6] {
+  user_id uuid [ref: > users.id]
+  role_id uuid [ref: > roles.id]
+
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Table refresh_tokens [headercolor: #3B82F6] {
+  id uuid [pk]
+  user_id uuid [ref: > users.id, not null]
+  token varchar [unique, not null]
+  expires_at timestamp [not null]
+  revoked_at timestamp
+  created_at timestamp [not null]
+}
+
+Table organizations [headercolor: #3B82F6] {
+  id uuid [pk]
+  name varchar [not null]
+  created_by_user_id uuid [ref: > users.id, not null]
+  created_at timestamp [not null]
+  updated_at timestamp
+  is_deleted boolean [not null, default: false]
+}
+
+Table organization_members [headercolor: #3B82F6] {
+  organization_id uuid [ref: > organizations.id]
+  user_id uuid [ref: > users.id]
+  role int [not null, note: 'OrganizationRole enum: Owner/Manager/Member']
+  joined_at timestamp [not null]
+
+  indexes {
+    (organization_id, user_id) [pk]
+  }
+}
+
+Table invite_tokens [headercolor: #3B82F6] {
+  id uuid [pk]
+  token uuid [unique, not null]
+  email varchar [not null]
+  organization_id uuid [ref: > organizations.id, not null]
+  invited_by_user_id uuid [ref: > users.id, not null]
+  role int [not null]
+  expires_at timestamp [not null]
+  is_used boolean [not null, default: false]
+  used_at timestamp
+  created_at timestamp [not null]
+  is_deleted boolean [not null, default: false]
+}
+
+// ============================================================
+// PROJECT SERVICE  (separate DB)
+// ============================================================
+
+Table projects [headercolor: #10B981] {
+  id uuid [pk]
+  name varchar [not null]
+  key varchar [unique, not null, note: 'e.g. PROJ-1']
+  owner_user_id uuid [not null, note: 'logical FK -> users.id']
+  organization_id uuid [note: 'logical FK -> organizations.id']
+  is_archived boolean [not null, default: false]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table project_members [headercolor: #10B981] {
+  project_id uuid [ref: > projects.id]
+  user_id uuid [note: 'logical FK -> users.id']
+  added_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  role int [not null, note: 'ProjectMemberRole enum']
+  added_at timestamp [not null]
+
+  indexes {
+    (project_id, user_id) [pk]
+  }
+}
+
+Table project_summaries [headercolor: #10B981] {
+  project_id uuid [pk, ref: - projects.id]
+  issue_count int [not null, default: 0]
+  open_issue_count int [not null, default: 0]
+  in_progress_issue_count int [not null, default: 0]
+  done_issue_count int [not null, default: 0]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+// ============================================================
+// ISSUE SERVICE  (separate DB)
+// ============================================================
+
+Table issues [headercolor: #F59E0B] {
+  id uuid [pk]
+  project_id uuid [not null, note: 'logical FK -> projects.id']
+  organization_id uuid [note: 'logical FK -> organizations.id']
+  title varchar [not null]
+  description text
+  status int [not null, note: 'IssueStatus enum: Open/InProgress/Done']
+  priority int [not null, note: 'IssuePriority enum']
+  created_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  assignee_user_id uuid [note: 'logical FK -> users.id']
+  version int [not null, default: 1]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table issue_comments [headercolor: #F59E0B] {
+  id uuid [pk]
+  issue_id uuid [ref: > issues.id, not null]
+  author_user_id uuid [not null, note: 'logical FK -> users.id']
+  content text [not null]
+  created_at timestamp [not null]
+}
+
+Table issue_attachments [headercolor: #F59E0B] {
+  id uuid [pk]
+  issue_id uuid [ref: > issues.id, not null]
+  file_id uuid [not null, note: 'logical FK -> stored_files.id']
+  file_name varchar [not null]
+  content_type varchar [not null]
+  size_bytes bigint [not null]
+  uploaded_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  uploaded_at timestamp [not null]
+}
+
+Table issue_audits [headercolor: #F59E0B] {
+  id uuid [pk]
+  issue_id uuid [ref: > issues.id, not null]
+  from_status int [not null]
+  to_status int [not null]
+  changed_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  changed_at timestamp [not null]
+}
+
+// ============================================================
+// SPRINT SERVICE  (separate DB)
+// ============================================================
+
+Table sprints [headercolor: #8B5CF6] {
+  id uuid [pk]
+  project_id uuid [not null, note: 'logical FK -> projects.id']
+  organization_id uuid [note: 'logical FK -> organizations.id']
+  name varchar [not null]
+  goal varchar
+  start_date timestamp [not null]
+  end_date timestamp [not null]
+  status int [not null, note: 'SprintStatus enum: Planned/Active/Completed']
+  created_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  started_at timestamp
+  completed_at timestamp
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table sprint_summaries [headercolor: #8B5CF6] {
+  sprint_id uuid [pk, ref: - sprints.id]
+  total_issues int [not null]
+  completed_issues int [not null]
+  completed_at timestamp [not null]
+  snapshot_taken_at timestamp [not null]
+}
+
+// ============================================================
+// NOTIFICATION SERVICE  (separate DB)
+// ============================================================
+
+Table notifications [headercolor: #EF4444] {
+  id uuid [pk]
+  user_id uuid [not null, note: 'logical FK -> users.id']
+  title varchar [not null]
+  message text [not null]
+  channel int [not null, note: 'NotificationChannel: InApp/Email']
+  status int [not null, note: 'Queued/Sent/Delivered/Failed']
+  is_read boolean [not null, default: false]
+  read_at timestamp
+  delivery_attempt_count int [not null, default: 0]
+  last_delivery_attempt_at timestamp
+  next_delivery_attempt_at timestamp
+  delivered_at timestamp
+  last_failure_reason text
+  entity_type varchar
+  entity_id uuid
+  external_event_id uuid
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+// ============================================================
+// STORAGE SERVICE  (separate DB)
+// ============================================================
+
+Table stored_files [headercolor: #6B7280] {
+  id uuid [pk]
+  file_name varchar [not null]
+  content_type varchar [not null]
+  size_bytes bigint [not null]
+  storage_path varchar [not null]
+  uploaded_by_user_id uuid [not null, note: 'logical FK -> users.id']
+  status int [not null, note: 'Temporary/Finalized']
+  uploaded_at timestamp [not null]
+  expires_at timestamp
+  finalized_at timestamp
+}
+
+// ============================================================
+// AI SERVICE  (separate DB)
+// ============================================================
+
+Table ai_sessions [headercolor: #EC4899] {
+  id uuid [pk]
+  project_id uuid [not null, note: 'logical FK -> projects.id']
+  user_id uuid [not null, note: 'logical FK -> users.id']
+  organization_id uuid [not null, note: 'logical FK -> organizations.id']
+  type int [not null, note: 'AiSessionType: Plan/Enrich/Standup/...']
+  status int [not null, note: 'Pending/Processing/Completed/Failed']
+  completed_at timestamp
+  error_message text
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table ai_plan_results [headercolor: #EC4899] {
+  id uuid [pk]
+  session_id uuid [ref: > ai_sessions.id, not null]
+  prompt text [not null]
+  raw_response text [not null]
+  parsed_json text
+  was_applied boolean [not null, default: false]
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table ai_tool_executions [headercolor: #EC4899] {
+  id uuid [pk]
+  session_id uuid [ref: > ai_sessions.id]
+  user_id uuid [not null, note: 'logical FK -> users.id']
+  organization_id uuid [not null, note: 'logical FK -> organizations.id']
+  project_id uuid [not null, note: 'logical FK -> projects.id']
+  tool_name varchar [not null]
+  input_json text [not null]
+  output_json text
+  success boolean [not null]
+  error_message text
+  duration_ms bigint [not null]
+  created_at timestamp [not null]
+}
+
+// ============================================================
+// TABLE GROUPS  (görsel kümeleme)
+// ============================================================
+
+TableGroup IdentityServiceDB {
+  users
+  roles
+  user_roles
+  refresh_tokens
+  organizations
+  organization_members
+  invite_tokens
+}
+
+TableGroup ProjectServiceDB {
+  projects
+  project_members
+  project_summaries
+}
+
+TableGroup IssueServiceDB {
+  issues
+  issue_comments
+  issue_attachments
+  issue_audits
+}
+
+TableGroup SprintServiceDB {
+  sprints
+  sprint_summaries
+}
+
+TableGroup NotificationServiceDB {
+  notifications
+}
+
+TableGroup StorageServiceDB {
+  stored_files
+}
+
+TableGroup AiServiceDB {
+  ai_sessions
+  ai_plan_results
+  ai_tool_executions
+}
