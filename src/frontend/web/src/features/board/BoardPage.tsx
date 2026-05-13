@@ -294,6 +294,20 @@ export default function BoardPage() {
         loadBoard();
     }, [loadBoard]);
 
+    // ── Sekme/pencere odağa dönünce taze veri çek ──
+    // Detay panelinden veya başka bir sekmeden gelen değişiklikler için fallback.
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') loadBoard();
+        };
+        window.addEventListener('focus', loadBoard);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            window.removeEventListener('focus', loadBoard);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
+    }, [loadBoard]);
+
     // ── Klavye kısayolları ────────
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
@@ -702,7 +716,7 @@ export default function BoardPage() {
             {selectedIssueId && (
                 <IssueDetailPanel
                     issueId={selectedIssueId}
-                    onClose={() => setSelectedIssueId(null)}
+                    onClose={() => { setSelectedIssueId(null); loadBoard(); }}
                     onUpdated={handleIssueUpdated}
                 />
             )}

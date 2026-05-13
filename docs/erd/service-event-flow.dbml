@@ -1,0 +1,140 @@
+// BitirmeProject — Servisler Arası Event Akışı
+// dbdiagram.io: New Diagram → bu dosyayı yapıştır
+//
+// Her tablo = bir mikroservis (kendi PostgreSQL DB'si)
+// Tablo başlığı: Servis adı + DB ismi
+// Kolonlar: publishes_* (yayınlanan event'ler), consumes_* (dinlenen event'ler)
+// İlişki çizgileri = RabbitMQ üzerinden akan event'ler
+
+Project bitirme_event_flow {
+  database_type: 'Microservices'
+  Note: '7 mikroservis, RabbitMQ event-driven iletişim'
+}
+
+// ============================================================
+// IDENTITY SERVICE
+// ============================================================
+Table IdentityService [headercolor: #3B82F6, note: 'identity_db — Users, Orgs, Roles, Invites'] {
+  service_id varchar [pk, note: 'IdentityService']
+  publishes_user_created varchar [note: 'UserCreatedEvent']
+  publishes_user_invited varchar [note: 'UserInvitedEvent']
+  publishes_member_added varchar [note: 'MemberAddedEvent']
+}
+
+// ============================================================
+// PROJECT SERVICE
+// ============================================================
+Table ProjectService [headercolor: #10B981, note: 'project_db — Projects, Members, Summaries'] {
+  service_id varchar [pk, note: 'ProjectService']
+  publishes_project_created varchar [note: 'ProjectCreatedEvent']
+  publishes_project_updated varchar [note: 'ProjectUpdatedEvent']
+  publishes_project_settings_updated varchar [note: 'ProjectSettingsUpdatedEvent']
+  consumes_issue_created varchar [note: 'IssueCreatedEvent']
+  consumes_issue_assigned varchar [note: 'IssueAssignedEvent']
+  consumes_issue_status_changed varchar [note: 'IssueStatusChangedEvent']
+}
+
+// ============================================================
+// ISSUE SERVICE
+// ============================================================
+Table IssueService [headercolor: #F59E0B, note: 'issue_db — Issues, Comments, Attachments, Audit'] {
+  service_id varchar [pk, note: 'IssueService']
+  publishes_issue_created varchar [note: 'IssueCreatedEvent']
+  publishes_issue_assigned varchar [note: 'IssueAssignedEvent']
+  publishes_issue_status_changed varchar [note: 'IssueStatusChangedEvent']
+  publishes_comment_added varchar [note: 'CommentAddedEvent']
+  consumes_issue_added_to_sprint varchar [note: 'IssueAddedToSprintEvent']
+  consumes_issue_removed_from_sprint varchar [note: 'IssueRemovedFromSprintEvent']
+}
+
+// ============================================================
+// SPRINT SERVICE
+// ============================================================
+Table SprintService [headercolor: #8B5CF6, note: 'sprint_db — Sprints, SprintIssues read-model'] {
+  service_id varchar [pk, note: 'SprintService']
+  publishes_sprint_started varchar [note: 'SprintStartedEvent']
+  publishes_sprint_completed varchar [note: 'SprintCompletedEvent']
+  publishes_issue_added_to_sprint varchar [note: 'IssueAddedToSprintEvent']
+  publishes_issue_removed_from_sprint varchar [note: 'IssueRemovedFromSprintEvent']
+  consumes_issue_created varchar [note: 'IssueCreatedEvent']
+  consumes_issue_status_changed varchar [note: 'IssueStatusChangedEvent']
+}
+
+// ============================================================
+// NOTIFICATION SERVICE
+// ============================================================
+Table NotificationService [headercolor: #EF4444, note: 'notification_db — Notifications (in-app + email)'] {
+  service_id varchar [pk, note: 'NotificationService']
+  publishes_notification_created varchar [note: 'NotificationCreatedEvent']
+  publishes_notification_read varchar [note: 'NotificationReadEvent']
+  consumes_user_invited varchar [note: 'UserInvitedEvent']
+  consumes_member_added varchar [note: 'MemberAddedEvent']
+  consumes_issue_assigned varchar [note: 'IssueAssignedEvent']
+  consumes_issue_status_changed varchar [note: 'IssueStatusChangedEvent']
+  consumes_comment_added varchar [note: 'CommentAddedEvent']
+}
+
+// ============================================================
+// STORAGE SERVICE
+// ============================================================
+Table StorageService [headercolor: #6B7280, note: 'storage_db — Uploaded files (synchronous REST)'] {
+  service_id varchar [pk, note: 'StorageService']
+  rest_api_only varchar [note: 'Senkron REST: /storage/upload, /storage/{id}']
+}
+
+// ============================================================
+// AI SERVICE
+// ============================================================
+Table AiService [headercolor: #EC4899, note: 'ai_db — Agent sessions, plan results, tool execs'] {
+  service_id varchar [pk, note: 'AiService (Ollama gemma3:4b - bp-agent)']
+  consumes_sprint_started varchar [note: 'SprintStartedEvent']
+  consumes_sprint_completed varchar [note: 'SprintCompletedEvent']
+}
+
+// ============================================================
+// EVENT FLOW (Publisher -> Consumer)
+// Her ref bir RabbitMQ event akışını temsil eder.
+// ============================================================
+
+// IdentityService -> NotificationService
+Ref: NotificationService.consumes_user_invited > IdentityService.publishes_user_invited
+Ref: NotificationService.consumes_member_added > IdentityService.publishes_member_added
+
+// IssueService -> ProjectService (summary güncelleme)
+Ref: ProjectService.consumes_issue_created > IssueService.publishes_issue_created
+Ref: ProjectService.consumes_issue_assigned > IssueService.publishes_issue_assigned
+Ref: ProjectService.consumes_issue_status_changed > IssueService.publishes_issue_status_changed
+
+// IssueService -> SprintService (sprint board güncelleme)
+Ref: SprintService.consumes_issue_created > IssueService.publishes_issue_created
+Ref: SprintService.consumes_issue_status_changed > IssueService.publishes_issue_status_changed
+
+// IssueService -> NotificationService (kullanıcıya bildirim)
+Ref: NotificationService.consumes_issue_assigned > IssueService.publishes_issue_assigned
+Ref: NotificationService.consumes_issue_status_changed > IssueService.publishes_issue_status_changed
+Ref: NotificationService.consumes_comment_added > IssueService.publishes_comment_added
+
+// SprintService -> IssueService (board read-model güncelleme)
+Ref: IssueService.consumes_issue_added_to_sprint > SprintService.publishes_issue_added_to_sprint
+Ref: IssueService.consumes_issue_removed_from_sprint > SprintService.publishes_issue_removed_from_sprint
+
+// SprintService -> AiService (sprint analitiği için)
+Ref: AiService.consumes_sprint_started > SprintService.publishes_sprint_started
+Ref: AiService.consumes_sprint_completed > SprintService.publishes_sprint_completed
+
+// ============================================================
+// TABLE GROUPS (görsel kümeleme)
+// ============================================================
+
+TableGroup CoreDomain {
+  IdentityService
+  ProjectService
+  IssueService
+  SprintService
+}
+
+TableGroup SupportingServices {
+  NotificationService
+  StorageService
+  AiService
+}

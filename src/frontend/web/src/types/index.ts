@@ -1,5 +1,5 @@
 /* ===================================
-   BitirmeProject — TypeScript Types
+   Flowgent — TypeScript Types
    Backend DTO mirror'ları
    =================================== */
 

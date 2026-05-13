@@ -9,7 +9,7 @@ export default function AuthLayout() {
                     <div className={styles.authLayout__logo}>
                         <span className={styles.authLayout__logoIcon}>⚡</span>
                     </div>
-                    <h1 className={styles.authLayout__title}>BitirmeProject</h1>
+                    <h1 className={styles.authLayout__title}>Flowgent</h1>
                     <p className={styles.authLayout__subtitle}>
                         Projelerinizi yönetin, görevleri takip edin, sprint'lerinizi planlayın
                         — hepsi tek bir platformda.

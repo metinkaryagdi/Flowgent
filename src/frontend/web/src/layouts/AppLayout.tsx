@@ -222,7 +222,7 @@ export default function AppLayout() {
             <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`} aria-label="Yan menü">
                 <div className={styles.sidebar__header}>
                     <div className={styles.sidebar__logoIcon}>⚡</div>
-                    <span className={styles.sidebar__logoText}>BitirmeProject</span>
+                    <span className={styles.sidebar__logoText}>Flowgent</span>
                 </div>
 
                 {/* ── Org Switcher ── */}
