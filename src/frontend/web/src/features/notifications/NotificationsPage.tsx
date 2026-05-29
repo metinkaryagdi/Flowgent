@@ -67,12 +67,17 @@ export default function NotificationsPage() {
 
     // ── Mark as read ──────────────
     const handleMarkAsRead = async (id: string) => {
+        const previous = notifications;
+        setNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
+        );
         try {
             await notificationsApi.markAsRead(id);
-            setNotifications((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
-            );
-        } catch { /* ignore */ }
+        } catch (err: unknown) {
+            setNotifications(previous);
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            showToast(`Bildirim okundu olarak işaretlenemedi${status ? ` (HTTP ${status})` : ''}.`, 'error');
+        }
     };
 
     const handleNotificationClick = useCallback(async (notif: NotificationDto) => {
