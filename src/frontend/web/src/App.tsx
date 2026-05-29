@@ -9,6 +9,7 @@ import AuthLayout from './layouts/AuthLayout';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './routes/ProtectedRoute';
 import OrgGuard from './routes/OrgGuard';
+import AdminGuard from './routes/AdminGuard';
 
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
@@ -66,7 +67,9 @@ export default function App() {
                 <Route path="/projects/:projectId/sprints" element={<SprintPage />} />
                 <Route path="/projects/:projectId/ai-planner" element={<AiPlannerPage />} />
                 <Route path="/ai-assistant" element={<AiAssistantPage />} />
-                <Route path="/admin" element={<AdminPage />} />
+                <Route element={<AdminGuard />}>
+                  <Route path="/admin" element={<AdminPage />} />
+                </Route>
                 <Route path="/settings/organization" element={<OrganizationSettingsPage />} />
               </Route>
             </Route>
