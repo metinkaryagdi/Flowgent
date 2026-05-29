@@ -1,3 +1,4 @@
+using BitirmeProject.AiService.Application.Abstractions;
 using BitirmeProject.AiService.Application.DTOs;
 using BitirmeProject.AiService.Application.Features.Chat.Commands.SendMessage;
 using BitirmeProject.AiService.Application.Features.Issues.Commands.EnrichIssue;
@@ -209,6 +210,36 @@ public sealed class AiController : ControllerBase
     }
 
     /// <summary>
+    /// Aktif Ollama modelini ve fine-tune durumunu döner. UI rozeti ve hata mesajları için kullanılır.
+    /// </summary>
+    [HttpGet("model-info")]
+    public ActionResult<ModelInfoResponse> GetModelInfo([FromServices] IModelSelector selector)
+    {
+        return Ok(new ModelInfoResponse(
+            Active: selector.ActiveModel,
+            IsFinetuned: selector.UseFinetuned,
+            BaseModel: selector.BaseModel,
+            FinetunedModel: selector.FinetunedModel));
+    }
+
+    /// <summary>
+    /// Runtime'da fine-tune ↔ base model arasında geçiş yapar.
+    /// Demo amaçlı: tek toggle, tüm sonraki AI isteklerini etkiler.
+    /// </summary>
+    [HttpPost("model-mode")]
+    public ActionResult<ModelInfoResponse> SetModelMode(
+        [FromBody] SetModelModeRequest request,
+        [FromServices] IModelSelector selector)
+    {
+        selector.SetUseFinetuned(request.UseFinetuned);
+        return Ok(new ModelInfoResponse(
+            Active: selector.ActiveModel,
+            IsFinetuned: selector.UseFinetuned,
+            BaseModel: selector.BaseModel,
+            FinetunedModel: selector.FinetunedModel));
+    }
+
+    /// <summary>
     /// Agent endpoint — kullanıcının doğal dil isteğini tool-calling loop ile gerçekleştirir.
     /// Her tool yürütmesi AiToolExecutions tablosuna loglanır. Max 5 iter.
     /// </summary>
@@ -230,6 +261,7 @@ public sealed class AiController : ControllerBase
             run.FinalText,
             run.IterationsUsed,
             run.HitIterationLimit,
+            run.FormatUnrecognized,
             run.Turns.Select(t => new AgentTurnDto(t.Kind, t.Content)).ToList()));
     }
 }
@@ -246,5 +278,8 @@ public sealed record AgentResponse(
     string FinalText,
     int IterationsUsed,
     bool HitIterationLimit,
+    bool FormatUnrecognized,
     IReadOnlyList<AgentTurnDto> Turns);
 public sealed record AgentTurnDto(string Kind, string Content);
+public sealed record ModelInfoResponse(string Active, bool IsFinetuned, string BaseModel, string FinetunedModel);
+public sealed record SetModelModeRequest(bool UseFinetuned);

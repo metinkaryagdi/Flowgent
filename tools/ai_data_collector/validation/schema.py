@@ -104,10 +104,55 @@ def validate_plan(data: Any) -> None:
         raise SchemaError(f"plan: 1-3 sprint bekleniyor, {n}")
 
 
+def validate_agent(data: Any) -> None:
+    """Agent dataset örneği: top-level 'messages' listesi; her örnekte en az 1 assistant turn olmalı,
+    son assistant turn'ün content'i geçerli JSON ve {"tool_calls": [...]} ya da {"final": "..."} olmalı."""
+    if not isinstance(data, dict):
+        raise SchemaError("root: object bekleniyor")
+    msgs = data.get("messages")
+    if not isinstance(msgs, list) or len(msgs) < 3:
+        raise SchemaError(f"messages: en az 3 turn (system, user, assistant) bekleniyor, {len(msgs) if isinstance(msgs, list) else 'list-değil'}")
+
+    roles = [m.get("role") for m in msgs]
+    if roles[0] != "system":
+        raise SchemaError(f"messages[0].role 'system' olmalı, '{roles[0]}'")
+    if "assistant" not in roles:
+        raise SchemaError("messages içinde en az 1 assistant turn olmalı")
+
+    # Tüm assistant turn'ler geçerli JSON olmalı ve {tool_calls|final} içermeli
+    import json as _json
+    valid_keys = {"tool_calls", "final"}
+    for i, m in enumerate(msgs):
+        if m.get("role") != "assistant":
+            continue
+        content = m.get("content")
+        if not isinstance(content, str):
+            raise SchemaError(f"messages[{i}].content string bekleniyor")
+        try:
+            obj = _json.loads(content)
+        except _json.JSONDecodeError as e:
+            raise SchemaError(f"messages[{i}].content geçerli JSON değil: {e}")
+        if not isinstance(obj, dict):
+            raise SchemaError(f"messages[{i}].content JSON object olmalı")
+        if not (set(obj.keys()) & valid_keys):
+            raise SchemaError(f"messages[{i}].content 'tool_calls' veya 'final' anahtarı içermeli")
+        if "tool_calls" in obj:
+            calls = obj["tool_calls"]
+            if not isinstance(calls, list) or len(calls) == 0:
+                raise SchemaError(f"messages[{i}].tool_calls boş olmayan liste olmalı")
+            for c in calls:
+                if not isinstance(c, dict) or not isinstance(c.get("name"), str):
+                    raise SchemaError(f"messages[{i}].tool_calls[*]: {{name, input}} bekleniyor")
+        elif "final" in obj:
+            if not isinstance(obj["final"], str) or len(obj["final"]) < 3:
+                raise SchemaError(f"messages[{i}].final: en az 3 karakter string bekleniyor")
+
+
 _VALIDATORS = {
     "scaffold-project": validate_scaffold,
     "enrich-issue": validate_enrich,
     "generate-plan": validate_plan,
+    "agent": validate_agent,
 }
 
 

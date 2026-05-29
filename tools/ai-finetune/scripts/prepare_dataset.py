@@ -32,7 +32,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from tools.ai_data_collector import config  # noqa: E402
 from tools.ai_data_collector.validation.schema import SchemaError, validate  # noqa: E402
 
-DEFAULT_IN = config.OUTPUT_DIR / "train-v1.jsonl"
+DEFAULT_VERSION = "v2"
+DEFAULT_IN = config.OUTPUT_DIR / f"train-{DEFAULT_VERSION}.jsonl"
 OUT_DIR = REPO_ROOT / "tools" / "ai-finetune" / "datasets"
 
 CHAR_PER_TOKEN = 3.5  # tr için kaba tahmin
@@ -54,11 +55,18 @@ def _read(path: Path) -> list[dict]:
 
 def _check_messages(ex: dict) -> tuple[bool, str]:
     msgs = ex.get("messages")
-    if not isinstance(msgs, list) or len(msgs) != 3:
-        return False, "messages != 3"
+    if not isinstance(msgs, list) or len(msgs) < 3:
+        return False, "messages < 3"
+    feat = ex.get("feature")
     roles = [m.get("role") for m in msgs]
-    if roles != ["system", "user", "assistant"]:
-        return False, f"role sequence {roles}"
+    if roles[0] != "system":
+        return False, f"first role != system ({roles[0]})"
+    if "assistant" not in roles:
+        return False, "no assistant turn"
+    if feat != "agent":
+        # diğer feature'lar tam 3-mesaj single-turn
+        if len(msgs) != 3 or roles != ["system", "user", "assistant"]:
+            return False, f"non-agent role sequence {roles}"
     for m in msgs:
         if not isinstance(m.get("content"), str) or not m["content"]:
             return False, "empty content"
@@ -66,12 +74,21 @@ def _check_messages(ex: dict) -> tuple[bool, str]:
 
 
 def _check_assistant(ex: dict) -> tuple[bool, str]:
+    feat = ex.get("feature")
+    if feat == "agent":
+        # Tüm assistant turn'leri validate_agent ile bir bütün olarak kontrol et
+        try:
+            validate(feat, ex)
+        except SchemaError as e:
+            return False, f"schema: {e}"
+        return True, ""
+
+    # diğer feature'lar: son assistant turn'ündeki JSON'u şemaya karşı kontrol
     try:
         assistant = ex["messages"][2]["content"]
         data = json.loads(assistant)
     except Exception as e:
         return False, f"assistant json parse: {e}"
-    feat = ex.get("feature")
     try:
         validate(feat, data)
     except SchemaError as e:
@@ -154,9 +171,11 @@ def main() -> int:
     train = kept[:cut]
     val = kept[cut:]
 
-    train_path = out_dir / "train-v1.train.jsonl"
-    val_path = out_dir / "train-v1.val.jsonl"
-    stats_path = out_dir / "train-v1.stats.json"
+    # Çıktı isimleri girdi dosyasının versiyon ekinden türetilir (train-v2.jsonl → train-v2.*)
+    stem = in_path.stem  # ör. "train-v2"
+    train_path = out_dir / f"{stem}.train.jsonl"
+    val_path = out_dir / f"{stem}.val.jsonl"
+    stats_path = out_dir / f"{stem}.stats.json"
 
     with train_path.open("w", encoding="utf-8") as f:
         for ex in train:

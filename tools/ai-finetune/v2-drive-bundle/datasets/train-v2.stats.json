@@ -1,0 +1,22 @@
+{
+  "input_count": 1417,
+  "drop_messages": 0,
+  "drop_schema": 0,
+  "drop_oversized": 0,
+  "kept": 1417,
+  "per_feature": {
+    "scaffold-project": 364,
+    "enrich-issue": 308,
+    "generate-plan": 258,
+    "agent": 487
+  },
+  "per_source": {
+    "synthetic": 1348,
+    "golden": 69
+  },
+  "token_p50": 823,
+  "token_p95": 1138,
+  "token_max": 1560,
+  "train": 1275,
+  "val": 142
+}

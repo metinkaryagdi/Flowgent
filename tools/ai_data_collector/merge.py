@@ -53,6 +53,9 @@ SYSTEM_PROMPTS = {
         "Sen BitirmeProject AI agent'ısın. Mevcut projeye yeni özellik sprint planı "
         "üretirsin. Yalnızca geçerli JSON (sprints[]) döndürürsün. Türkçe."
     ),
+    # agent: sistem mesajı agent_synth.py içinde tam tool catalog'la birlikte üretiliyor;
+    # buradan değil, örneğin kendi messages[0]'ından alınır.
+    "agent": "",
 }
 
 
@@ -95,6 +98,9 @@ def _normalize(s: str) -> str:
 
 def _to_messages(ex: dict) -> list[dict]:
     feat = ex["feature"]
+    # agent: ham messages dizisini olduğu gibi kullan (multi-turn, system prompt zaten tam)
+    if feat == "agent":
+        return ex["messages"]
     sys = SYSTEM_PROMPTS[feat]
     user_content = json.dumps(ex["input"], ensure_ascii=False)
     assistant_content = json.dumps(ex["output"], ensure_ascii=False)
@@ -153,18 +159,31 @@ def main() -> int:
                     if feat_in != feat:
                         stats["drop_missing_fields"] += 1
                         continue
-                    if "input" not in ex or "output" not in ex:
-                        stats["drop_missing_fields"] += 1
-                        continue
 
-                    # Schema tekrar
-                    try:
-                        validate(feat, ex["output"])
-                    except SchemaError:
-                        stats["drop_schema"] += 1
-                        continue
-
-                    inp_text = _normalize(_input_text(ex))
+                    # agent: messages alanı olmalı; schema messages bütününü doğrular
+                    if feat == "agent":
+                        if "messages" not in ex:
+                            stats["drop_missing_fields"] += 1
+                            continue
+                        try:
+                            validate(feat, ex)
+                        except SchemaError:
+                            stats["drop_schema"] += 1
+                            continue
+                        # dedup için ilk user turn'ünü key olarak kullan
+                        first_user = next((m.get("content", "") for m in ex["messages"] if m.get("role") == "user"), "")
+                        inp_text = _normalize(first_user)
+                    else:
+                        if "input" not in ex or "output" not in ex:
+                            stats["drop_missing_fields"] += 1
+                            continue
+                        # Schema tekrar
+                        try:
+                            validate(feat, ex["output"])
+                        except SchemaError:
+                            stats["drop_schema"] += 1
+                            continue
+                        inp_text = _normalize(_input_text(ex))
 
                     # Eval exact
                     if inp_text in eval_inputs[feat]:

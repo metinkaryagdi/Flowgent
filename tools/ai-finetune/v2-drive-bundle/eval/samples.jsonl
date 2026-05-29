@@ -1,0 +1,10 @@
+{"feat":"agent","user":"Aktif sprint hangisi?"}
+{"feat":"agent","user":"'Login sayfasında 500 hatası' başlıklı High priority issue oluştur"}
+{"feat":"agent","user":"Bu projede kaç issue var?"}
+{"feat":"agent","user":"Yeni sprint aç: 'Sprint 8: Stabilizasyon', goal 'kritik bug'ları kapat'"}
+{"feat":"agent","user":"Aktif sprint'e 'WebSocket bağlantısı kopuyor' başlıklı High issue ekle"}
+{"feat":"scaffold-project","input":{"description":"Üniversite mezunları için kariyer takip uygulaması istiyoruz. Mezunlar kendi kariyer yolculuklarını paylaşabilsin, alanlarında mentorluk verebilsin.","context":{"area":"kariyer","sub":"mezun","scale":"orta (20-100 kullanıcı)"}}}
+{"feat":"scaffold-project","input":{"description":"Küçük bir restoran zinciri için online sipariş ve teslimat takip sistemi geliştirilecek. Müşteriler menüden seçim yapıp adres bilgileriyle sipariş verebilmeli.","context":{"area":"restoran","sub":"online sipariş","scale":"küçük (5-20 kullanıcı)"}}}
+{"feat":"enrich-issue","input":{"title":"Şifre sıfırlama e-postası gelmiyor","projectContext":"web app / authentication"}}
+{"feat":"enrich-issue","input":{"title":"API rate limit eklensin","projectContext":"backend / API"}}
+{"feat":"generate-plan","input":{"projectName":"Kariyer Takip","description":"Bildirim sistemi eklenecek. Email + push notification + in-app destekleyecek."}}

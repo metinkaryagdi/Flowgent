@@ -26,7 +26,7 @@ EVAL_DIR = REPO_ROOT / "tests" / "AiEvalDataset" / "v1"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 
-FEATURES = ("scaffold-project", "enrich-issue", "generate-plan")
+FEATURES = ("scaffold-project", "enrich-issue", "generate-plan", "agent")
 
 
 def has_groq() -> bool:
