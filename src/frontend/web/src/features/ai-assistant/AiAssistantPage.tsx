@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from 
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
-import { aiApi, type AgentTurn, type ProjectScaffoldDraft } from '../../api/ai';
+import { aiApi, type AgentTurn, type ModelInfo, type ProjectScaffoldDraft } from '../../api/ai';
 import { projectsApi } from '../../api/projects';
 import { sprintsApi } from '../../api/sprints';
 import { issuesApi } from '../../api/issues';
@@ -12,6 +12,59 @@ import styles from './AiAssistant.module.css';
 
 type Mode = 'agent' | 'scaffold';
 
+function ModelBadge({ info }: { info: ModelInfo | null }) {
+    if (!info) return null;
+    const label = info.isFinetuned
+        ? `🤖 ${info.finetunedModel || info.active} (fine-tuned)`
+        : `🤖 ${info.baseModel || info.active} (base)`;
+    return <span className={styles.badge}>{label}</span>;
+}
+
+function ModelToggle({ info, onChange }: { info: ModelInfo | null; onChange: (next: ModelInfo) => void }) {
+    const { addToast } = useToastStore();
+    const [busy, setBusy] = useState(false);
+    if (!info) return null;
+
+    const toggle = async () => {
+        if (busy) return;
+        setBusy(true);
+        try {
+            const next = await aiApi.setModelMode(!info.isFinetuned);
+            onChange(next);
+            addToast(next.isFinetuned
+                ? `Fine-tune modele geçildi: ${next.finetunedModel}`
+                : `Base modele geçildi: ${next.baseModel}`, 'success');
+        } catch {
+            addToast('Model değiştirilemedi.', 'error');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={toggle}
+            disabled={busy}
+            title={info.isFinetuned
+                ? 'Şu an fine-tune (bp-agent) aktif — base modele dön'
+                : 'Şu an base model aktif — fine-tune (bp-agent) modele geç'}
+            style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--border-radius-md)',
+                border: '1px solid var(--color-border)',
+                background: info.isFinetuned ? 'rgba(124, 58, 237, 0.12)' : 'var(--color-surface)',
+                color: info.isFinetuned ? '#7c3aed' : 'var(--color-text-primary)',
+                fontSize: 'var(--font-size-xs)',
+                fontWeight: 600,
+                cursor: busy ? 'wait' : 'pointer',
+                opacity: busy ? 0.6 : 1,
+            }}>
+            {busy ? '…' : (info.isFinetuned ? '↺ Base modele geç' : '✨ Fine-tune modele geç')}
+        </button>
+    );
+}
+
 interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
@@ -19,11 +72,22 @@ interface ChatMessage {
     turns?: AgentTurn[];
     iterations?: number;
     hitLimit?: boolean;
+    formatUnrecognized?: boolean;
+    rawOutput?: string;
     timestamp: string;
 }
 
 export default function AiAssistantPage() {
     const [mode, setMode] = useState<Mode>('agent');
+    const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        aiApi.modelInfo()
+            .then((res) => { if (!cancelled) setModelInfo(res); })
+            .catch(() => { /* rozet gizli kalır */ });
+        return () => { cancelled = true; };
+    }, []);
 
     return (
         <div className={styles.page}>
@@ -41,7 +105,9 @@ export default function AiAssistantPage() {
                 <ModeTab active={mode === 'scaffold'} onClick={() => setMode('scaffold')} icon="🆕" label="Yeni Proje Oluştur" />
             </div>
 
-            {mode === 'agent' ? <AgentMode /> : <ScaffoldMode />}
+            {mode === 'agent'
+                ? <AgentMode modelInfo={modelInfo} onModelChange={setModelInfo} />
+                : <ScaffoldMode modelInfo={modelInfo} onModelChange={setModelInfo} />}
         </div>
     );
 }
@@ -70,7 +136,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
 // ─────────────────────────────────────────────────────────────────────
 // Mode 1: Agent (mevcut, korundu)
 // ─────────────────────────────────────────────────────────────────────
-function AgentMode() {
+function AgentMode({ modelInfo, onModelChange }: { modelInfo: ModelInfo | null; onModelChange: (next: ModelInfo) => void }) {
     const { addToast } = useToastStore();
     const { user, activeOrg } = useAuthStore();
 
@@ -120,9 +186,11 @@ function AgentMode() {
 
         try {
             const res = await aiApi.agent(projectId, text, sessionId);
-            const displayText = res.hitIterationLimit
-                ? `🤖 Model ${res.iterationsUsed} adım çalıştırdı ama özet üretemedi. Tool çağrı sonuçlarını "🔧" panelinden inceleyebilirsin. (Base gemma3:4b bu adımda zorlanıyor — fine-tune sonrası daha tutarlı sonuç bekleniyor.)`
-                : (res.finalText || '(boş yanıt)');
+            const displayText = res.formatUnrecognized
+                ? '' // bubble yerine açıklama balonu render edilecek
+                : res.hitIterationLimit
+                    ? `🤖 bp-agent ${res.iterationsUsed} adım çalıştırdı ama özet üretemedi. Tool çağrı sonuçlarını "🔧" panelinden inceleyebilirsin. (Fine-tuned model bu adımda final üretemedi — daha basit bir istekle tekrar deneyebilirsin.)`
+                    : (res.finalText || '(boş yanıt)');
             const aiMsg: ChatMessage = {
                 id: `a-${Date.now()}`,
                 role: 'assistant',
@@ -130,6 +198,8 @@ function AgentMode() {
                 turns: res.turns,
                 iterations: res.iterationsUsed,
                 hitLimit: res.hitIterationLimit,
+                formatUnrecognized: res.formatUnrecognized,
+                rawOutput: res.formatUnrecognized ? res.finalText : undefined,
                 timestamp: new Date().toISOString(),
             };
             setMessages((prev) => [...prev, aiMsg]);
@@ -164,7 +234,8 @@ function AgentMode() {
             <div className={styles.badgeRow}>
                 {activeOrg?.name && <span className={styles.badge}>🏢 {activeOrg.name}</span>}
                 {user?.userName && <span className={styles.badge}>👤 {user.userName}</span>}
-                <span className={styles.badge}>🤖 gemma3:4b (base)</span>
+                <ModelBadge info={modelInfo} />
+                <ModelToggle info={modelInfo} onChange={onModelChange} />
             </div>
 
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -213,7 +284,18 @@ function AgentMode() {
                                 {msg.role === 'user' ? (user?.userName?.slice(0, 2).toUpperCase() ?? '??') : '✦'}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                                <div className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleAi}`}>{msg.text}</div>
+                                {msg.role === 'assistant' && msg.formatUnrecognized
+                                    ? <FormatFailureBalloon raw={msg.rawOutput ?? ''} isFinetuned={modelInfo?.isFinetuned ?? false} onSwitchToBase={async () => {
+                                        try {
+                                            const next = await aiApi.setModelMode(false);
+                                            onModelChange(next);
+                                            addToast(`Base modele geçildi: ${next.baseModel}`, 'success');
+                                        } catch {
+                                            addToast('Model değiştirilemedi.', 'error');
+                                        }
+                                    }} />
+                                    : <div className={`${styles.bubble} ${msg.role === 'user' ? styles.bubbleUser : styles.bubbleAi}`}>{msg.text}</div>
+                                }
                                 {msg.role === 'assistant' && msg.turns && msg.turns.length > 0 && (
                                     <TurnsDetail turns={msg.turns} iterations={msg.iterations ?? 0} hitLimit={msg.hitLimit ?? false} />
                                 )}
@@ -244,6 +326,89 @@ function AgentMode() {
     );
 }
 
+function FormatFailureBalloon({ raw, isFinetuned, onSwitchToBase }: { raw: string; isFinetuned: boolean; onSwitchToBase: () => void | Promise<void> }) {
+    const [showRaw, setShowRaw] = useState(false);
+    return (
+        <div style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: 'var(--border-radius-md)',
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <strong style={{ color: '#b45309', fontSize: 'var(--font-size-sm)' }}>
+                    Fine-tune model geçerli format üretemedi
+                </strong>
+            </div>
+            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
+                <p style={{ margin: '0 0 6px 0' }}>
+                    <strong>Sebep:</strong> bp-agent (r=8, 125 step) eğitim setinden sızıntı yapıp
+                    <code style={{ margin: '0 4px', padding: '1px 5px', background: 'var(--color-surface)', borderRadius: 4 }}>tool_calls</code>
+                    /
+                    <code style={{ margin: '0 4px', padding: '1px 5px', background: 'var(--color-surface)', borderRadius: 4 }}>final</code>
+                    şeması yerine alakasız JSON üretti. AgentLoop bunu parse edemediği için ham çıktı geri döndü.
+                </p>
+                <p style={{ margin: 0 }}>
+                    <strong>Çözüm yolu:</strong> v2 dataset (1417 örnek, r=32) eğitilince düzelmesi bekleniyor. Şu an için base modele dön.
+                </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {isFinetuned && (
+                    <button
+                        type="button"
+                        onClick={() => { void onSwitchToBase(); }}
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: 'var(--border-radius-md)',
+                            background: 'var(--color-primary)',
+                            color: 'white',
+                            border: 'none',
+                            fontSize: 'var(--font-size-xs)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                        }}>
+                        ↺ Base modele geç
+                    </button>
+                )}
+                <button
+                    type="button"
+                    onClick={() => setShowRaw((v) => !v)}
+                    style={{
+                        padding: '6px 12px',
+                        borderRadius: 'var(--border-radius-md)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text-primary)',
+                        border: '1px solid var(--color-border)',
+                        fontSize: 'var(--font-size-xs)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                    }}>
+                    {showRaw ? '▼ Ham çıktıyı gizle' : '▶ Ham çıktıyı göster'}
+                </button>
+            </div>
+            {showRaw && (
+                <pre style={{
+                    margin: 0,
+                    padding: '8px 10px',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--border-radius-sm)',
+                    fontSize: 'var(--font-size-xs)',
+                    fontFamily: 'var(--font-mono, monospace)',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    maxHeight: 260,
+                    overflow: 'auto',
+                }}>{raw}</pre>
+            )}
+        </div>
+    );
+}
+
 function TurnsDetail({ turns, iterations, hitLimit }: { turns: AgentTurn[]; iterations: number; hitLimit: boolean }) {
     const [open, setOpen] = useState(false);
     const toolTurns = turns.filter((t) => t.kind === 'tool');
@@ -259,7 +424,7 @@ function TurnsDetail({ turns, iterations, hitLimit }: { turns: AgentTurn[]; iter
                     display: 'flex', alignItems: 'center', gap: 6,
                 }}>
                 <span>{open ? '▼' : '▶'}</span>
-                <span>🔧 {iterations} adım, {toolTurns.length} tool çağrısı{hitLimit ? ' — model "final" üretemedi (base model limiti)' : ''}</span>
+                <span>🔧 {iterations} adım, {toolTurns.length} tool çağrısı{hitLimit ? ' — model "final" üretemedi' : ''}</span>
             </button>
             {open && (
                 <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -282,7 +447,7 @@ function TurnsDetail({ turns, iterations, hitLimit }: { turns: AgentTurn[]; iter
 // ─────────────────────────────────────────────────────────────────────
 // Mode 2: Scaffold (yeni proje oluştur)
 // ─────────────────────────────────────────────────────────────────────
-function ScaffoldMode() {
+function ScaffoldMode({ modelInfo, onModelChange }: { modelInfo: ModelInfo | null; onModelChange: (next: ModelInfo) => void }) {
     const { addToast } = useToastStore();
     const { user, activeOrg } = useAuthStore();
     const navigate = useNavigate();
@@ -388,7 +553,8 @@ function ScaffoldMode() {
             <div className={styles.badgeRow}>
                 {activeOrg?.name && <span className={styles.badge}>🏢 {activeOrg.name}</span>}
                 {user?.userName && <span className={styles.badge}>👤 {user.userName}</span>}
-                <span className={styles.badge}>🤖 gemma3:4b (base)</span>
+                <ModelBadge info={modelInfo} />
+                <ModelToggle info={modelInfo} onChange={onModelChange} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

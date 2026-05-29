@@ -24,6 +24,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAiToolExecutionRepository, AiToolExecutionRepository>();
         services.Configure<InternalServiceOptions>(configuration.GetSection("InternalService"));
 
+        // Model selector — runtime'da fine-tune ↔ base toggle edilebilsin diye singleton.
+        services.AddSingleton<IModelSelector, ModelSelector>();
+
         // Ollama HTTP client
         services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
         {

@@ -73,6 +73,7 @@ export interface AgentResponse {
     finalText: string;
     iterationsUsed: number;
     hitIterationLimit: boolean;
+    formatUnrecognized: boolean;
     turns: AgentTurn[];
 }
 
@@ -94,6 +95,13 @@ export interface ProjectScaffoldDraft {
     projectKey: string;
     description: string;
     sprints: DraftSprint[];
+}
+
+export interface ModelInfo {
+    active: string;
+    isFinetuned: boolean;
+    baseModel: string;
+    finetunedModel: string;
 }
 
 export const aiApi = {
@@ -139,6 +147,16 @@ export const aiApi = {
 
     scaffoldDraft: async (description: string): Promise<ProjectScaffoldDraft> => {
         const res = await apiClient.post('/api/v1/ai/scaffold-project', { description });
+        return res.data;
+    },
+
+    modelInfo: async (): Promise<ModelInfo> => {
+        const res = await apiClient.get('/api/v1/ai/model-info');
+        return res.data;
+    },
+
+    setModelMode: async (useFinetuned: boolean): Promise<ModelInfo> => {
+        const res = await apiClient.post('/api/v1/ai/model-mode', { useFinetuned });
         return res.data;
     },
 };
