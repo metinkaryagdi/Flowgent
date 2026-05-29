@@ -186,10 +186,11 @@ function AgentMode({ modelInfo, onModelChange }: { modelInfo: ModelInfo | null; 
 
         try {
             const res = await aiApi.agent(projectId, text, sessionId);
+            const modelLabel = modelInfo?.active ?? 'model';
             const displayText = res.formatUnrecognized
                 ? '' // bubble yerine açıklama balonu render edilecek
                 : res.hitIterationLimit
-                    ? `🤖 bp-agent ${res.iterationsUsed} adım çalıştırdı ama özet üretemedi. Tool çağrı sonuçlarını "🔧" panelinden inceleyebilirsin. (Fine-tuned model bu adımda final üretemedi — daha basit bir istekle tekrar deneyebilirsin.)`
+                    ? `🤖 ${modelLabel} ${res.iterationsUsed} adım çalıştırdı ama özet üretemedi. Tool çağrı sonuçlarını "🔧" panelinden inceleyebilirsin. Daha basit bir istekle tekrar deneyebilirsin.`
                     : (res.finalText || '(boş yanıt)');
             const aiMsg: ChatMessage = {
                 id: `a-${Date.now()}`,
@@ -341,19 +342,21 @@ function FormatFailureBalloon({ raw, isFinetuned, onSwitchToBase }: { raw: strin
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 18 }}>⚠️</span>
                 <strong style={{ color: '#b45309', fontSize: 'var(--font-size-sm)' }}>
-                    Fine-tune model geçerli format üretemedi
+                    {isFinetuned ? 'Fine-tune model geçerli format üretemedi' : 'Model geçerli format üretemedi'}
                 </strong>
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>
                 <p style={{ margin: '0 0 6px 0' }}>
-                    <strong>Sebep:</strong> bp-agent (r=8, 125 step) eğitim setinden sızıntı yapıp
+                    <strong>Sebep:</strong> Model
                     <code style={{ margin: '0 4px', padding: '1px 5px', background: 'var(--color-surface)', borderRadius: 4 }}>tool_calls</code>
                     /
                     <code style={{ margin: '0 4px', padding: '1px 5px', background: 'var(--color-surface)', borderRadius: 4 }}>final</code>
-                    şeması yerine alakasız JSON üretti. AgentLoop bunu parse edemediği için ham çıktı geri döndü.
+                    şeması yerine farklı bir JSON üretti. AgentLoop bunu parse edemediği için ham çıktı geri döndü.
                 </p>
                 <p style={{ margin: 0 }}>
-                    <strong>Çözüm yolu:</strong> v2 dataset (1417 örnek, r=32) eğitilince düzelmesi bekleniyor. Şu an için base modele dön.
+                    <strong>Çözüm yolu:</strong> {isFinetuned
+                        ? 'Base modele geçip aynı isteği tekrar dene; fine-tune model bu prompt için kararlı format üretmiyor.'
+                        : 'İsteği daha basit veya net bir cümleyle tekrar yaz; alternatif olarak fine-tune modele geçip dene.'}
                 </p>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
