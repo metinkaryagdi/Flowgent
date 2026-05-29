@@ -35,7 +35,10 @@ builder.Services.AddHostedService<IssueEventsConsumer>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var secret = builder.Configuration["Jwt:Secret"] ?? "YourSuperSecretKeyForJwtTokenGenerationMinimum32Characters";
+        var secret = builder.Configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret configuration is required (set Jwt__Secret env var).");
+        if (secret.Contains("YourSuperSecret"))
+            throw new InvalidOperationException("Jwt:Secret is set to the insecure default. Generate a strong 32+ char secret and set Jwt__Secret env var.");
         var issuer = builder.Configuration["Jwt:Issuer"] ?? "BitirmeProject.IdentityService";
         var audience = builder.Configuration["Jwt:Audience"] ?? "BitirmeProject.Clients";
 
