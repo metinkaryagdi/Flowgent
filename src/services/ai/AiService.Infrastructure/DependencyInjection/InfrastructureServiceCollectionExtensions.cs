@@ -22,6 +22,7 @@ public static class InfrastructureServiceCollectionExtensions
         // Repository
         services.AddScoped<IAiSessionRepository, AiSessionRepository>();
         services.AddScoped<IAiToolExecutionRepository, AiToolExecutionRepository>();
+        services.AddScoped<IProcessedEventRepository, ProcessedEventRepository>();
         services.Configure<InternalServiceOptions>(configuration.GetSection("InternalService"));
 
         // Model selector — runtime'da fine-tune ↔ base toggle edilebilsin diye singleton.

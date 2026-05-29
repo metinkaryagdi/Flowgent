@@ -1,7 +1,11 @@
 using System.Text;
 using System.Text.Json;
+using BitirmeProject.AiService.Application.Abstractions;
 using BitirmeProject.AiService.Application.Features.Sprints.Commands.GenerateRetrospective;
+using BitirmeProject.AiService.Domain.Entities;
+using BitirmeProject.AiService.Infrastructure.Persistence;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -79,6 +83,7 @@ public sealed class SprintEventsConsumer : BackgroundService
 
     private async Task HandleMessageInternalAsync(BasicDeliverEventArgs args)
     {
+        var eventType = args.BasicProperties?.Type ?? args.RoutingKey;
         var message = Encoding.UTF8.GetString(args.Body.ToArray());
         try
         {
@@ -90,10 +95,22 @@ public sealed class SprintEventsConsumer : BackgroundService
                 return;
             }
 
-            _logger.LogInformation("Generating retrospective for sprint {SprintId}", evt.SprintId);
-
             using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AiDbContext>();
+            var processedRepo = scope.ServiceProvider.GetRequiredService<IProcessedEventRepository>();
             var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+
+            await using var tx = await dbContext.Database.BeginTransactionAsync();
+
+            if (await processedRepo.ExistsAsync(evt.EventId))
+            {
+                _logger.LogInformation("Duplicate SprintCompletedEvent ignored. EventId={EventId}", evt.EventId);
+                await tx.CommitAsync();
+                _channel!.BasicAck(args.DeliveryTag, multiple: false);
+                return;
+            }
+
+            _logger.LogInformation("Generating retrospective for sprint {SprintId}", evt.SprintId);
 
             await mediator.Send(new GenerateRetrospectiveCommand(
                 evt.SprintId,
@@ -101,6 +118,9 @@ public sealed class SprintEventsConsumer : BackgroundService
                 evt.CompletedByUserId,
                 Guid.Empty));  // org_id not in event; session still saved
 
+            await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+            await processedRepo.SaveChangesAsync(CancellationToken.None);
+            await tx.CommitAsync();
             _channel!.BasicAck(args.DeliveryTag, multiple: false);
         }
         catch (Exception ex)
