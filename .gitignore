@@ -37,3 +37,11 @@ tools/ai-finetune/adapters/
 tools/ai-finetune/checkpoints/
 *.gguf
 login.txt
+
+# Presentation / thesis / dump artifacts (not part of the codebase)
+*.pptx
+tools/_*.txt
+tools/build_thesis*.py
+bitirme*.docx
+bitirme_rapor*.pdf
+docs/SAVUNMA_HAZIRLIK.md
