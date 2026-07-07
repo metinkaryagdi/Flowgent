@@ -228,8 +228,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       mailhog:
         condition: service_started
     environment:
@@ -243,8 +241,6 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
       RabbitMQ__Password: "${RABBITMQ_PASS}"
       RabbitMQ__VirtualHost: "/"
-      # Redis
-      Redis__Configuration: "redis:6379,password=${REDIS_PASS}"
       # Seq
       Seq__ServerUrl: "http://seq:5341"
       # JWT
