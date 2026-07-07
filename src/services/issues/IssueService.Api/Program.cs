@@ -73,11 +73,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
-});
 
+// Redis (or in-memory fallback) is registered conditionally inside AddIssueInfrastructure
+// based on the "Redis" connection string. Registering it unconditionally here as well would
+// shadow that fallback (AddDistributedMemoryCache uses TryAdd, so it no-ops once an
+// IDistributedCache is already present), which is why it is intentionally omitted.
 builder.Services.AddIssueApplication();
 builder.Services.AddIssueInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMQ(builder.Configuration);
