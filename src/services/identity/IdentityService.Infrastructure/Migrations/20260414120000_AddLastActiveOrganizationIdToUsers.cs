@@ -1,4 +1,6 @@
 using System;
+using BitirmeProject.IdentityService.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace IdentityService.Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(IdentityDbContext))]
+    [Migration("20260414120000_AddLastActiveOrganizationIdToUsers")]
     public partial class AddLastActiveOrganizationIdToUsers : Migration
     {
         /// <inheritdoc />
