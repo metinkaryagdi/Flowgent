@@ -500,6 +500,9 @@ services:
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Cors__AllowedOrigins__0: "http://localhost:5174"
       Cors__AllowedOrigins__1: "http://localhost:3000"
+      # Origin the browser actually loads the SPA from. Only differs from
+      # localhost when the stack runs on another host (e.g. a LAN deployment).
+      Cors__AllowedOrigins__2: "${PUBLIC_WEB_ORIGIN:-http://localhost:5174}"
     ports:
       - "5000:8080"
     networks:
@@ -514,7 +517,9 @@ services:
       gateway-api:
         condition: service_started
     environment:
-      VITE_API_BASE_URL: "http://localhost:5000"
+      # Resolved by the browser, not by the container, so it must be an address
+      # the client machine can reach -- not localhost when deploying to a host.
+      VITE_API_BASE_URL: "${PUBLIC_API_BASE_URL:-http://localhost:5000}"
       VITE_USE_MOCK_API: "false"
     ports:
       - "5174:5174"
