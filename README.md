@@ -1,6 +1,6 @@
 # Flowgent
 
-**An AI-assisted, microservice-based, event-driven project & task management platform** — a fully-inspectable reference implementation of the distributed-systems patterns behind tools like Jira and Linear, enriched with a locally-hosted LLM.
+**An AI-assisted, microservice-based, event-driven project & task management platform** — a from-scratch, fully-inspectable implementation of the distributed-systems patterns behind tools like Jira and Linear, enriched with a locally-hosted LLM.
 
 ![.NET 9](https://img.shields.io/badge/.NET_9-512BD4?logo=dotnet&logoColor=white)
 ![C#](https://img.shields.io/badge/C%23-239120?logo=csharp&logoColor=white)
@@ -9,6 +9,9 @@
 ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?logo=rabbitmq&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+<!-- .github/workflows/ci.yml dosyasını commit ettikten sonra alttaki satırı aç:
+[![CI](https://github.com/metinkaryagdi/Flowgent/actions/workflows/ci.yml/badge.svg)](https://github.com/metinkaryagdi/Flowgent/actions/workflows/ci.yml)
+-->
 
 ---
 
@@ -17,6 +20,26 @@
 Flowgent lets software teams run project and task management end to end — organizations, projects, issues, a drag-and-drop Kanban board, sprint planning, real-time notifications, secure file uploads, and an AI assistant that turns a natural-language project description into a concrete sprint & task plan.
 
 The point of the project isn't just the features — it's to implement, in a way you can actually read, the engineering patterns that appear once a system is genuinely distributed: keeping data consistent across services **without a shared database or two-phase commit**, delivering events reliably even when a service is temporarily down, and separating read/write concerns cleanly. On top of that, the AI runs **fully on-prem**, so no project data leaves the environment.
+
+---
+
+## Screenshots
+
+**AI assistant — natural language in, a full sprint & task plan out.** Typing *"bir e-ticaret sitesi yapacağız"* produces a 4-sprint / 20-issue plan with priorities, which is then persisted to the Sprint and Issue services.
+
+| AI plan generation | AI sprint risk & workload analysis |
+| --- | --- |
+| ![AI assistant generating a 4-sprint plan from a natural-language description](docs/screenshots/ai-assistant.png) | ![Sprint page showing AI-generated risk and workload analysis with per-issue recommendations](docs/screenshots/sprint-ai-analysis.png) |
+
+| Kanban board | Projects overview |
+| --- | --- |
+| ![Kanban board with Open / In Progress / Done columns and priority labels](docs/screenshots/kanban.png) | ![Projects list with per-project open / in-progress / done counts](docs/screenshots/projects.png) |
+
+| Organization & role management | Sign in |
+| --- | --- |
+| ![Organization management screen with members and org-level roles](docs/screenshots/organization-admin.png) | ![Sign-in screen](docs/screenshots/login.png) |
+
+> The UI is currently Turkish-only; localisation is on the roadmap.
 
 ---
 
@@ -69,17 +92,19 @@ flowchart TB
 
 ### Services
 
-| Service | Port | Responsibility |
-| --- | --- | --- |
-| **API Gateway** | 5000 | YARP reverse proxy — JWT validation, CORS, routing, correlation ID |
-| **Identity** | 5001 | Authentication, authorization, users / roles / refresh tokens |
-| **Project** | 5002 | Projects, teams & membership, project-summary read model |
-| **Issue** | 5003 | Issue CRUD, comments, attachments, status-transition engine, Kanban read model |
-| **Sprint** | 5004 | Sprint planning, backlog, velocity, carry-over policy |
-| **Notification** | 5005 | Notification generation, delivery, real-time push via SignalR |
-| **BFF** | 5006 | Aggregates multi-service data into frontend-shaped responses |
-| **Storage** | 5007 | Two-phase file upload, persistence, orphan cleanup |
-| **AI** | 5008 | LLM-based plan generation, task enrichment, project querying |
+The seven domain services, plus the two infrastructure components that front them:
+
+| Service | Port | Type | Responsibility |
+| --- | --- | --- | --- |
+| **API Gateway** | 5000 | Infrastructure | YARP reverse proxy — JWT validation, CORS, routing, correlation ID |
+| **BFF** | 5006 | Infrastructure | Aggregates multi-service data into frontend-shaped responses |
+| **Identity** | 5001 | Domain | Authentication, authorization, users / roles / refresh tokens |
+| **Project** | 5002 | Domain | Projects, teams & membership, project-summary read model |
+| **Issue** | 5003 | Domain | Issue CRUD, comments, attachments, status-transition engine, Kanban read model |
+| **Sprint** | 5004 | Domain | Sprint planning, backlog, velocity, carry-over policy |
+| **Notification** | 5005 | Domain | Notification generation, delivery, real-time push via SignalR |
+| **Storage** | 5007 | Domain | Two-phase file upload, persistence, orphan cleanup |
+| **AI** | 5008 | Domain | LLM-based plan generation, task enrichment, project querying |
 
 ### Event-driven communication
 
@@ -112,6 +137,8 @@ Services publish domain events to a durable **topic exchange** on RabbitMQ; inte
 The AI service integrates **gemma3:4b** running locally on **Ollama** — project data is processed on-prem, never sent to an external cloud API. Capabilities:
 
 - **Plan generation** — turns a natural-language project description into a structured sprint & task plan (JSON), validated against a schema, then saved to the Sprint and Issue services.
+- **Sprint risk analysis** — scores an active sprint's delivery risk (Low / Medium / High) from completion ratio and the number of open critical issues, with a short rationale and a recommendation.
+- **Sprint workload analysis** — flags over-committed sprints by weighing issue priorities, then returns **per-issue** recommendations (split this task, defer that one, pull a low-priority item out of the sprint).
 - **Task enrichment** — expands a short issue title into a description with acceptance criteria.
 - **Project querying** — answers questions over project data via a chat interface, using **context injection** into the prompt (a lightweight alternative to a full RAG pipeline).
 - **Auto retrospective** — consumes `SprintCompletedEvent` to generate a retrospective summary.
@@ -132,7 +159,7 @@ The AI service integrates **gemma3:4b** running locally on **Ollama** — projec
 | FluentValidation | 12.1 | Command & query validation |
 | AutoMapper | 16.0 | Entity → DTO mapping |
 | RabbitMQ | 3.13 | Async event-driven messaging (AMQP) |
-| Redis | 7 | Distributed cache infrastructure |
+| Redis | 7 | Cache infrastructure — provisioned, activation on the roadmap |
 | YARP | — | API gateway / reverse proxy |
 | SignalR | — | Real-time WebSocket notifications |
 | Serilog + Seq | — | Structured logging & central log management |
@@ -159,7 +186,7 @@ The AI service integrates **gemma3:4b** running locally on **Ollama** — projec
 - Passwords hashed with **Bcrypt**.
 - **SecurityStamp** invalidation — changing password/role/status invalidates all existing tokens.
 - **Account lockout** for 15 minutes after five failed logins.
-- Every endpoint is authorized and pre-validated at the gateway; authorization combines a system role with an org-level role (Owner / Lead / Member).
+- Every endpoint is authorized and pre-validated at the gateway; authorization combines a **system role** (Admin / User) with an **org-level role** (Owner / Lead / Member). Owners are protected — only a system admin can reassign Manager and Member roles, and an admin panel exposes organization and membership management across the whole system.
 
 ---
 
@@ -174,8 +201,6 @@ docker compose up -d
 ```
 
 Services come up behind health checks. Ports: Gateway 5000 · Identity 5001 · Project 5002 · Issue 5003 · Sprint 5004 · Notification 5005 · BFF 5006 · Storage 5007 · AI 5008. Infra: RabbitMQ 5672 (UI 15672) · Redis 6379 · Seq 5341 · frontend 5173.
-
-> Adjust paths/commands to match your repository layout.
 
 ---
 
@@ -193,6 +218,13 @@ Each service has its own unit-test project (command/query handlers, FluentValida
 - [ ] Extend the AI assistant to a full **RAG** pipeline (vector DB)
 - [ ] Multi-tenant architecture and a mobile client
 - [ ] CI/CD pipeline with automated security scanning
+- [ ] English localisation of the UI
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ---
 
