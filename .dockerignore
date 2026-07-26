@@ -1,0 +1,30 @@
+# Every service Dockerfile uses the repo root as build context (needed to
+# reach src/shared), so this file controls what gets sent to the daemon /
+# invalidates layer cache for ALL of them -- keep it broad.
+
+.git
+.vs
+.claude
+node_modules
+**/node_modules
+**/bin
+**/obj
+**/dist
+**/test-results
+**/playwright-report
+
+# Local secrets / diagnostics
+.env
+.env.*
+!.env.example
+*.log
+
+# Not needed to build any service image
+docs/
+tools/
+tests/
+*.pptx
+*.docx
+*.pdf
+*.png
+*.txt

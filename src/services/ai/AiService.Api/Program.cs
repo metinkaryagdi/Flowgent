@@ -64,6 +64,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+var internalServiceApiKey = builder.Configuration["InternalService:ApiKey"];
+if (builder.Environment.IsProduction() && (string.IsNullOrWhiteSpace(internalServiceApiKey) || internalServiceApiKey.Contains("change-me")))
+    throw new InvalidOperationException("InternalService:ApiKey is set to the insecure default. Generate a strong random key and set InternalService__ApiKey (same value on every caller: issue, sprint, ai).");
+
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
 
@@ -78,7 +82,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AiDbContext>();
-    db.Database.Migrate();
+    await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(1)");
+    try { await db.Database.MigrateAsync(); }
+    finally { await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(1)"); }
 }
 
 app.UseRouting();

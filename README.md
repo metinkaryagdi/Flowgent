@@ -202,6 +202,31 @@ docker compose up -d
 
 Services come up behind health checks. Ports: Gateway 5000 · Identity 5001 · Project 5002 · Issue 5003 · Sprint 5004 · Notification 5005 · BFF 5006 · Storage 5007 · AI 5008. Infra: RabbitMQ 5672 (UI 15672) · Redis 6379 · Seq 5341 · frontend 5173.
 
+> Adjust paths/commands to match your repository layout.
+
+### Deploying beyond localhost
+
+The default `docker-compose.yml` is tuned for local development (Vite dev
+server, `Development` environment, infra ports bound to `127.0.0.1`). To run
+on a real host:
+
+1. Generate strong secrets — never reuse the placeholder `.env.example`
+   values: `./tools/generate-secrets.ps1` and paste the output into `.env`.
+2. Set `ASPNETCORE_ENVIRONMENT=Production`, and `PUBLIC_API_BASE_URL` /
+   `PUBLIC_WEB_ORIGIN` to the address browsers will actually reach.
+3. Build and run with the production overlay, which replaces the frontend's
+   dev server with a real `vite build` served by nginx:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+   ```
+4. Re-run `tools/generate-secrets.ps1` to rotate secrets later; rotating a
+   DB/RabbitMQ/Redis password on an already-running stack means updating the
+   password inside that container too, not just editing `.env`.
+
+Infra ports (Postgres instances, Redis, RabbitMQ, Seq, MailHog) stay bound to
+`127.0.0.1` even in the overlay — put a reverse proxy / firewall in front of
+the app ports (5000, 5174) if the host is internet-facing.
+
 ---
 
 ## Testing

@@ -18,7 +18,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.Seq("http://seq:5341")
+    .WriteTo.Seq(Environment.GetEnvironmentVariable("Seq__ServerUrl") ?? "http://seq:5341")
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,11 +75,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
-});
 
+// Redis (or in-memory fallback) is registered conditionally inside AddProjectInfrastructure
+// based on the "Redis" connection string. Registering it unconditionally here as well would
+// shadow that fallback (AddDistributedMemoryCache uses TryAdd, so it no-ops once an
+// IDistributedCache is already present), which is why it is intentionally omitted.
 builder.Services.AddProjectApplication();
 builder.Services.AddProjectInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMQ(builder.Configuration);

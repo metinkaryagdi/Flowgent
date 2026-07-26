@@ -1,4 +1,4 @@
-﻿version: "3.9"
+version: "3.9"
 
 services:
   # ============================================
@@ -14,8 +14,8 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
       RABBITMQ_DEFAULT_VHOST: /
     ports:
-      - "5672:5672" # AMQP protocol
-      - "15672:15672" # Management UI
+      - "127.0.0.1:5672:5672" # AMQP protocol
+      - "127.0.0.1:15672:15672" # Management UI
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -25,6 +25,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
 
   redis:
     image: redis:7-alpine
@@ -34,7 +39,7 @@ services:
       REDISCLI_AUTH: ${REDIS_PASS:?REDIS_PASS is required}
     command: redis-server --requirepass ${REDIS_PASS:?REDIS_PASS is required}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -44,16 +49,26 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
 
   mailhog:
     image: mailhog/mailhog:latest
     container_name: mailhog
     restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # Web UI
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # Web UI
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
 
   seq:
     image: datalust/seq:2024.3
@@ -62,12 +77,17 @@ services:
     environment:
       ACCEPT_EULA: "Y"
     ports:
-      - "5341:80" # Seq UI
-      - "5342:5341" # Ingestion
+      - "127.0.0.1:5341:80" # Seq UI
+      - "127.0.0.1:5342:5341" # Ingestion
     volumes:
       - seq-data:/data
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
 
   # ============================================
   # DATABASE SERVICES
@@ -82,7 +102,7 @@ services:
       POSTGRES_USER: identity_user
       POSTGRES_PASSWORD: ${IDENTITY_DB_PASS}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - identity-db-data:/var/lib/postgresql/data
     networks:
@@ -92,6 +112,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   project-db:
     image: postgres:16-alpine
@@ -102,7 +127,7 @@ services:
       POSTGRES_USER: project_user
       POSTGRES_PASSWORD: ${PROJECT_DB_PASS}
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - project-db-data:/var/lib/postgresql/data
     networks:
@@ -112,6 +137,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   issue-db:
     image: postgres:16-alpine
@@ -122,7 +152,7 @@ services:
       POSTGRES_USER: issue_user
       POSTGRES_PASSWORD: ${ISSUE_DB_PASS}
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
     volumes:
       - issue-db-data:/var/lib/postgresql/data
     networks:
@@ -132,6 +162,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   sprint-db:
     image: postgres:16-alpine
@@ -142,7 +177,7 @@ services:
       POSTGRES_USER: sprint_user
       POSTGRES_PASSWORD: ${SPRINT_DB_PASS}
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - sprint-db-data:/var/lib/postgresql/data
     networks:
@@ -152,6 +187,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   notification-db:
     image: postgres:16-alpine
@@ -162,7 +202,7 @@ services:
       POSTGRES_USER: notification_user
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASS}
     ports:
-      - "5437:5432"
+      - "127.0.0.1:5437:5432"
     volumes:
       - notification-db-data:/var/lib/postgresql/data
     networks:
@@ -172,6 +212,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   storage-db:
     image: postgres:16-alpine
@@ -182,7 +227,7 @@ services:
       POSTGRES_USER: storage_user
       POSTGRES_PASSWORD: ${STORAGE_DB_PASS}
     ports:
-      - "5438:5432"
+      - "127.0.0.1:5438:5432"
     volumes:
       - storage-db-data:/var/lib/postgresql/data
     networks:
@@ -192,6 +237,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   ai-db:
     image: postgres:16-alpine
@@ -202,7 +252,7 @@ services:
       POSTGRES_USER: ai_user
       POSTGRES_PASSWORD: ${AI_DB_PASS}
     ports:
-      - "5439:5432"
+      - "127.0.0.1:5439:5432"
     volumes:
       - ai-db-data:/var/lib/postgresql/data
     networks:
@@ -212,6 +262,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
   # ============================================
   # MICROSERVICES
@@ -228,12 +283,10 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       mailhog:
         condition: service_started
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       # Database
       ConnectionStrings__IdentityDatabase: "Host=identity-db;Port=5432;Database=identitydb;Username=identity_user;Password=${IDENTITY_DB_PASS}"
@@ -243,8 +296,6 @@ services:
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
       RabbitMQ__Password: "${RABBITMQ_PASS}"
       RabbitMQ__VirtualHost: "/"
-      # Redis
-      Redis__Configuration: "redis:6379,password=${REDIS_PASS}"
       # Seq
       Seq__ServerUrl: "http://seq:5341"
       # JWT
@@ -266,6 +317,11 @@ services:
       - "5001:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   project-api:
     build:
@@ -279,7 +335,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__ProjectDatabase: "Host=project-db;Port=5432;Database=projectdb;Username=project_user;Password=${PROJECT_DB_PASS}"
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS}"
@@ -296,6 +352,11 @@ services:
       - "5002:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   issue-api:
     build:
@@ -309,7 +370,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__IssueDatabase: "Host=issue-db;Port=5432;Database=issuedb;Username=issue_user;Password=${ISSUE_DB_PASS}"
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS}"
@@ -323,10 +384,16 @@ services:
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
     ports:
       - "5003:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   sprint-api:
     build:
@@ -340,7 +407,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__SprintDatabase: "Host=sprint-db;Port=5432;Database=sprintdb;Username=sprint_user;Password=${SPRINT_DB_PASS}"
       IssueService__BaseUrl: "http://issue-api:8080/"
@@ -353,10 +420,16 @@ services:
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
     ports:
       - "5004:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   notification-api:
     build:
@@ -370,7 +443,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__NotificationDatabase: "Host=notification-db;Port=5432;Database=notificationdb;Username=notification_user;Password=${NOTIFICATION_DB_PASS}"
       RabbitMQ__Host: "rabbitmq"
@@ -386,6 +459,11 @@ services:
       - "5005:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   storage-api:
     build:
@@ -397,7 +475,7 @@ services:
       storage-db:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__StorageDatabase: "Host=storage-db;Port=5432;Database=storagedb;Username=storage_user;Password=${STORAGE_DB_PASS}"
       Storage__RootPath: "storage-uploads"
@@ -410,6 +488,11 @@ services:
       - storage-uploads:/app/storage-uploads
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   ai-api:
     build:
@@ -423,7 +506,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__AiDatabase: "Host=ai-db;Port=5432;Database=aidb;Username=ai_user;Password=${AI_DB_PASS}"
       Ollama__BaseUrl: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
@@ -442,12 +525,18 @@ services:
       Jwt__Secret: "${JWT_SECRET}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "5008:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
 
   bff-api:
     build:
@@ -457,15 +546,15 @@ services:
     restart: unless-stopped
     depends_on:
       project-api:
-        condition: service_started
+        condition: service_healthy
       issue-api:
-        condition: service_started
+        condition: service_healthy
       sprint-api:
-        condition: service_started
+        condition: service_healthy
       notification-api:
-        condition: service_started
+        condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       Jwt__Secret: "${JWT_SECRET}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
@@ -474,6 +563,11 @@ services:
       - "5006:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   gateway-api:
     build:
@@ -483,31 +577,39 @@ services:
     restart: unless-stopped
     depends_on:
       identity-api:
-        condition: service_started
+        condition: service_healthy
       project-api:
-        condition: service_started
+        condition: service_healthy
       issue-api:
-        condition: service_started
+        condition: service_healthy
       sprint-api:
-        condition: service_started
+        condition: service_healthy
       notification-api:
-        condition: service_started
+        condition: service_healthy
       storage-api:
-        condition: service_started
+        condition: service_healthy
       ai-api:
-        condition: service_started
+        condition: service_healthy
     environment:
-      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       Jwt__Secret: "${JWT_SECRET}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Cors__AllowedOrigins__0: "http://localhost:5174"
       Cors__AllowedOrigins__1: "http://localhost:3000"
+      # Origin the browser actually loads the SPA from. Only differs from
+      # localhost when the stack runs on another host (e.g. a LAN deployment).
+      Cors__AllowedOrigins__2: "${PUBLIC_WEB_ORIGIN:-http://localhost:5174}"
     ports:
       - "5000:8080"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
 
   frontend:
     image: node:20-alpine
@@ -516,9 +618,11 @@ services:
     restart: unless-stopped
     depends_on:
       gateway-api:
-        condition: service_started
+        condition: service_healthy
     environment:
-      VITE_API_BASE_URL: "http://localhost:5000"
+      # Resolved by the browser, not by the container, so it must be an address
+      # the client machine can reach -- not localhost when deploying to a host.
+      VITE_API_BASE_URL: "${PUBLIC_API_BASE_URL:-http://localhost:5000}"
       VITE_USE_MOCK_API: "false"
     ports:
       - "5174:5174"
@@ -528,6 +632,11 @@ services:
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5174"
     networks:
       - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
 
 # ============================================
 # NETWORKS
