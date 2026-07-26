@@ -17,7 +17,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.Seq("http://seq:5341")
+    .WriteTo.Seq(Environment.GetEnvironmentVariable("Seq__ServerUrl") ?? "http://seq:5341")
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -69,6 +69,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
+var internalServiceApiKey = builder.Configuration["InternalService:ApiKey"];
+if (builder.Environment.IsProduction() && (string.IsNullOrWhiteSpace(internalServiceApiKey) || internalServiceApiKey.Contains("change-me")))
+    throw new InvalidOperationException("InternalService:ApiKey is set to the insecure default. Generate a strong random key and set InternalService__ApiKey (same value on every caller: issue, sprint, ai).");
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();

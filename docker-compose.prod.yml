@@ -1,0 +1,28 @@
+# Production overlay. The base docker-compose.yml stays optimized for local
+# development (frontend runs via Vite dev server with hot reload).
+#
+# Usage:
+#   1. Set ASPNETCORE_ENVIRONMENT=Production, PUBLIC_API_BASE_URL and
+#      PUBLIC_WEB_ORIGIN in .env, and generate strong secrets (see
+#      tools/generate-secrets.ps1 / .sh).
+#   2. docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# This replaces the dev-server frontend container with a real production
+# build: `vite build` output served by nginx, no source bind-mount, no
+# node_modules volume, no live source dependency on the host machine.
+
+services:
+  frontend:
+    image: bitirmeproject-frontend:prod
+    build:
+      context: ./src/frontend/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${PUBLIC_API_BASE_URL:-http://localhost:5000}"
+        VITE_USE_MOCK_API: "false"
+    # Requires Docker Compose v2.24+ for the `!reset` merge tag, which drops
+    # the dev overlay's bind-mount/dev-server command instead of merging it.
+    volumes: !reset []
+    command: !reset null
+    ports: !override
+      - "5174:8080"

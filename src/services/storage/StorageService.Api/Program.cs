@@ -16,7 +16,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.Seq("http://seq:5341")
+    .WriteTo.Seq(Environment.GetEnvironmentVariable("Seq__ServerUrl") ?? "http://seq:5341")
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -85,7 +85,9 @@ app.UseCorrelationId();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<StorageDbContext>();
-    db.Database.Migrate();
+    await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(1)");
+    try { await db.Database.MigrateAsync(); }
+    finally { await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(1)"); }
 }
 
 app.UseRouting();

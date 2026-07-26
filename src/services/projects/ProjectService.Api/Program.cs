@@ -18,7 +18,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.Seq("http://seq:5341")
+    .WriteTo.Seq(Environment.GetEnvironmentVariable("Seq__ServerUrl") ?? "http://seq:5341")
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
