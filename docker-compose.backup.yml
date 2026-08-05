@@ -1,0 +1,67 @@
+# Postgres backup overlay.
+#
+#   Scheduled backups (runs forever, dumps on BACKUP_INTERVAL):
+#     docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d backup
+#
+#   One-off backup:
+#     docker compose -f docker-compose.yml -f docker-compose.backup.yml run --rm backup backup.sh
+#
+#   Restore one service (stop that service first):
+#     docker compose stop identity-api
+#     docker compose -f docker-compose.yml -f docker-compose.backup.yml \
+#       run --rm -e RESTORE_CONFIRM=yes backup restore.sh identity latest
+#     docker compose start identity-api
+#
+# Dumps land in the `db-backups` volume. That volume lives on the same host as the
+# databases, so it survives a container rebuild but NOT the loss of the host --
+# ship it off-box (object storage, another machine) for real disaster recovery.
+
+services:
+  backup:
+    # Must match the server major version; pg_dump refuses to dump a newer server.
+    image: postgres:16-alpine
+    container_name: db-backup
+    restart: unless-stopped
+    environment:
+      BACKUP_ROOT: /backups
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
+      BACKUP_INTERVAL: "${BACKUP_INTERVAL:-86400}"
+      IDENTITY_DB_PASS: "${IDENTITY_DB_PASS:?IDENTITY_DB_PASS is required}"
+      PROJECT_DB_PASS: "${PROJECT_DB_PASS:?PROJECT_DB_PASS is required}"
+      ISSUE_DB_PASS: "${ISSUE_DB_PASS:?ISSUE_DB_PASS is required}"
+      SPRINT_DB_PASS: "${SPRINT_DB_PASS:?SPRINT_DB_PASS is required}"
+      NOTIFICATION_DB_PASS: "${NOTIFICATION_DB_PASS:?NOTIFICATION_DB_PASS is required}"
+      STORAGE_DB_PASS: "${STORAGE_DB_PASS:?STORAGE_DB_PASS is required}"
+      AI_DB_PASS: "${AI_DB_PASS:?AI_DB_PASS is required}"
+    volumes:
+      - ./scripts/backup:/usr/local/bin/flowgent-backup:ro
+      - db-backups:/backups
+    # The entrypoint installs the scripts and then either runs the given command or
+    # falls through to the scheduler loop, so `run --rm backup backup.sh` and the
+    # long-running service both get an identical setup.
+    entrypoint: ["/bin/sh", "/usr/local/bin/flowgent-backup/entrypoint.sh"]
+    depends_on:
+      identity-db:
+        condition: service_healthy
+      project-db:
+        condition: service_healthy
+      issue-db:
+        condition: service_healthy
+      sprint-db:
+        condition: service_healthy
+      notification-db:
+        condition: service_healthy
+      storage-db:
+        condition: service_healthy
+      ai-db:
+        condition: service_healthy
+    networks:
+      - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+volumes:
+  db-backups:
