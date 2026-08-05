@@ -17,13 +17,14 @@ public sealed class SprintsControllerTests : IClassFixture<SprintWebAppFactory>
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _projectId = Guid.NewGuid();
+    private readonly Guid _orgId = Guid.NewGuid();
     private const string UserEmail = "scrum@test.com";
 
     public SprintsControllerTests(SprintWebAppFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
-        _client.WithJwt(_userId, UserEmail);
+        _client.WithJwt(_userId, UserEmail, organizationId: _orgId, organizationRole: "Owner");
     }
 
     // ─── Create ──────────────────────────────────────────────────────────────

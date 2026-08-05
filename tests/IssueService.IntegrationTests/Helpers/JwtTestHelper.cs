@@ -11,13 +11,26 @@ public static class JwtTestHelper
     private const string Issuer = "BitirmeProject.IdentityService";
     private const string Audience = "BitirmeProject.Clients";
 
-    public static string GenerateToken(Guid userId, string email, IEnumerable<string>? roles = null)
+    public static string GenerateToken(
+        Guid userId,
+        string email,
+        IEnumerable<string>? roles = null,
+        Guid? organizationId = null,
+        string? organizationRole = null)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Email, email),
         };
+
+        // The API resolves the caller's organization from this claim only — a
+        // spoofed X-Organization-Id header must never influence it.
+        if (organizationId.HasValue)
+            claims.Add(new Claim("org_id", organizationId.Value.ToString()));
+
+        if (organizationRole is not null)
+            claims.Add(new Claim("org_role", organizationRole));
 
         foreach (var role in roles ?? Array.Empty<string>())
             claims.Add(new Claim(ClaimTypes.Role, role));
@@ -35,9 +48,15 @@ public static class JwtTestHelper
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public static HttpClient WithJwt(this HttpClient client, Guid userId, string email, IEnumerable<string>? roles = null)
+    public static HttpClient WithJwt(
+        this HttpClient client,
+        Guid userId,
+        string email,
+        IEnumerable<string>? roles = null,
+        Guid? organizationId = null,
+        string? organizationRole = null)
     {
-        var token = GenerateToken(userId, email, roles);
+        var token = GenerateToken(userId, email, roles, organizationId, organizationRole);
         client.DefaultRequestHeaders.Remove("Cookie");
         client.DefaultRequestHeaders.Add("Cookie", $"accessToken={token}");
         return client;

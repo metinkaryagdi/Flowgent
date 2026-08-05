@@ -126,7 +126,7 @@ public sealed class SecurityRegressionTests : IClassFixture<IdentityWebAppFactor
     [Fact]
     public async Task OrganizationEndpoint_WithoutAuth_Returns401()
     {
-        var response = await _client.GetAsync("/api/v1/organizations");
+        var response = await _client.GetAsync("/api/v1/identity/organizations/my");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -134,7 +134,7 @@ public sealed class SecurityRegressionTests : IClassFixture<IdentityWebAppFactor
     [Fact]
     public async Task InviteEndpoint_WithoutAuth_Returns401()
     {
-        var response = await _client.GetAsync("/api/v1/invites/pending");
+        var response = await _client.GetAsync("/api/v1/identity/invites/pending");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

@@ -5,6 +5,7 @@ using BitirmeProject.NotificationService.Application.Features.Notifications.Comm
 using BitirmeProject.NotificationService.Domain.Entities;
 using BitirmeProject.NotificationService.Domain.Enums;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Shared.Abstractions.Exceptions;
 using Shared.Abstractions.Messaging;
@@ -23,7 +24,9 @@ public sealed class MarkNotificationReadCommandHandlerTests
 
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Notification?)null);
 
-        var handler = new MarkNotificationReadCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new MarkNotificationReadCommandHandler(
+            repository, unitOfWork, outboxRepository, mapper,
+            NullLogger<MarkNotificationReadCommandHandler>.Instance);
         var command = new MarkNotificationReadCommand(Guid.NewGuid(), Guid.NewGuid());
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -45,7 +48,9 @@ public sealed class MarkNotificationReadCommandHandlerTests
         var notification = new Notification(Guid.NewGuid(), "Title", "Body", NotificationChannel.InApp, "Issue", Guid.NewGuid(), null);
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(notification);
 
-        var handler = new MarkNotificationReadCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new MarkNotificationReadCommandHandler(
+            repository, unitOfWork, outboxRepository, mapper,
+            NullLogger<MarkNotificationReadCommandHandler>.Instance);
         var command = new MarkNotificationReadCommand(notification.Id, Guid.NewGuid());
 
         var act = async () => await handler.Handle(command, CancellationToken.None);
@@ -71,7 +76,9 @@ public sealed class MarkNotificationReadCommandHandlerTests
         var expected = new NotificationDto { Id = notification.Id };
         mapper.Map<NotificationDto>(Arg.Any<Notification>()).Returns(expected);
 
-        var handler = new MarkNotificationReadCommandHandler(repository, unitOfWork, outboxRepository, mapper);
+        var handler = new MarkNotificationReadCommandHandler(
+            repository, unitOfWork, outboxRepository, mapper,
+            NullLogger<MarkNotificationReadCommandHandler>.Instance);
         var command = new MarkNotificationReadCommand(notification.Id, userId);
 
         var result = await handler.Handle(command, CancellationToken.None);

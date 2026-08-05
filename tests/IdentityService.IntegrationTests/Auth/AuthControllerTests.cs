@@ -29,7 +29,7 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
         {
             UserName = $"testuser_{Guid.NewGuid():N}",
             Email = $"test_{Guid.NewGuid():N}@example.com",
-            Password = "Test1234!"
+            Password = "TestPass123!"
         };
 
         var response = await _client.PostAsJsonAsync("/api/v1/identity/register", request);
@@ -51,7 +51,7 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
         {
             UserName = $"user1_{Guid.NewGuid():N}",
             Email = email,
-            Password = "Test1234!"
+            Password = "TestPass123!"
         };
 
         // İlk kayıt başarılı
@@ -62,7 +62,7 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
         {
             UserName = $"user2_{Guid.NewGuid():N}",
             Email = email,
-            Password = "Test1234!"
+            Password = "TestPass123!"
         };
         var response = await _client.PostAsJsonAsync("/api/v1/identity/register", request2);
 
@@ -91,7 +91,7 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
     {
         // Önce kayıt ol
         var email = $"login_{Guid.NewGuid():N}@example.com";
-        var password = "Test1234!";
+        var password = "TestPass123!";
         await _client.PostAsJsonAsync("/api/v1/identity/register", new
         {
             UserName = $"loginuser_{Guid.NewGuid():N}",
@@ -144,7 +144,7 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/identity/login", new
         {
             UserNameOrEmail = "nouser@example.com",
-            Password = "Test1234!"
+            Password = "TestPass123!"
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
