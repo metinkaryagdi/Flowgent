@@ -109,7 +109,7 @@ jobs:
       # Full report goes to the Security tab; unfixed CVEs are reported but do not
       # block, since there is no action to take on them yet.
       - name: Scan image (report to Security tab)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: flowgent-${{ matrix.name }}:scan
           format: sarif
@@ -127,7 +127,7 @@ jobs:
       # Gate: a fixable CRITICAL means a patched base image or package exists, so
       # the build should not ship. HIGH is reported above but does not fail the run.
       - name: Fail on fixable CRITICAL vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: flowgent-${{ matrix.name }}:scan
           format: table
@@ -168,7 +168,7 @@ jobs:
       # Catches vulnerable NuGet/npm packages and committed secrets, which an
       # image scan alone would miss.
       - name: Scan repository
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scanners: vuln,secret
