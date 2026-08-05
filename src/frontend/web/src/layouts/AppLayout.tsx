@@ -140,6 +140,7 @@ export default function AppLayout() {
         if (path === '/settings/organization') {
             return roles.includes('Admin') ? 'Organizasyon Yönetimi' : 'Organizasyon Ayarları';
         }
+        if (path === '/settings/account') return 'Hesap Ayarları';
         if (path.includes('/board')) return 'Projeler › Board';
         if (path.includes('/sprints')) return 'Projeler › Sprint';
         return 'Kontrol Paneli';
@@ -311,6 +312,17 @@ export default function AppLayout() {
                     >
                         <span className={styles.sidebar__linkIcon}>🏢</span>
                         Organizasyon
+                    </NavLink>
+
+                    <NavLink
+                        to="/settings/account"
+                        className={({ isActive }) =>
+                            `${styles.sidebar__link} ${isActive ? styles.sidebar__linkActive : ''}`
+                        }
+                        data-testid="nav-account"
+                    >
+                        <span className={styles.sidebar__linkIcon}>👤</span>
+                        Hesabım
                     </NavLink>
 
                     {flags?.canViewAdmin && (

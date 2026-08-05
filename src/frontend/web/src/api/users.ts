@@ -12,4 +12,14 @@ export const usersApi = {
         const response = await apiClient.get<UserDto>(`/api/v1/identity/users/${id}`);
         return response.data;
     },
+
+    /**
+     * Erases the signed-in user's own account. Irreversible: the address and username are
+     * overwritten server-side, not just flagged deleted. The password is re-entered because
+     * a borrowed session should not be enough to destroy an account.
+     */
+    deleteMyAccount: async (password: string): Promise<void> => {
+        if (useMockApi) return;
+        await apiClient.post('/api/v1/identity/users/me/delete', { password });
+    },
 };

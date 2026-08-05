@@ -2,6 +2,7 @@
 using BitirmeProject.IdentityService.Domain.Common;
 using BitirmeProject.IdentityService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Shared.Abstractions.Messaging;
 using System.Linq.Expressions;
 
@@ -74,5 +75,25 @@ public class IdentityDbContext : DbContext, IUnitOfWork
     async Task<int> IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
     {
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    async Task<IUnitOfWorkTransaction> IUnitOfWork.BeginTransactionAsync(CancellationToken cancellationToken)
+    {
+        var transaction = await Database.BeginTransactionAsync(cancellationToken);
+        return new EfUnitOfWorkTransaction(transaction);
+    }
+
+    private sealed class EfUnitOfWorkTransaction : IUnitOfWorkTransaction
+    {
+        private readonly IDbContextTransaction _transaction;
+
+        public EfUnitOfWorkTransaction(IDbContextTransaction transaction) => _transaction = transaction;
+
+        public Task CommitAsync(CancellationToken cancellationToken = default) =>
+            _transaction.CommitAsync(cancellationToken);
+
+        // EF rolls an uncommitted transaction back on dispose, so a handler that throws
+        // partway through needs no explicit rollback call.
+        public ValueTask DisposeAsync() => _transaction.DisposeAsync();
     }
 }

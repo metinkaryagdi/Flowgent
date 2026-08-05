@@ -1,24 +1,24 @@
-﻿using AutoMapper;
-using BitirmeProject.IdentityService.Application.Abstractions;
+﻿using BitirmeProject.IdentityService.Application.Abstractions;
 using MediatR;
 
 namespace IdentityService.Application.Features.Users.Commands.DeleteUser;
 
+/// <summary>
+/// Admin-side deactivation. This is a soft delete: the row keeps its email and username,
+/// so it is not erasure and cannot answer a deletion request. That is DeleteMyAccount.
+/// </summary>
 public sealed class DeleteUserCommandHandler
     : IRequestHandler<DeleteUserCommand, Unit>
 {
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IMapper _mapper; // Bu handler'da gerek yok ama DI bozulmasın diye bırakıyorum.
 
     public DeleteUserCommandHandler(
         IUserRepository userRepository,
-        IUnitOfWork unitOfWork,
-        IMapper mapper)
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
-        _mapper = mapper;
     }
 
     public async Task<Unit> Handle(DeleteUserCommand request, CancellationToken cancellationToken)

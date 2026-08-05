@@ -190,4 +190,41 @@ public class User : BaseEntity
     {
         base.SoftDelete();
     }
+
+    /// <summary>
+    /// Erases the personal data on this row and soft-deletes it.
+    ///
+    /// A soft delete on its own is not erasure: the address and username stay in the
+    /// table, so a request to be forgotten would not have been honoured. Every other
+    /// service stores only this user's id, never their name or address, so once these
+    /// two columns are gone that id is a pseudonym nobody can resolve back to a person --
+    /// which is why issue history, comment authorship and audit trails can be left
+    /// intact rather than shredded.
+    ///
+    /// The placeholders are derived from the id, so they stay unique without needing a
+    /// lookup, and .invalid is reserved by RFC 2606 and can never be routed to a real
+    /// mailbox. Rotating the security stamp drops every live session immediately.
+    /// </summary>
+    public void Anonymize()
+    {
+        if (IsDeleted)
+            return;
+
+        var token = Id.ToString("N");
+        UserName = $"deleted_{token[..12]}";
+        Email = $"deleted-{token}@deleted.invalid";
+        // Not hashed from anything: no password must ever verify against this row again.
+        PasswordHash = "!erased";
+
+        Status = UserStatus.Deactivated;
+        SecurityStamp = Guid.NewGuid();
+        EmailVerifiedAt = null;
+        PasswordChangedAt = null;
+        LastActiveOrganizationId = null;
+        FailedLoginCount = 0;
+        LockoutEnd = null;
+
+        MarkUpdated();
+        base.SoftDelete();
+    }
 }

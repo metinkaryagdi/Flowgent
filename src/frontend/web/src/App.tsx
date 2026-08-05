@@ -23,6 +23,7 @@ import NotificationsPage from './features/notifications/NotificationsPage';
 import AdminPage from './features/admin/AdminPage';
 import OnboardingPage from './features/onboarding/OnboardingPage';
 import OrganizationSettingsPage from './features/organization/OrganizationSettingsPage';
+import AccountSettingsPage from './features/account/AccountSettingsPage';
 import AiPlannerPage from './features/ai/AiPlannerPage';
 import AiAssistantPage from './features/ai-assistant/AiAssistantPage';
 
@@ -60,6 +61,9 @@ export default function App() {
             <Route element={<AppLayout />}>
               {/* Org gerektirmez — user_id bazlı */}
               <Route path="/notifications" element={<NotificationsPage />} />
+              {/* Deliberately outside OrgGuard: someone who has left every organization
+                  must still be able to reach account deletion. */}
+              <Route path="/settings/account" element={<AccountSettingsPage />} />
 
               {/* Org guard — activeOrg yoksa /onboarding'e yönlendir */}
               <Route element={<OrgGuard />}>

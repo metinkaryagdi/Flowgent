@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IInviteRepository, InviteRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IAccountErasureStore, AccountErasureStore>();
 
         // Email
         services.AddScoped<IEmailService, EmailService>();

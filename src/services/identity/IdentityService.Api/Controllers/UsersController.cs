@@ -2,6 +2,7 @@ using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.DTOs;
 using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.AssignRoleToUser;
+using BitirmeProject.IdentityService.Application.Features.Users.Commands.DeleteMyAccount;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.RegisterUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Commands.UpdateUser;
 using BitirmeProject.IdentityService.Application.Features.Users.Queries.GetUserById;
@@ -91,6 +92,34 @@ public class UsersController : ControllerBase
         if (result is null)
             return NotFound();
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Erases the caller's own account. Irreversible.
+    ///
+    /// Separate from the admin endpoint below on purpose: that one soft-deletes and leaves
+    /// the row's personal data in place, which is fine for an operator disabling an account
+    /// but is not erasure. This one anonymises, so it can answer a KVKK/GDPR deletion
+    /// request. The password is re-checked inside the handler -- being logged in is not
+    /// enough to destroy an account.
+    /// </summary>
+    [HttpPost("me/delete")]
+    public async Task<IActionResult> DeleteMyAccount(
+        [FromBody] DeleteMyAccountRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = User.TryGetUserId();
+        if (userId is null)
+            return Unauthorized();
+
+        await _mediator.Send(new DeleteMyAccountCommand(userId.Value, request.Password), cancellationToken);
+
+        // The account is gone, so the session cookies are dead weight -- clear them so the
+        // browser does not keep sending a token that will now be refused.
+        Response.Cookies.Delete("accessToken");
+        Response.Cookies.Delete("refreshToken");
+
+        return NoContent();
     }
 
     /// <summary>
@@ -274,6 +303,9 @@ public class UsersController : ControllerBase
 }
 
 public sealed record AssignRoleRequest(string RoleName);
+
+/// <summary>Body of POST users/me/delete. The caller re-enters their own password.</summary>
+public sealed record DeleteMyAccountRequest(string Password);
 
 public sealed record AdminStatsDto
 {
