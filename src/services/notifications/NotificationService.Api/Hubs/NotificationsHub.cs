@@ -18,6 +18,12 @@ public sealed class NotificationsHub : Hub
     /// </summary>
     public const string ReceiveNotification = "ReceiveNotification";
 
+    /// <summary>
+    /// Client method invoked when one of the user's notifications is marked read, so their
+    /// other open tabs stop showing it as unread. Same constant-sharing rule as above.
+    /// </summary>
+    public const string NotificationRead = "NotificationRead";
+
     private readonly ILogger<NotificationsHub> _logger;
 
     public NotificationsHub(ILogger<NotificationsHub> logger)

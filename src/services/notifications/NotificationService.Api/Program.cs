@@ -71,6 +71,9 @@ builder.Services.AddScoped<IEventHandler<IssueStatusChangedEvent>, IssueStatusCh
 builder.Services.AddScoped<IEventHandler<CommentAddedEvent>, CommentAddedEventHandler>();
 builder.Services.AddScoped<IEventHandler<MemberAddedEvent>, MemberAddedEventHandler>();
 builder.Services.AddScoped<IEventHandler<UserInvitedEvent>, UserInvitedEventHandler>();
+// Consumed by this same service: the read receipt goes out through the broker so it
+// reaches whichever replica holds the user's other tabs.
+builder.Services.AddScoped<IEventHandler<NotificationReadEvent>, NotificationReadEventHandler>();
 builder.Services.AddHostedService<NotificationEventsConsumer>();
 builder.Services.AddHostedService<NotificationDeliveryWorker>();
 builder.Services.AddSingleton<NotificationDeliveryMonitor>();

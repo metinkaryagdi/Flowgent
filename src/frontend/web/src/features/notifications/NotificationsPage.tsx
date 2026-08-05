@@ -6,7 +6,7 @@ import { authApi } from '../../api/auth';
 import { organizationsApi } from '../../api/organizations';
 import { useToastStore } from '../../store/toastStore';
 import { useAuthStore } from '../../store/authStore';
-import { useSignalR } from '../../hooks/useSignalR';
+import { useSignalR, type NotificationReadPayload } from '../../hooks/useSignalR';
 import type { NotificationDto } from '../../types';
 import styles from './Notifications.module.css';
 
@@ -58,12 +58,25 @@ export default function NotificationsPage() {
     }, [loadNotifications]);
 
     // ── SignalR real-time ─────────
-    const handleSignalREvent = useCallback(() => {
-        // Refresh notifications when a real-time event comes in
+    // A new notification needs the full list: the payload alone does not say where it
+    // belongs in the ordering, and the server may have created several.
+    const handleIncomingNotification = useCallback(() => {
         loadNotifications();
     }, [loadNotifications]);
 
-    const { status: signalRStatus } = useSignalR(handleSignalREvent);
+    // A read receipt, on the other hand, is a one-field change to a row already on screen
+    // -- almost always because the user read it in another tab. Refetching for that would
+    // discard local state and flash the list for no reason.
+    const handleNotificationRead = useCallback(({ notificationId, readAt }: NotificationReadPayload) => {
+        setNotifications((prev) =>
+            prev.map((n) => (n.id === notificationId ? { ...n, isRead: true, readAt } : n))
+        );
+    }, []);
+
+    const { status: signalRStatus } = useSignalR({
+        onNotification: handleIncomingNotification,
+        onNotificationRead: handleNotificationRead,
+    });
 
     // ── Mark as read ──────────────
     const handleMarkAsRead = async (id: string) => {

@@ -48,7 +48,10 @@ public sealed class NotificationEventsConsumer : BackgroundService
             nameof(IssueStatusChangedEvent),
             nameof(CommentAddedEvent),
             nameof(MemberAddedEvent),
-            nameof(UserInvitedEvent)
+            nameof(UserInvitedEvent),
+            // Published by this service's own outbox and consumed back here, purely to
+            // fan the read receipt out to the user's other connections.
+            nameof(NotificationReadEvent)
         };
 
         // Declare Dead Letter Exchange for failed messages
@@ -203,6 +206,27 @@ public sealed class NotificationEventsConsumer : BackgroundService
                     }
 
                     var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<UserInvitedEvent>>();
+                    await handler.HandleAsync(evt);
+
+                    await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
+                    break;
+                }
+                case nameof(NotificationReadEvent):
+                {
+                    var evt = JsonSerializer.Deserialize<NotificationReadEvent>(message);
+                    if (evt is null) throw new InvalidOperationException("Invalid NotificationReadEvent payload");
+                    using var logScope = _logger.BeginIntegrationEventScope(evt, $"{ServiceName}.{eventType}", evt.NotificationId, evt.UserId);
+
+                    _logger.LogInformation("NotificationReadEvent received.");
+
+                    if (await processedRepo.ExistsAsync(evt.EventId))
+                    {
+                        _logger.LogInformation("Duplicate NotificationReadEvent ignored. EventId={EventId}", evt.EventId);
+                        break;
+                    }
+
+                    var handler = scope.ServiceProvider.GetRequiredService<IEventHandler<NotificationReadEvent>>();
                     await handler.HandleAsync(evt);
 
                     await processedRepo.AddAsync(new ProcessedEvent(evt.EventId, eventType));
