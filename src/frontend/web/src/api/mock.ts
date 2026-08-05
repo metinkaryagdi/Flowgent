@@ -16,6 +16,7 @@ import type {
     IssueAuditDto,
     WorkflowConfigDto,
     CreateIssueRequest,
+    UpdateIssueRequest,
     AssignIssueRequest,
     ChangeIssueStatusRequest,
     AddCommentRequest,
@@ -700,7 +701,7 @@ export const mockApi = {
             );
             return issue;
         },
-        update: async (id: string, data: any): Promise<IssueDto> => {
+        update: async (id: string, data: UpdateIssueRequest): Promise<IssueDto> => {
             await new Promise(r => setTimeout(r, 400));
             const issues = getIssues();
             const index = issues.findIndex((i) => i.id === id);

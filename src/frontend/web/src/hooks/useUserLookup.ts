@@ -12,18 +12,23 @@ const normalizeIds = (ids: Array<string | null | undefined>) => {
 };
 
 export function useUserLookup(ids: Array<string | null | undefined>) {
-    const [users, setUsers] = useState<Map<string, UserDto>>(() => new Map(userCache));
+    // Callers pass a freshly built array on every render, so memoising on `ids`
+    // directly would recompute forever. Collapsing to a string first gives a value
+    // that compares equal across renders, which keeps `normalizedIds` -- and the
+    // effect that depends on it -- stable.
+    const idsKey = useMemo(() => normalizeIds(ids).join('|'), [ids]);
+    const normalizedIds = useMemo(() => (idsKey ? idsKey.split('|') : []), [idsKey]);
 
-    const normalizedIds = useMemo(() => normalizeIds(ids), [ids]);
+    // Bumped whenever a fetch adds entries to the shared cache. The rendered map is
+    // derived from the cache rather than copied into state, so the "everything is
+    // already cached" path needs no setState at all.
+    const [cacheVersion, setCacheVersion] = useState(0);
 
     useEffect(() => {
         if (normalizedIds.length === 0) return;
 
         const missing = normalizedIds.filter((id) => !userCache.has(id));
-        if (missing.length === 0) {
-            setUsers(new Map(userCache));
-            return;
-        }
+        if (missing.length === 0) return;
 
         let cancelled = false;
 
@@ -47,7 +52,7 @@ export function useUserLookup(ids: Array<string | null | undefined>) {
             results.forEach(({ id, user }) => {
                 if (user) userCache.set(id, user);
             });
-            setUsers(new Map(userCache));
+            setCacheVersion((version) => version + 1);
         };
 
         void load();
@@ -55,7 +60,14 @@ export function useUserLookup(ids: Array<string | null | undefined>) {
         return () => {
             cancelled = true;
         };
-    }, [normalizedIds.join('|')]);
+    }, [normalizedIds]);
+
+    // Recomputed when a fetch lands (cacheVersion) or the requested ids change --
+    // the latter also picks up entries another component put in the cache meanwhile.
+    // `userCache` is a module-level mutable map, so these two are the invalidation
+    // signals; the rule cannot see that because neither appears in the body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const users = useMemo(() => new Map(userCache), [cacheVersion, idsKey]);
 
     const getUserName = (id: string | null | undefined, fallbackLength = 8) => {
         if (!id) return '—';

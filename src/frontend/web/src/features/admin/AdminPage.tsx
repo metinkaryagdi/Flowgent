@@ -11,7 +11,10 @@ const formatDate = (d: string) =>
 const formatDateTime = (d: string) =>
     new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-const SEQ_BASE = 'http://localhost:5341';
+// Seq is reached by the browser, not by the container, so this has to be an address
+// the client machine can resolve. Deployments that expose Seq behind a different
+// host set VITE_SEQ_BASE_URL; the dev default matches docker-compose's port mapping.
+const SEQ_BASE = import.meta.env.VITE_SEQ_BASE_URL || 'http://localhost:5341';
 const SYSTEM_ADMIN_ROLE = 'Admin';
 
 type Tab = 'users' | 'orgs' | 'projects';
