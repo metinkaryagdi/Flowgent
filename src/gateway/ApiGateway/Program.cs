@@ -131,19 +131,49 @@ builder.Services.AddHttpClient("IdentityService", client =>
     client.BaseAddress = new Uri(baseUrl);
 });
 
-// Per-IP, per-path rate limiter registered as a singleton
+// Per-IP, per-path rate limiter registered as a singleton.
+//
+// The paths below must stay in sync with IdentityService's AuthController, which is
+// routed at "api/v1/identity" -- there is no "/auth/" segment anywhere in it. An earlier
+// version matched on "/auth/login" and friends, so every rule here silently matched
+// nothing and the gateway rate-limited absolutely nothing. Verified against the running
+// stack after the fix: the 11th login in a minute now yields a 429.
+//
+// Matching is exact (not Contains) and case-folded: routing treats paths
+// case-insensitively, so "/API/V1/Identity/Login" reaches the same action and must land
+// in the same partition rather than slipping through as unlimited.
 var partitionedLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
 {
     var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var path = context.Request.Path.Value ?? string.Empty;
+    var path = (context.Request.Path.Value ?? string.Empty).TrimEnd('/').ToLowerInvariant();
 
-    if (path.Contains("/auth/login") || path.Contains("/auth/refresh"))
+    if (path is "/api/v1/identity/login" or "/api/v1/identity/refresh")
         return RateLimitPartition.GetFixedWindowLimiter($"auth_strict:{ip}",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
 
-    if (path.Contains("/auth/register") || path.Contains("/invites/validate"))
+    // The invite-validation path carries the token as a route segment, hence the prefix
+    // match; the others are complete paths.
+    if (path is "/api/v1/identity/register"
+        || path.StartsWith("/api/v1/identity/invites/validate/", StringComparison.Ordinal))
         return RateLimitPartition.GetFixedWindowLimiter($"auth_register:{ip}",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+
+    // Tighter than registration, because each accepted request sends an email to an
+    // address the caller chooses. Without this, the endpoint is a free mail cannon: point
+    // it at someone else's address and hit it in a loop.
+    if (path is "/api/v1/identity/resend-verification")
+        return RateLimitPartition.GetFixedWindowLimiter($"auth_resend:{ip}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 });
+
+    // Redeeming a token sends no mail, so it does not need the mail-cannon budget -- and
+    // it must not share one, or a burst of resends would lock the user out of the link
+    // they just asked for. The limit here only exists to stop hammering; guessing a
+    // 256-bit token is not a threat this number is defending against. Deliberately loose
+    // enough to survive a shared NAT, a mail client that prefetches links, and a user who
+    // reloads the page.
+    if (path is "/api/v1/identity/verify-email")
+        return RateLimitPartition.GetFixedWindowLimiter($"auth_verify:{ip}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(5), QueueLimit = 0 });
 
     return RateLimitPartition.GetNoLimiter("default");
 });
