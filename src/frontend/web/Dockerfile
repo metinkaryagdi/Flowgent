@@ -24,7 +24,11 @@ RUN npm run build
 # =========================
 # RUNTIME STAGE
 # =========================
-FROM nginx:1.27-alpine AS final
+# 1.27-alpine sits on Alpine 3.21 with openssl 3.3.3-r0, which carries a fixable
+# CRITICAL (CVE-2026-31789, fixed in 3.3.7-r0) and failed the Trivy gate in CI.
+# 1.29-alpine is on Alpine 3.23 with openssl 3.5.6-r0. Pinned to the minor rather
+# than plain `alpine` so a base-image bump is a visible commit, not a silent one.
+FROM nginx:1.29-alpine AS final
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
     && rm -rf /usr/share/nginx/html/* \
