@@ -1,28 +1,129 @@
 # Production overlay. The base docker-compose.yml stays optimized for local
-# development (frontend runs via Vite dev server with hot reload).
+# development (frontend runs via Vite dev server with hot reload, every service
+# publishes a debug port).
 #
 # Usage:
-#   1. Set ASPNETCORE_ENVIRONMENT=Production, PUBLIC_API_BASE_URL and
-#      PUBLIC_WEB_ORIGIN in .env, and generate strong secrets (see
-#      tools/generate-secrets.ps1 / .sh).
-#   2. docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#   1. In .env set ASPNETCORE_ENVIRONMENT=Production, PUBLIC_WEB_DOMAIN,
+#      PUBLIC_API_DOMAIN, ACME_EMAIL, the SMTP_* values, and generate strong
+#      secrets (see tools/generate-secrets.ps1 / .sh).
+#   2. Point both domains' DNS A records at this host, and open ports 80/443.
+#   3. docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
-# This replaces the dev-server frontend container with a real production
-# build: `vite build` output served by nginx, no source bind-mount, no
-# node_modules volume, no live source dependency on the host machine.
+# What this overlay changes versus the dev stack:
+#   * adds Caddy for TLS termination (automatic Let's Encrypt certificates)
+#   * stops publishing every microservice port to the host -- only Caddy is
+#     reachable, so the gateway cannot be bypassed
+#   * replaces the dev-server frontend with a real `vite build` served by nginx
+#   * swaps MailHog for a real SMTP provider
+#
+# Requires Docker Compose v2.24+ for the `!reset` / `!override` merge tags.
 
 services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: caddy
+    restart: unless-stopped
+    depends_on:
+      gateway-api:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    environment:
+      PUBLIC_WEB_DOMAIN: "${PUBLIC_WEB_DOMAIN:?PUBLIC_WEB_DOMAIN is required}"
+      PUBLIC_API_DOMAIN: "${PUBLIC_API_DOMAIN:?PUBLIC_API_DOMAIN is required}"
+      ACME_EMAIL: "${ACME_EMAIL:?ACME_EMAIL is required}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - bitirme-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  # ============================================
+  # Stop publishing backend ports to the host.
+  # Reaching a service directly would skip the gateway's JWT validation,
+  # rate limiting and organization-header stripping.
+  # ============================================
+
+  identity-api:
+    ports: !reset []
+    # Replaced wholesale so the MailHog dependency disappears along with the
+    # service itself (see the mailhog profile below).
+    depends_on: !override
+      identity-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # Real SMTP provider -- MailHog is development-only and silently swallows
+      # every invite email.
+      Smtp__Host: "${SMTP_HOST:?SMTP_HOST is required in production}"
+      Smtp__Port: "${SMTP_PORT:-587}"
+      Smtp__EnableSsl: "${SMTP_ENABLE_SSL:-true}"
+      Smtp__Username: "${SMTP_USERNAME:?SMTP_USERNAME is required in production}"
+      Smtp__Password: "${SMTP_PASSWORD:?SMTP_PASSWORD is required in production}"
+      Smtp__FromAddress: "${SMTP_FROM_ADDRESS:?SMTP_FROM_ADDRESS is required in production}"
+
+  project-api:
+    ports: !reset []
+
+  issue-api:
+    ports: !reset []
+
+  sprint-api:
+    ports: !reset []
+
+  notification-api:
+    ports: !reset []
+
+  storage-api:
+    ports: !reset []
+
+  ai-api:
+    ports: !reset []
+
+  bff-api:
+    ports: !reset []
+
+  gateway-api:
+    # Reachable only through Caddy on the internal network.
+    ports: !reset []
+    environment:
+      # Browser-facing origin is now HTTPS; the gateway allows credentials so the
+      # CORS origin list is exact-match.
+      Cors__AllowedOrigins__0: "https://${PUBLIC_WEB_DOMAIN}"
+      Cors__AllowedOrigins__1: !reset null
+      Cors__AllowedOrigins__2: !reset null
+
+  mailhog:
+    # Development-only mail catcher. Not started in production.
+    profiles: ["donotstart"]
+
   frontend:
     image: bitirmeproject-frontend:prod
     build:
       context: ./src/frontend/web
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: "${PUBLIC_API_BASE_URL:-http://localhost:5000}"
+        VITE_API_BASE_URL: "https://${PUBLIC_API_DOMAIN}"
         VITE_USE_MOCK_API: "false"
-    # Requires Docker Compose v2.24+ for the `!reset` merge tag, which drops
-    # the dev overlay's bind-mount/dev-server command instead of merging it.
+        # Seq is not published in production; point this at whatever internal host
+        # operators actually reach it on, otherwise the admin log links dead-end.
+        VITE_SEQ_BASE_URL: "${PUBLIC_SEQ_BASE_URL:-}"
+    # `!reset` drops the dev overlay's bind-mount/dev-server command instead of
+    # merging with it.
     volumes: !reset []
     command: !reset null
-    ports: !override
-      - "5174:8080"
+    ports: !reset []
+
+volumes:
+  caddy-data:
+  caddy-config:

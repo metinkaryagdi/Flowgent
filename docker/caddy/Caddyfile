@@ -1,0 +1,50 @@
+# TLS termination for the production stack.
+#
+# Caddyfile comments are '#'. '//' is not a comment here -- it parses as a site
+# address and makes the whole file invalid, which stops Caddy from starting at all.
+#
+# Caddy obtains and renews Let's Encrypt certificates automatically for the two
+# domains below -- both must already resolve to this host's public IP, and ports
+# 80/443 must be reachable from the internet for the ACME HTTP challenge.
+#
+# It also sets X-Forwarded-For / X-Forwarded-Proto, which the services read via
+# AddReverseProxyForwardedHeaders(). Without TLS here, Production-mode auth
+# cookies (Secure=true) are rejected by browsers and login silently fails.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# SPA
+{$PUBLIC_WEB_DOMAIN} {
+	encode gzip zstd
+
+	reverse_proxy frontend:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# API gateway -- the only backend entry point. Individual microservices are not
+# published to the host at all in docker-compose.prod.yml, so the org-scoping and
+# rate limiting the gateway applies cannot be bypassed.
+{$PUBLIC_API_DOMAIN} {
+	encode gzip zstd
+
+	reverse_proxy gateway-api:8080 {
+		# SignalR websocket upgrade for /hubs/notifications
+		header_up Host {upstream_hostport}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

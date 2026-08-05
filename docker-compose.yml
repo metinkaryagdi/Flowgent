@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ============================================
   # INFRASTRUCTURE SERVICES
@@ -11,7 +9,7 @@ services:
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:?RABBITMQ_PASS is required}
       RABBITMQ_DEFAULT_VHOST: /
     ports:
       - "127.0.0.1:5672:5672" # AMQP protocol
@@ -100,7 +98,7 @@ services:
     environment:
       POSTGRES_DB: identitydb
       POSTGRES_USER: identity_user
-      POSTGRES_PASSWORD: ${IDENTITY_DB_PASS}
+      POSTGRES_PASSWORD: ${IDENTITY_DB_PASS:?IDENTITY_DB_PASS is required}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -125,7 +123,7 @@ services:
     environment:
       POSTGRES_DB: projectdb
       POSTGRES_USER: project_user
-      POSTGRES_PASSWORD: ${PROJECT_DB_PASS}
+      POSTGRES_PASSWORD: ${PROJECT_DB_PASS:?PROJECT_DB_PASS is required}
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
@@ -150,7 +148,7 @@ services:
     environment:
       POSTGRES_DB: issuedb
       POSTGRES_USER: issue_user
-      POSTGRES_PASSWORD: ${ISSUE_DB_PASS}
+      POSTGRES_PASSWORD: ${ISSUE_DB_PASS:?ISSUE_DB_PASS is required}
     ports:
       - "127.0.0.1:5435:5432"
     volumes:
@@ -175,7 +173,7 @@ services:
     environment:
       POSTGRES_DB: sprintdb
       POSTGRES_USER: sprint_user
-      POSTGRES_PASSWORD: ${SPRINT_DB_PASS}
+      POSTGRES_PASSWORD: ${SPRINT_DB_PASS:?SPRINT_DB_PASS is required}
     ports:
       - "127.0.0.1:5436:5432"
     volumes:
@@ -200,7 +198,7 @@ services:
     environment:
       POSTGRES_DB: notificationdb
       POSTGRES_USER: notification_user
-      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASS}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASS:?NOTIFICATION_DB_PASS is required}
     ports:
       - "127.0.0.1:5437:5432"
     volumes:
@@ -225,7 +223,7 @@ services:
     environment:
       POSTGRES_DB: storagedb
       POSTGRES_USER: storage_user
-      POSTGRES_PASSWORD: ${STORAGE_DB_PASS}
+      POSTGRES_PASSWORD: ${STORAGE_DB_PASS:?STORAGE_DB_PASS is required}
     ports:
       - "127.0.0.1:5438:5432"
     volumes:
@@ -250,7 +248,7 @@ services:
     environment:
       POSTGRES_DB: aidb
       POSTGRES_USER: ai_user
-      POSTGRES_PASSWORD: ${AI_DB_PASS}
+      POSTGRES_PASSWORD: ${AI_DB_PASS:?AI_DB_PASS is required}
     ports:
       - "127.0.0.1:5439:5432"
     volumes:
@@ -289,23 +287,23 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
       # Database
-      ConnectionStrings__IdentityDatabase: "Host=identity-db;Port=5432;Database=identitydb;Username=identity_user;Password=${IDENTITY_DB_PASS}"
+      ConnectionStrings__IdentityDatabase: "Host=identity-db;Port=5432;Database=identitydb;Username=identity_user;Password=${IDENTITY_DB_PASS:?IDENTITY_DB_PASS is required}"
       # RabbitMQ
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
       # Seq
       Seq__ServerUrl: "http://seq:5341"
       # JWT
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
       # Admin seeder
       SEED_ADMIN: "${SEED_ADMIN:-true}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD is required (or set SEED_ADMIN=false)}"
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@example.com}"
       ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
       # SMTP (MailHog)
@@ -337,14 +335,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__ProjectDatabase: "Host=project-db;Port=5432;Database=projectdb;Username=project_user;Password=${PROJECT_DB_PASS}"
+      ConnectionStrings__ProjectDatabase: "Host=project-db;Port=5432;Database=projectdb;Username=project_user;Password=${PROJECT_DB_PASS:?PROJECT_DB_PASS is required}"
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
@@ -372,19 +370,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__IssueDatabase: "Host=issue-db;Port=5432;Database=issuedb;Username=issue_user;Password=${ISSUE_DB_PASS}"
+      ConnectionStrings__IssueDatabase: "Host=issue-db;Port=5432;Database=issuedb;Username=issue_user;Password=${ISSUE_DB_PASS:?ISSUE_DB_PASS is required}"
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
       Services__StorageService: "http://storage-api:8080"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
-      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:?INTERNAL_SERVICE_API_KEY is required}"
     ports:
       - "5003:8080"
     networks:
@@ -409,18 +407,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__SprintDatabase: "Host=sprint-db;Port=5432;Database=sprintdb;Username=sprint_user;Password=${SPRINT_DB_PASS}"
+      ConnectionStrings__SprintDatabase: "Host=sprint-db;Port=5432;Database=sprintdb;Username=sprint_user;Password=${SPRINT_DB_PASS:?SPRINT_DB_PASS is required}"
       IssueService__BaseUrl: "http://issue-api:8080/"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
-      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:?INTERNAL_SERVICE_API_KEY is required}"
     ports:
       - "5004:8080"
     networks:
@@ -442,16 +440,20 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__NotificationDatabase: "Host=notification-db;Port=5432;Database=notificationdb;Username=notification_user;Password=${NOTIFICATION_DB_PASS}"
+      ConnectionStrings__NotificationDatabase: "Host=notification-db;Port=5432;Database=notificationdb;Username=notification_user;Password=${NOTIFICATION_DB_PASS:?NOTIFICATION_DB_PASS is required}"
+      # SignalR backplane -- required for more than one notification-api replica.
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS:?REDIS_PASS is required}"
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Jwt__ExpirationMinutes: "60"
@@ -477,9 +479,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__StorageDatabase: "Host=storage-db;Port=5432;Database=storagedb;Username=storage_user;Password=${STORAGE_DB_PASS}"
+      ConnectionStrings__StorageDatabase: "Host=storage-db;Port=5432;Database=storagedb;Username=storage_user;Password=${STORAGE_DB_PASS:?STORAGE_DB_PASS is required}"
       Storage__RootPath: "storage-uploads"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
     ports:
@@ -508,7 +510,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__AiDatabase: "Host=ai-db;Port=5432;Database=aidb;Username=ai_user;Password=${AI_DB_PASS}"
+      ConnectionStrings__AiDatabase: "Host=ai-db;Port=5432;Database=aidb;Username=ai_user;Password=${AI_DB_PASS:?AI_DB_PASS is required}"
       Ollama__BaseUrl: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
       Ollama__Model: "gemma3:4b"
       Ollama__FallbackModel: "bp-agent"
@@ -519,13 +521,13 @@ services:
       RabbitMQ__Host: "rabbitmq"
       RabbitMQ__Port: "5672"
       RabbitMQ__Username: "${RABBITMQ_USER:-admin}"
-      RabbitMQ__Password: "${RABBITMQ_PASS}"
+      RabbitMQ__Password: "${RABBITMQ_PASS:?RABBITMQ_PASS is required}"
       RabbitMQ__VirtualHost: "/"
       Seq__ServerUrl: "http://seq:5341"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
-      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:-local-dev-internal-service-key-change-me}"
+      InternalService__ApiKey: "${INTERNAL_SERVICE_API_KEY:?INTERNAL_SERVICE_API_KEY is required}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -556,7 +558,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
     ports:
@@ -593,7 +595,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
-      Jwt__Secret: "${JWT_SECRET}"
+      Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"
       Cors__AllowedOrigins__0: "http://localhost:5174"
@@ -624,6 +626,8 @@ services:
       # the client machine can reach -- not localhost when deploying to a host.
       VITE_API_BASE_URL: "${PUBLIC_API_BASE_URL:-http://localhost:5000}"
       VITE_USE_MOCK_API: "false"
+      # Admin log widget links straight to Seq from the browser.
+      VITE_SEQ_BASE_URL: "${PUBLIC_SEQ_BASE_URL:-http://localhost:5341}"
     ports:
       - "5174:5174"
     volumes:
