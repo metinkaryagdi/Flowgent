@@ -19,6 +19,19 @@ public sealed class IssueAssignedEventHandler : IEventHandler<IssueAssignedEvent
 
     public async Task HandleAsync(IssueAssignedEvent @event, CancellationToken cancellationToken = default)
     {
+        // Nobody wants to be told about something they just did themselves. This handler
+        // used to notify unconditionally while IssueStatusChangedEventHandler already
+        // filtered self-actions out, so assigning yourself an issue produced a
+        // notification but moving your own issue did not -- one of the two had to go.
+        if (@event.AssigneeUserId == @event.AssignedByUserId)
+        {
+            _logger.LogInformation(
+                "IssueAssignedEvent skipped: self-assignment. IssueId={IssueId}, UserId={UserId}",
+                @event.IssueId,
+                @event.AssigneeUserId);
+            return;
+        }
+
         var command = new CreateNotificationCommand(
             @event.AssigneeUserId,
             "Issue assigned",

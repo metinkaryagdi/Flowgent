@@ -28,4 +28,20 @@ public sealed class IssueAssignedEventHandlerTests
             c.ExternalEventId == evt.EventId &&
             c.EntityId == evt.IssueId), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task HandleAsync_SelfAssignment_CreatesNoNotification()
+    {
+        var logger = Substitute.For<ILogger<IssueAssignedEventHandler>>();
+        var mediator = Substitute.For<IMediator>();
+
+        var handler = new IssueAssignedEventHandler(logger, mediator);
+        var userId = Guid.NewGuid();
+        // Same user on both sides: someone assigning an issue to themselves.
+        var evt = new IssueAssignedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, userId, Guid.NewGuid());
+
+        await handler.HandleAsync(evt, CancellationToken.None);
+
+        await mediator.DidNotReceive().Send(Arg.Any<CreateNotificationCommand>(), Arg.Any<CancellationToken>());
+    }
 }
