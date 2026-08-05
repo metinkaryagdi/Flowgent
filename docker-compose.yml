@@ -596,9 +596,14 @@ services:
         condition: service_healthy
       ai-api:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ASPNETCORE_HTTP_PORTS: "8080"
+      # Token-revocation cache. Must be shared, not per-process: with two replicas an
+      # in-memory cache gives each one its own revocation window.
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASS:?REDIS_PASS is required}"
       Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
       Jwt__Audience: "${JWT_AUDIENCE:-BitirmeProject.Clients}"

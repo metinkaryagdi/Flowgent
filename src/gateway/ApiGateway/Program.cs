@@ -3,8 +3,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using ApiGateway;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Common.Extensions;
@@ -82,39 +82,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     return;
                 }
 
-                var cache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
-                var cacheKey = $"token-status:{userId}:{securityStamp}";
-                if (!cache.TryGetValue(cacheKey, out bool isValid))
+                var services = context.HttpContext.RequestServices;
+                var cancellationToken = context.HttpContext.RequestAborted;
+                var cache = services.GetRequiredService<TokenStatusCache>();
+
+                // A null verdict means "unknown", which covers both a plain cache miss and
+                // an unreachable Redis -- either way the answer comes from IdentityService.
+                var isValid = await cache.TryGetAsync(userId, securityStamp, cancellationToken);
+                if (isValid is null)
                 {
-                    var client = context.HttpContext.RequestServices.GetRequiredService<IHttpClientFactory>()
+                    var client = services.GetRequiredService<IHttpClientFactory>()
                         .CreateClient("IdentityService");
 
                     try
                     {
                         var status = await client.GetFromJsonAsync<TokenStatusResponse>(
                             $"/api/v1/identity/token-status?userId={userId}&securityStamp={securityStamp}",
-                            context.HttpContext.RequestAborted);
+                            cancellationToken);
 
                         isValid = status?.IsValid == true;
                     }
                     catch
                     {
+                        // Fail closed: this is the authority on whether the token is still
+                        // good, and guessing "yes" would let revoked tokens through for as
+                        // long as IdentityService is unhealthy.
                         context.Fail("Unable to validate token status.");
                         return;
                     }
 
-                    cache.Set(
-                        cacheKey,
-                        isValid,
-                        new MemoryCacheEntryOptions
-                        {
-                            AbsoluteExpirationRelativeToNow = isValid
-                                ? TimeSpan.FromSeconds(10)
-                                : TimeSpan.FromSeconds(2)
-                        });
+                    await cache.SetAsync(userId, securityStamp, isValid.Value, cancellationToken);
                 }
 
-                if (!isValid)
+                if (!isValid.Value)
                     context.Fail("User is inactive or token has been invalidated.");
             }
         };
@@ -124,7 +124,33 @@ builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
 builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 builder.Services.AddScoped<CorrelationContext>();
-builder.Services.AddMemoryCache();
+
+// Token-status caching has to be shared across gateway replicas, so it lives in Redis.
+// Without a connection string the cache degrades to per-process memory, which is correct
+// for a single instance and wrong the moment a second one starts -- hence the warning.
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "gateway:";
+    });
+}
+else
+{
+    if (builder.Environment.IsProduction())
+    {
+        Log.Warning(
+            "ConnectionStrings:Redis is not configured. Token-status caching falls back to " +
+            "per-process memory, so revocation takes effect per replica. Do not run more " +
+            "than one gateway replica in this state.");
+    }
+
+    builder.Services.AddDistributedMemoryCache();
+}
+
+builder.Services.AddSingleton<TokenStatusCache>();
 builder.Services.AddHttpClient("IdentityService", client =>
 {
     var baseUrl = builder.Configuration["IdentityService:BaseUrl"] ?? "http://identity-api:8080";
