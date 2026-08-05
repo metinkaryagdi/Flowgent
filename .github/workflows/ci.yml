@@ -1,0 +1,208 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/flowgent
+
+jobs:
+  dotnet:
+    name: .NET build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore main solution
+        run: dotnet restore Flowgent.sln
+
+      - name: Build main solution
+        run: dotnet build Flowgent.sln --configuration Release --no-restore
+
+      - name: Restore tests
+        run: dotnet restore tests/tests.sln
+
+      - name: Test
+        run: dotnet test tests/tests.sln --configuration Release --no-restore --logger "console;verbosity=normal"
+
+  docker-build:
+    name: Docker build & scan (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity-api
+            context: .
+            dockerfile: src/services/identity/IdentityService.Api/Dockerfile
+          - name: project-api
+            context: .
+            dockerfile: src/services/projects/ProjectService.Api/Dockerfile
+          - name: issue-api
+            context: .
+            dockerfile: src/services/issues/IssueService.Api/Dockerfile
+          - name: sprint-api
+            context: .
+            dockerfile: src/services/sprints/SprintService.Api/Dockerfile
+          - name: notification-api
+            context: .
+            dockerfile: src/services/notifications/NotificationService.Api/Dockerfile
+          - name: storage-api
+            context: .
+            dockerfile: src/services/storage/StorageService.Api/Dockerfile
+          - name: ai-api
+            context: .
+            dockerfile: src/services/ai/AiService.Api/Dockerfile
+          - name: bff-api
+            context: .
+            dockerfile: src/services/bff/Bff.Api/Dockerfile
+          - name: gateway-api
+            context: .
+            dockerfile: src/gateway/ApiGateway/Dockerfile
+          - name: frontend
+            context: src/frontend/web
+            dockerfile: src/frontend/web/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Tags: <sha> always (immutable, what deployments should pin to), plus the
+      # branch name, plus `latest` only on the default branch.
+      - name: Derive image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.name }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Build once into the local daemon so the scan runs against the exact image
+      # that will be pushed, instead of rebuilding it after the scan.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          tags: flowgent-${{ matrix.name }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      # Full report goes to the Security tab; unfixed CVEs are reported but do not
+      # block, since there is no action to take on them yet.
+      - name: Scan image (report to Security tab)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: flowgent-${{ matrix.name }}:scan
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif
+          category: trivy-${{ matrix.name }}
+
+      # Gate: a fixable CRITICAL means a patched base image or package exists, so
+      # the build should not ship. HIGH is reported above but does not fail the run.
+      - name: Fail on fixable CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: flowgent-${{ matrix.name }}:scan
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-runs build-push-action, but every layer is a cache hit from the build
+      # above, so this only uploads.
+      - name: Push image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+
+  dependency-scan:
+    name: Dependency & secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Catches vulnerable NuGet/npm packages and committed secrets, which an
+      # image scan alone would miss.
+      - name: Scan repository
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret
+          format: sarif
+          output: trivy-fs.sarif
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
+
+  frontend:
+    name: Frontend lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/frontend/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:5000
+          VITE_USE_MOCK_API: "false"
+          VITE_SEQ_BASE_URL: http://localhost:5341
