@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -66,7 +67,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
+// Readiness gates on the database only -- StorageService does not publish or consume
+// events, so it has no broker connection to check. Liveness stays dependency-free so a
+// database blip cannot trigger a restart storm across every replica.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<StorageDbContext>("database", tags: [HealthCheckExtensions.ReadyTag]);
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 builder.Services.AddScoped<CorrelationContext>();
 
 builder.Services.AddStorageApplication();
@@ -79,6 +85,7 @@ builder.Services
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCorrelationId();
 
@@ -94,6 +101,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();

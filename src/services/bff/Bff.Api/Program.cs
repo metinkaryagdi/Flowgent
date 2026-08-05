@@ -9,6 +9,7 @@ using Polly.Extensions.Http;
 using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -123,9 +124,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<CorrelationContext>();
 builder.Services.AddHealthChecks();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseRouting();
 app.UseCorrelationId();
 
@@ -143,6 +146,6 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();

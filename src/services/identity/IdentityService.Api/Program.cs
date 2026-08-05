@@ -10,6 +10,7 @@ using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -93,7 +94,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
+// Readiness dependencies: the service is only ready for traffic once its own
+// database and the broker both answer. Liveness stays dependency-free so a
+// database blip cannot trigger a restart storm across every replica.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<IdentityDbContext>("database", tags: [HealthCheckExtensions.ReadyTag])
+    .AddRabbitMqReadinessCheck();
 
 // Uygulama & altyapı
 builder.Services.AddIdentityApplication();
@@ -127,7 +133,7 @@ app.UseCorrelationId();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();
 

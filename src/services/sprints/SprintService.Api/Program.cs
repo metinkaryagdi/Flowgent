@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 using Shared.Contracts.Events;
 
 Log.Logger = new LoggerConfiguration()
@@ -75,7 +76,13 @@ if (builder.Environment.IsProduction() && (string.IsNullOrWhiteSpace(internalSer
     throw new InvalidOperationException("InternalService:ApiKey is set to the insecure default. Generate a strong random key and set InternalService__ApiKey (same value on every caller: issue, sprint, ai).");
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
+// Readiness dependencies: the service is only ready for traffic once its own
+// database and the broker both answer. Liveness stays dependency-free so a
+// database blip cannot trigger a restart storm across every replica.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<SprintDbContext>("database", tags: [HealthCheckExtensions.ReadyTag])
+    .AddRabbitMqReadinessCheck();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 
 builder.Services.AddSprintApplication();
 builder.Services.AddSprintInfrastructure(builder.Configuration);
@@ -83,6 +90,7 @@ builder.Services.AddRabbitMQ(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCorrelationId();
 
@@ -104,7 +112,7 @@ app.UseAuthentication();
 app.UseMiddleware<InternalServiceMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();
 

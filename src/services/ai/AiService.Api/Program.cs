@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Shared.Common.Extensions;
+using Shared.Common.Health;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -70,6 +72,7 @@ if (builder.Environment.IsProduction() && (string.IsNullOrWhiteSpace(internalSer
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 
 builder.Services.AddAiApplication();
 builder.Services.AddAiInfrastructure(builder.Configuration);
@@ -77,6 +80,7 @@ builder.Services.AddHostedService<SprintEventsConsumer>();
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 using (var scope = app.Services.CreateScope())
@@ -91,7 +95,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();
 

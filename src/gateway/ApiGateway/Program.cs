@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 using Shared.Abstractions.Messaging;
 using Yarp.ReverseProxy.Transforms;
 
@@ -121,6 +122,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 builder.Services.AddScoped<CorrelationContext>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient("IdentityService", client =>
@@ -172,6 +174,10 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
+// Must precede the rate limiter below: without it every request carries the
+// reverse proxy's IP and all clients share a single rate-limit partition.
+app.UseReverseProxyForwardedHeaders();
+
 app.UseCors("gateway");
 app.UseCorrelationId();
 
@@ -208,7 +214,7 @@ app.Use(async (context, next) =>
 
 app.UseAuthorization();
 
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 app.MapReverseProxy();
 
 app.Run();

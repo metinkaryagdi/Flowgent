@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 using Shared.Contracts.Events;
 
 Log.Logger = new LoggerConfiguration()
@@ -27,7 +28,30 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+
+// SignalR keeps connection state in the process that owns the socket. With more than
+// one notification-api replica behind the gateway, a notification published by the
+// replica that consumed the event would never reach a client connected to a different
+// replica. The Redis backplane fans messages out across replicas.
+// Single-instance runs without a Redis connection string fall back to in-memory.
+var signalR = builder.Services.AddSignalR();
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    signalR.AddStackExchangeRedis(redisConnection, options =>
+    {
+        // Namespaced so the backplane cannot collide with the cache keys other
+        // services keep in the same Redis instance.
+        options.Configuration.ChannelPrefix =
+            StackExchange.Redis.RedisChannel.Literal("flowgent:notifications");
+    });
+}
+else if (builder.Environment.IsProduction())
+{
+    Log.Warning(
+        "No Redis connection string configured. SignalR is running without a backplane, "
+      + "so notifications will be lost if notification-api runs more than one replica.");
+}
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -93,7 +117,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
+// Readiness dependencies: the service is only ready for traffic once its own
+// database and the broker both answer. Liveness stays dependency-free so a
+// database blip cannot trigger a restart storm across every replica.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<NotificationDbContext>("database", tags: [HealthCheckExtensions.ReadyTag])
+    .AddRabbitMqReadinessCheck();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 builder.Services
     .AddHealthChecks()
     .AddCheck<NotificationDeliveryHealthCheck>("notification_delivery_worker")
@@ -105,6 +135,7 @@ builder.Services.AddRabbitMQ(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors();
 app.UseCorrelationId();
@@ -122,6 +153,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationsHub>("/hubs/notifications");
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();

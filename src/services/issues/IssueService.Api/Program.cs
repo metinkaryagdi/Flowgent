@@ -12,6 +12,7 @@ using Serilog;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
 using Shared.Common.Extensions;
+using Shared.Common.Health;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -76,7 +77,13 @@ if (builder.Environment.IsProduction() && (string.IsNullOrWhiteSpace(internalSer
     throw new InvalidOperationException("InternalService:ApiKey is set to the insecure default. Generate a strong random key and set InternalService__ApiKey (same value on every caller: issue, sprint, ai).");
 
 builder.Services.AddAuthorization();
-builder.Services.AddHealthChecks();
+// Readiness dependencies: the service is only ready for traffic once its own
+// database and the broker both answer. Liveness stays dependency-free so a
+// database blip cannot trigger a restart storm across every replica.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<IssueDbContext>("database", tags: [HealthCheckExtensions.ReadyTag])
+    .AddRabbitMqReadinessCheck();
+builder.Services.AddReverseProxyForwardedHeaders(builder.Configuration);
 
 // Redis (or in-memory fallback) is registered conditionally inside AddIssueInfrastructure
 // based on the "Redis" connection string. Registering it unconditionally here as well would
@@ -95,6 +102,7 @@ builder.Services.AddHttpClient("StorageService", client =>
 
 var app = builder.Build();
 
+app.UseReverseProxyForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCorrelationId();
 
@@ -116,7 +124,7 @@ app.UseAuthentication();
 app.UseMiddleware<InternalServiceMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 
 app.Run();
 
