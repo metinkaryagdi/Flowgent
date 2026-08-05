@@ -43,8 +43,12 @@ export default function LoginPage() {
             navigate('/projects');
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
-                const axiosErr = err as { response?: { data?: { message?: string }; status?: number } };
-                if (axiosErr.response?.status === 401) {
+                const axiosErr = err as { response?: { data?: { message?: string; code?: string }; status?: number } };
+                if (axiosErr.response?.data?.code === 'account_locked') {
+                    // Lockout also answers 401, so it has to be checked first —
+                    // otherwise the generic message would hide why login is failing.
+                    setError('Çok fazla hatalı deneme nedeniyle hesabınız geçici olarak kilitlendi. Lütfen 15 dakika sonra tekrar deneyin.');
+                } else if (axiosErr.response?.status === 401) {
                     setError('E-posta veya şifre hatalı.');
                 } else {
                     setError(axiosErr.response?.data?.message || 'Giriş yapılırken bir hata oluştu.');

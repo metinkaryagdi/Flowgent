@@ -1,3 +1,4 @@
+using BitirmeProject.IdentityService.Application.Common;
 using FluentValidation;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
@@ -14,8 +15,6 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .NotEmpty()
             .EmailAddress();
 
-        RuleFor(x => x.Password)
-            .NotEmpty()
-            .MinimumLength(6);
+        RuleFor(x => x.Password).ApplyPasswordPolicy();
     }
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using BitirmeProject.IdentityService.Application.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,6 +44,21 @@ public sealed class ExceptionHandlingMiddleware
             {
                 message = "Validation failed.",
                 errors = fieldErrors
+            }));
+            return;
+        }
+
+        // A lockout is an authentication failure, so it must answer 401 like every other
+        // rejected login -- not 400. The code lets clients distinguish it from a plain
+        // bad password without parsing the message.
+        if (exception is AccountLockedException locked)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                message = locked.Message,
+                code = AccountLockedException.Code,
+                lockoutEnd = locked.LockoutEnd
             }));
             return;
         }

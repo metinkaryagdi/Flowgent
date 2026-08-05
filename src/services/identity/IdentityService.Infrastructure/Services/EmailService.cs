@@ -10,12 +10,20 @@ public sealed class EmailService : IEmailService
     private readonly string _host;
     private readonly int _port;
     private readonly string _fromAddress;
+    private readonly bool _enableSsl;
+    private readonly string? _username;
+    private readonly string? _password;
 
     public EmailService(IConfiguration configuration)
     {
         _host = configuration["Smtp:Host"] ?? "mailhog";
         _port = int.TryParse(configuration["Smtp:Port"], out var p) ? p : 1025;
         _fromAddress = configuration["Smtp:FromAddress"] ?? "noreply@bitirmeproject.local";
+        // MailHog accepts anonymous plaintext; real providers (SendGrid, SES, ...)
+        // require STARTTLS plus credentials, so both are configurable.
+        _enableSsl = bool.TryParse(configuration["Smtp:EnableSsl"], out var ssl) && ssl;
+        _username = configuration["Smtp:Username"];
+        _password = configuration["Smtp:Password"];
     }
 
     public async Task SendInviteEmailAsync(
@@ -36,11 +44,17 @@ public sealed class EmailService : IEmailService
             Bu davet 48 saat içinde geçerliliğini yitirecektir.
             """;
 
-        using var client = new SmtpClient(_host, _port)
+        using var client = new SmtpClient(_host, _port) { EnableSsl = _enableSsl };
+
+        if (!string.IsNullOrWhiteSpace(_username))
         {
-            EnableSsl = false,
-            Credentials = CredentialCache.DefaultNetworkCredentials
-        };
+            client.UseDefaultCredentials = false;
+            client.Credentials = new NetworkCredential(_username, _password);
+        }
+        else
+        {
+            client.Credentials = CredentialCache.DefaultNetworkCredentials;
+        }
 
         var message = new MailMessage(_fromAddress, toEmail, subject, body);
         await client.SendMailAsync(message, cancellationToken);

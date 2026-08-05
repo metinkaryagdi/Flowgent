@@ -285,9 +285,17 @@ public sealed class IssuesController : ControllerBase
         return int.TryParse(trimmed, out version) && version > 0;
     }
 
-    private Guid? ResolveCallerOrgId()
-        => Guid.TryParse(Request.Headers["X-Organization-Id"].FirstOrDefault()
-            ?? User.FindFirstValue("org_id"), out var orgId) ? orgId : null;
+    // Reads the claim only -- never the raw X-Organization-Id header. For external
+    // callers the claim comes from the JWT; for internal service-to-service calls
+    // InternalServiceMiddleware promotes the header to a claim *after* validating
+    // the shared API key. Trusting the header here would let anyone holding a valid
+    // token bypass the gateway and read another organization's data.
+    // Reads the claim only -- never the raw X-Organization-Id header. For external
+    // callers the claim comes from the JWT; for internal service-to-service calls
+    // InternalServiceMiddleware promotes the header to a claim *after* validating
+    // the shared API key. Trusting the header here would let anyone holding a valid
+    // token bypass the gateway and read another organization's data.
+    private Guid? ResolveCallerOrgId() => User.TryGetOrganizationId();
 
     private async Task<(BitirmeProject.IssueService.Domain.Entities.Issue? Issue, ActionResult? Error)> AuthorizeIssueScopeAsync(Guid issueId)
     {

@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using BitirmeProject.IdentityService.Application.Common;
+using FluentValidation;
 
 namespace BitirmeProject.IdentityService.Application.Features.Users.Commands.RegisterUser;
 
@@ -17,8 +18,6 @@ public sealed class RegisterUserCommandValidator
             .EmailAddress().WithMessage("Email format is invalid.")
             .MaximumLength(100).WithMessage("Email must be at most 100 characters.");
 
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(6).WithMessage("Password must be at least 6 characters.");
+        RuleFor(x => x.Password).ApplyPasswordPolicy();
     }
 }

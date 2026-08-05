@@ -1,3 +1,4 @@
+using BitirmeProject.IdentityService.Application.Common;
 using FluentValidation;
 
 namespace BitirmeProject.IdentityService.Application.Features.Invites.Commands.AcceptInvite;
@@ -14,8 +15,6 @@ public sealed class AcceptInviteCommandValidator : AbstractValidator<AcceptInvit
             .MinimumLength(3).WithMessage("Username must be at least 3 characters.")
             .MaximumLength(50).WithMessage("Username must be at most 50 characters.");
 
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(6).WithMessage("Password must be at least 6 characters.");
+        RuleFor(x => x.Password).ApplyPasswordPolicy();
     }
 }

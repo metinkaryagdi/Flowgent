@@ -54,8 +54,20 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         if (!user.IsActive)
             throw new InvalidOperationException("User is inactive.");
 
+        // Checked before password verification so a locked account cannot be probed.
+        if (user.IsLockedOut)
+            throw new AccountLockedException(
+                "Account is locked due to too many failed login attempts. Please try again later.",
+                user.LockoutEnd);
+
         if (!_passwordHasher.VerifyPassword(user.PasswordHash, request.Password))
+        {
+            user.RecordFailedLogin();
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             throw new InvalidOperationException("Invalid credentials.");
+        }
+
+        user.RecordSuccessfulLogin();
 
         var roles = user.UserRoles
             .Select(ur => ur.Role?.Name)

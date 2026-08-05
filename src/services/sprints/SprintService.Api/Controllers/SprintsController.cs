@@ -132,18 +132,14 @@ public sealed class SprintsController : ControllerBase
     [HttpGet("project/{projectId:guid}")]
     public async Task<ActionResult<IReadOnlyList<SprintDto>>> GetByProject(Guid projectId)
     {
-        Guid? callerOrgId = Guid.TryParse(Request.Headers["X-Organization-Id"].FirstOrDefault()
-            ?? User.FindFirst("org_id")?.Value, out var g) ? g : null;
-        var result = await _mediator.Send(new GetSprintsByProjectQuery(projectId, callerOrgId));
+        var result = await _mediator.Send(new GetSprintsByProjectQuery(projectId, ResolveCallerOrgId()));
         return Ok(result);
     }
 
     [HttpGet("project/{projectId:guid}/active")]
     public async Task<ActionResult<SprintDto?>> GetActive(Guid projectId)
     {
-        Guid? callerOrgId = Guid.TryParse(Request.Headers["X-Organization-Id"].FirstOrDefault()
-            ?? User.FindFirst("org_id")?.Value, out var g) ? g : null;
-        var result = await _mediator.Send(new GetActiveSprintQuery(projectId, callerOrgId));
+        var result = await _mediator.Send(new GetActiveSprintQuery(projectId, ResolveCallerOrgId()));
         return Ok(result);
     }
 
@@ -179,6 +175,13 @@ public sealed class SprintsController : ControllerBase
         var result = await _mediator.Send(new GetBacklogQuery(projectId, orgId.Value));
         return Ok(result);
     }
+
+    // Reads the claim only -- never the raw X-Organization-Id header. For external
+    // callers the claim comes from the JWT; for internal service-to-service calls
+    // InternalServiceMiddleware promotes the header to a claim *after* validating
+    // the shared API key. Trusting the header here would let anyone holding a valid
+    // token bypass the gateway and read another organization's data.
+    private Guid? ResolveCallerOrgId() => User.TryGetOrganizationId();
 
     private async Task<(Domain.Entities.Sprint? Sprint, ActionResult? Error)> AuthorizeSprintAccessAsync(Guid sprintId)
     {
