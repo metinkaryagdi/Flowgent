@@ -80,9 +80,13 @@ public sealed class NotificationDeliveryWorker : BackgroundService
                     {
                         notification.MarkAsDelivered();
                         var dto = mapper.Map<NotificationDto>(notification);
+                        // Method name must match the client's connection.on(...)
+                        // handler; a mismatch delivers to nobody while still looking
+                        // like a success here, because SendAsync to a group with no
+                        // matching handler is not an error.
                         await _hubContext.Clients
-                            .Group($"user-{notification.UserId}")
-                            .SendAsync("notification", dto, cancellationToken);
+                            .Group(NotificationsHub.GroupFor(notification.UserId))
+                            .SendAsync(NotificationsHub.ReceiveNotification, dto, cancellationToken);
                         break;
                     }
 

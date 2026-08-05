@@ -6,10 +6,23 @@ const HUB_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') +
 type SignalRStatus = 'disconnected' | 'connecting' | 'connected';
 
 export function useSignalR(onNotification?: (data: unknown) => void) {
-    const [status, setStatus] = useState<SignalRStatus>('disconnected');
+    // Starts as 'connecting' because the mount effect opens a connection right away.
+    // Setting it from inside the effect instead would be a synchronous setState in an
+    // effect body, which triggers an extra render pass on every mount.
+    const [status, setStatus] = useState<SignalRStatus>('connecting');
     const connectionRef = useRef<signalR.HubConnection | null>(null);
 
-    const connect = useCallback(() => {
+    // Keeps the latest callback without making it an effect dependency -- otherwise a
+    // caller passing an inline function would tear down and reopen the socket on
+    // every render.
+    const onNotificationRef = useRef(onNotification);
+    useEffect(() => {
+        onNotificationRef.current = onNotification;
+    }, [onNotification]);
+
+    // Builds and starts a connection. Deliberately free of synchronous setState: every
+    // status update here happens in an async callback.
+    const openConnection = useCallback(() => {
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(HUB_URL, {
                 withCredentials: true,
@@ -24,34 +37,38 @@ export function useSignalR(onNotification?: (data: unknown) => void) {
 
         // Listen for notification events
         connection.on('ReceiveNotification', (data: unknown) => {
-            onNotification?.(data);
+            onNotificationRef.current?.(data);
         });
 
         connection.on('NotificationRead', (data: unknown) => {
-            onNotification?.(data);
+            onNotificationRef.current?.(data);
         });
 
-        setStatus('connecting');
         connection
             .start()
             .then(() => setStatus('connected'))
             .catch(() => setStatus('disconnected'));
 
         connectionRef.current = connection;
-    }, [onNotification]);
-
-    const disconnect = useCallback(() => {
-        connectionRef.current?.stop();
-        connectionRef.current = null;
-        setStatus('disconnected');
+        return connection;
     }, []);
 
     useEffect(() => {
-        connect();
+        const connection = openConnection();
         return () => {
-            disconnect();
+            void connection.stop();
+            if (connectionRef.current === connection) {
+                connectionRef.current = null;
+            }
         };
-    }, [connect, disconnect]);
+    }, [openConnection]);
 
-    return { status, reconnect: connect };
+    // Called from event handlers, where a synchronous setState is fine.
+    const reconnect = useCallback(() => {
+        void connectionRef.current?.stop();
+        setStatus('connecting');
+        openConnection();
+    }, [openConnection]);
+
+    return { status, reconnect };
 }
