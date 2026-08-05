@@ -10,9 +10,23 @@
 # It also sets X-Forwarded-For / X-Forwarded-Proto, which the services read via
 # AddReverseProxyForwardedHeaders(). Without TLS here, Production-mode auth
 # cookies (Secure=true) are rejected by browsers and login silently fails.
-
 {
 	email {$ACME_EMAIL}
+
+	# Which ACME directory to request certificates from. Defaults to Let's Encrypt
+	# production. Set ACME_CA to the staging directory for a dry run:
+	#
+	#   ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory
+	#
+	# Staging issues an untrusted certificate (browsers and curl will complain,
+	# which is expected) but exercises the exact same DNS + port-80 challenge path
+	# against far looser rate limits. Production allows only 5 failed validations
+	# per account per hour, which is easy to burn through while a DNS record is
+	# still wrong -- and once burned you are locked out for an hour. Rehearse on
+	# staging, then clear ACME_CA and bring the stack up again for a real
+	# certificate. Caddy keeps staging and production certs in separate storage
+	# paths, so switching back re-issues cleanly.
+	acme_ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
 }
 
 # SPA
