@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { waitForVerificationLink } from './mailhog';
 
-test('register -> project -> issue -> notification', async ({ page }) => {
+// Note when running this repeatedly: the gateway allows 3 verify-email calls per IP per
+// 5 minutes, so a fourth run inside that window gets a 429 and fails at the verification
+// step. That is the rate limiter working, not a broken test.
+
+test('register -> verify email -> project -> issue -> notification', async ({ page, request }) => {
   const unique = `${Date.now()}`;
   const userName = `e2e_${unique}`;
   const email = `e2e_${unique}@example.com`;
@@ -35,7 +40,35 @@ test('register -> project -> issue -> notification', async ({ page }) => {
   await page.getByTestId('register-confirm').fill(password);
   await page.getByTestId('register-submit').click();
 
-  // A fresh account belongs to no organization, so registration lands on onboarding.
+  // Registration deliberately issues no tokens: the account is Pending until the emailed
+  // link is used, so the only thing to assert here is the "check your inbox" screen.
+  await expect(page.getByTestId('register-check-email')).toBeVisible();
+
+  // Prove the account really is unusable first -- otherwise the verification step below
+  // could pass against a system that never gated login at all.
+  await page.goto('/login');
+  await page.getByTestId('login-email').fill(email);
+  await page.getByTestId('login-password').fill(password);
+  await page.getByTestId('login-submit').click();
+  await expect(page.getByTestId('login-unverified')).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+
+  // Pull the real link out of MailHog rather than reading the token from the database:
+  // this covers the parts that only exist at runtime -- App:BaseUrl building the origin,
+  // SMTP actually delivering, and the mail surviving base64 transfer encoding.
+  const verificationLink = await waitForVerificationLink(request, email);
+  const verificationUrl = new URL(verificationLink);
+  expect(verificationUrl.pathname).toBe('/verify-email');
+  await page.goto(`${verificationUrl.pathname}${verificationUrl.search}`);
+  await expect(page.getByTestId('verify-email-success')).toBeVisible();
+
+  await page.getByTestId('verify-email-to-login').click();
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByTestId('login-email').fill(email);
+  await page.getByTestId('login-password').fill(password);
+  await page.getByTestId('login-submit').click();
+
+  // A fresh account belongs to no organization, so the first login lands on onboarding.
   // Creating one here is not optional: issue and sprint endpoints resolve the caller's
   // organization from the org_id claim and reject callers without one.
   await expect(page).toHaveURL(/\/onboarding/);
