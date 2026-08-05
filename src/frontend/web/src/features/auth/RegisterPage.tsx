@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authApi } from '../../api/auth';
-import { useAuthStore } from '../../store/authStore';
 import styles from './Auth.module.css';
 
 export default function RegisterPage() {
@@ -12,9 +11,25 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
+    // Set once registration succeeds. Registration no longer signs anyone in, so there is
+    // nothing to navigate to -- the account stays unusable until the emailed link is used.
+    const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+    const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'throttled'>('idle');
 
-    const { setAuth, setFlags } = useAuthStore();
-    const navigate = useNavigate();
+    const handleResend = async () => {
+        if (!registeredEmail || resendState === 'sending') return;
+        setResendState('sending');
+        try {
+            await authApi.resendVerification(registeredEmail);
+            setResendState('sent');
+        } catch (err: unknown) {
+            // The endpoint answers 200 whether or not the address exists, so the only
+            // failure worth distinguishing is the gateway's rate limit -- reporting
+            // "sent" there would leave the user waiting for a mail that never went out.
+            const status = (err as { response?: { status?: number } }).response?.status;
+            setResendState(status === 429 ? 'throttled' : 'sent');
+        }
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -39,17 +54,7 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             const result = await authApi.register({ userName, email, password });
-            const { accessToken: _, ...rest } = result;
-            setAuth(rest.user, rest.roles);
-
-            try {
-                const flags = await authApi.getFlags();
-                setFlags(flags);
-            } catch {
-                // Flags alınamazsa devam et
-            }
-
-            navigate('/onboarding');
+            setRegisteredEmail(result.email);
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
                 const axiosErr = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
@@ -71,6 +76,42 @@ export default function RegisterPage() {
             setLoading(false);
         }
     };
+
+    if (registeredEmail) {
+        return (
+            <div data-testid="register-check-email">
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 4 }}>
+                    E-postanızı kontrol edin
+                </h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: 24 }}>
+                    <strong>{registeredEmail}</strong> adresine bir doğrulama bağlantısı gönderdik.
+                    Hesabınızı etkinleştirmek ve giriş yapabilmek için bağlantıya tıklayın.
+                    Bağlantı 24 saat geçerlidir.
+                </p>
+
+                <div className={`${styles.formAlert}`} style={{ marginBottom: 24 }}>
+                    E-posta birkaç dakika içinde gelmezse spam klasörünüzü kontrol edin.
+                </div>
+
+                <button
+                    type="button"
+                    className={styles.formButton}
+                    onClick={handleResend}
+                    disabled={resendState !== 'idle'}
+                    data-testid="register-resend"
+                >
+                    {resendState === 'sending' && 'Gönderiliyor...'}
+                    {resendState === 'sent' && 'Bağlantı yeniden gönderildi'}
+                    {resendState === 'throttled' && 'Çok fazla istek — birkaç dakika bekleyin'}
+                    {resendState === 'idle' && 'Bağlantıyı yeniden gönder'}
+                </button>
+
+                <div className={styles.formFooter}>
+                    Doğruladınız mı? <Link to="/login" data-testid="register-to-login">Giriş Yap</Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

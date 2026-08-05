@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using FluentAssertions;
 using IdentityService.IntegrationTests.Fixtures;
+using IdentityService.IntegrationTests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,14 +33,15 @@ public sealed class AccountLockoutTests : IClassFixture<IdentityWebAppFactory>
     private async Task<string> RegisterUserAsync()
     {
         var email = $"lockout_{Guid.NewGuid():N}@example.com";
-        var response = await _client.PostAsJsonAsync("/api/v1/identity/register", new
-        {
-            UserName = $"lockout_{Guid.NewGuid():N}",
-            Email = email,
-            Password = ValidPassword
-        });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // Must be verified: an unverified account is refused with email_not_verified before
+        // the password is ever checked, so the lockout counter would never move.
+        await _factory.RegisterAndVerifyAsync(
+            _client,
+            $"lockout_{Guid.NewGuid():N}",
+            email,
+            ValidPassword);
+
         return email;
     }
 

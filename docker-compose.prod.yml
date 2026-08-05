@@ -63,6 +63,9 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
+      # Emailed links must point at the public HTTPS origin, not localhost. Getting
+      # this wrong ships dead invite and verification links to real users.
+      App__BaseUrl: "https://${PUBLIC_WEB_DOMAIN}"
       # Real SMTP provider -- MailHog is development-only and silently swallows
       # every invite email.
       Smtp__Host: "${SMTP_HOST:?SMTP_HOST is required in production}"

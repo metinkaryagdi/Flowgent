@@ -24,6 +24,14 @@ public class User : BaseEntity
     /// <summary>UTC time the password was last changed.</summary>
     public DateTime? PasswordChangedAt { get; private set; }
 
+    /// <summary>UTC time the email address was confirmed, or null if it never was.
+    /// Accounts created through an accepted invite are already proven to own the
+    /// address, so they are verified on creation; self-service registrations are not.</summary>
+    public DateTime? EmailVerifiedAt { get; private set; }
+
+    /// <summary>True once the address has been confirmed.</summary>
+    public bool IsEmailVerified => EmailVerifiedAt.HasValue;
+
     /// <summary>The organization this user was most recently active in. Used to restore org context on login/refresh.</summary>
     public Guid? LastActiveOrganizationId { get; private set; }
 
@@ -103,6 +111,48 @@ public class User : BaseEntity
 
     /// <summary>True if the account is currently locked out.</summary>
     public bool IsLockedOut => LockoutEnd.HasValue && LockoutEnd > DateTime.UtcNow;
+
+    /// <summary>
+    /// Puts a freshly self-registered account into <see cref="UserStatus.Pending"/> until the
+    /// address is confirmed. Pending is not Active, and both LoginCommandHandler and the
+    /// JwtBearer OnTokenValidated hooks already refuse non-Active users, so this alone blocks
+    /// sign-in without any extra checks scattered around.
+    /// </summary>
+    public void RequireEmailVerification()
+    {
+        Status = UserStatus.Pending;
+        EmailVerifiedAt = null;
+        MarkUpdated();
+    }
+
+    /// <summary>
+    /// Confirms the address. Idempotent, so replaying a verification link is harmless.
+    /// Only promotes Pending to Active -- a Suspended or Deactivated account must not be
+    /// silently reactivated by clicking an old verification link.
+    /// </summary>
+    public void ConfirmEmail()
+    {
+        if (EmailVerifiedAt.HasValue)
+            return;
+
+        EmailVerifiedAt = DateTime.UtcNow;
+
+        if (Status == UserStatus.Pending)
+        {
+            Status = UserStatus.Active;
+            SecurityStamp = Guid.NewGuid();
+        }
+
+        MarkUpdated();
+    }
+
+    /// <summary>Marks an account as already-verified without a token round trip, for paths
+    /// where ownership of the address is proven some other way (accepting an emailed invite).</summary>
+    public void MarkEmailVerifiedOnCreation()
+    {
+        EmailVerifiedAt = DateTime.UtcNow;
+        MarkUpdated();
+    }
 
     public void AddRole(Role role)
     {

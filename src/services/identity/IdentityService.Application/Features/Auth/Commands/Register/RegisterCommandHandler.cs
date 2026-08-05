@@ -1,53 +1,45 @@
-using System.Security.Cryptography;
 using System.Text.Json;
-using AutoMapper;
 using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Application.DTOs;
-using BitirmeProject.IdentityService.Application.Options;
 using BitirmeProject.IdentityService.Domain.Entities;
 using MediatR;
-using Microsoft.Extensions.Options;
 using Shared.Abstractions.Messaging;
 using Shared.Contracts.Events;
 
 namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
 
-public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthResponseDto>
+/// <summary>
+/// Self-service registration. Creates the account in <c>Pending</c> and emails a
+/// verification link; it deliberately issues no access or refresh token, so an
+/// unverified address can never reach an authenticated endpoint.
+/// </summary>
+public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterResponseDto>
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRoleRepository _roleRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IOutboxRepository _outboxRepository;
-    private readonly IMapper _mapper;
-    private readonly JwtOptions _jwtOptions;
+    private readonly IEmailVerificationIssuer _verificationIssuer;
 
     public RegisterCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork,
-        IJwtTokenGenerator jwtTokenGenerator,
         IRoleRepository roleRepository,
-        IRefreshTokenRepository refreshTokenRepository,
         IOutboxRepository outboxRepository,
-        IMapper mapper,
-        IOptions<JwtOptions> options)
+        IEmailVerificationIssuer verificationIssuer)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
-        _jwtTokenGenerator = jwtTokenGenerator;
         _roleRepository = roleRepository;
-        _refreshTokenRepository = refreshTokenRepository;
         _outboxRepository = outboxRepository;
-        _mapper = mapper;
-        _jwtOptions = options.Value;
+        _verificationIssuer = verificationIssuer;
     }
 
-    public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<RegisterResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         var normalizedUserName = request.UserName.ToLowerInvariant();
         var normalizedEmail    = request.Email.ToLowerInvariant();
@@ -61,6 +53,10 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
         var passwordHash = _passwordHasher.HashPassword(request.Password);
         var user = new User(normalizedUserName, normalizedEmail, passwordHash);
 
+        // Pending, not Active. LoginCommandHandler and both JwtBearer OnTokenValidated
+        // hooks already refuse non-Active users, so this is what actually blocks sign-in.
+        user.RequireEmailVerification();
+
         await _userRepository.AddAsync(user, cancellationToken);
 
         var defaultRole = await _roleRepository.GetByNameAsync(DefaultIdentityRoles.Default, cancellationToken)
@@ -68,23 +64,6 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
                 $"Default role '{DefaultIdentityRoles.Default}' is not configured.");
 
         user.AddRole(defaultRole);
-
-        var roles = user.UserRoles
-            .Select(ur => ur.Role?.Name)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Distinct()
-            .Cast<string>()
-            .ToList();
-
-        var token = _jwtTokenGenerator.Generate(user, roles);
-
-        var rawToken = GenerateToken();
-        var refreshToken = new RefreshToken(
-            user.Id,
-            TokenHasher.Hash(rawToken),
-            DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays));
-
-        await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
 
         var evt = new UserCreatedEvent(user.Id, user.UserName, user.Email, Guid.Empty);
         await _outboxRepository.AddAsync(new OutboxMessage
@@ -94,22 +73,15 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Au
             OccurredOn = evt.OccurredOn
         }, cancellationToken);
 
+        await _verificationIssuer.IssueAsync(user, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AuthResponseDto
+        return new RegisterResponseDto
         {
-            AccessToken = token.AccessToken,
-            ExpiresAt = token.ExpiresAt,
-            RefreshToken = rawToken,
-            User = _mapper.Map<UserDto>(user),
-            Roles = roles
+            UserId = user.Id,
+            Email = user.Email,
+            VerificationRequired = true
         };
-    }
-
-    private static string GenerateToken()
-    {
-        var bytes = new byte[64];
-        RandomNumberGenerator.Fill(bytes);
-        return Convert.ToBase64String(bytes);
     }
 }

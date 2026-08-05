@@ -39,6 +39,10 @@ public static class AdminUserSeeder
 
         var passwordHash = passwordHasher.HashPassword(adminPassword);
         var admin = new User(adminUserName, adminEmail, passwordHash);
+        // The address comes from ADMIN_EMAIL in the operator's own environment, so there is
+        // nothing to prove and no mailbox to wait on -- a seeded admin that had to click a
+        // link would deadlock a fresh deployment if SMTP were not configured yet.
+        admin.MarkEmailVerifiedOnCreation();
         admin.AddRole(adminRole);
 
         await dbContext.Users.AddAsync(admin, cancellationToken);

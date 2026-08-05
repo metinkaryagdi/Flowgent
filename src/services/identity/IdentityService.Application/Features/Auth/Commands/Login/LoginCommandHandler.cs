@@ -51,6 +51,14 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResp
         if (user is null)
             throw new InvalidOperationException("Invalid credentials.");
 
+        // Checked before the generic inactive branch: Pending means "never confirmed the
+        // address", which is actionable by the user, whereas Suspended/Deactivated is an
+        // administrative decision they cannot resolve themselves.
+        if (user.Status == UserStatus.Pending && !user.IsEmailVerified)
+            throw new EmailNotVerifiedException(
+                "Email address has not been verified. Check your inbox for the verification link.",
+                user.Email);
+
         if (!user.IsActive)
             throw new InvalidOperationException("User is inactive.");
 

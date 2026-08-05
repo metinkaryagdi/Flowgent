@@ -1,4 +1,5 @@
 using BitirmeProject.IdentityService.Application.Abstractions;
+using BitirmeProject.IdentityService.Application.Common;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using BitirmeProject.IdentityService.Infrastructure.Repositories;
 using BitirmeProject.IdentityService.Infrastructure.Services;
@@ -36,9 +37,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         services.AddScoped<IInviteRepository, InviteRepository>();
+        services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
 
         // Email
         services.AddScoped<IEmailService, EmailService>();
+
+        // Builds and sends the account-activation link. Bound here rather than in the
+        // Application layer's MediatR registration because it depends on IEmailService.
+        services.Configure<AppOptions>(configuration.GetSection(AppOptions.SectionName));
+        services.AddScoped<IEmailVerificationIssuer, EmailVerificationIssuer>();
 
         // Password hasher
         services.AddScoped<IPasswordHasher, PasswordHasherAdapter>();

@@ -6,4 +6,4 @@ namespace BitirmeProject.IdentityService.Application.Features.Auth.Commands.Regi
 public sealed record RegisterCommand(
     string UserName,
     string Email,
-    string Password) : IRequest<AuthResponseDto>;
+    string Password) : IRequest<RegisterResponseDto>;

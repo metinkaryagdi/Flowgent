@@ -90,6 +90,16 @@ export interface RegisterRequest {
   password: string;
 }
 
+/**
+ * Registration deliberately carries no tokens. The account is created unverified
+ * and cannot sign in until the emailed link is followed.
+ */
+export interface RegisterResponseDto {
+  userId: string;
+  email: string;
+  verificationRequired: boolean;
+}
+
 // ─── Project DTOs ────────────────────
 export interface ProjectDto {
   id: string;

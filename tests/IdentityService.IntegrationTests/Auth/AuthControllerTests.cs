@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using IdentityService.IntegrationTests.Fixtures;
+using IdentityService.IntegrationTests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -36,11 +37,20 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var body = await response.Content.ReadFromJsonAsync<RegisterResponse>();
         body.Should().NotBeNull();
-        body!.User.Should().NotBeNull();
-        body.User.Email.Should().Be(request.Email);
-        body.AccessToken.Should().BeEmpty(); // cookie'ye taşındı, body boş olmalı
+        body!.Email.Should().Be(request.Email);
+        body.VerificationRequired.Should().BeTrue();
+
+        // Registration must not authenticate: no auth cookies, and the account is Pending
+        // until the emailed link is followed.
+        response.Headers.Contains("Set-Cookie").Should().BeFalse();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var user = await db.Users.AsNoTracking().SingleAsync(u => u.Email == request.Email);
+        user.Status.Should().Be(BitirmeProject.IdentityService.Domain.Enums.UserStatus.Pending);
+        user.EmailVerifiedAt.Should().BeNull();
     }
 
     [Fact]
@@ -89,15 +99,10 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
     [Fact]
     public async Task Login_WithValidCredentials_Returns200AndSetsCookies()
     {
-        // Önce kayıt ol
+        // Önce kayıt ol ve e-postayı doğrula (doğrulanmamış hesap giriş yapamaz)
         var email = $"login_{Guid.NewGuid():N}@example.com";
         var password = "TestPass123!";
-        await _client.PostAsJsonAsync("/api/v1/identity/register", new
-        {
-            UserName = $"loginuser_{Guid.NewGuid():N}",
-            Email = email,
-            Password = password
-        });
+        await _factory.RegisterAndVerifyAsync(_client, $"loginuser_{Guid.NewGuid():N}", email, password);
 
         // Giriş yap
         var response = await _client.PostAsJsonAsync("/api/v1/identity/login", new
@@ -169,6 +174,13 @@ public sealed class AuthControllerTests : IClassFixture<IdentityWebAppFactory>
     }
 
     // ─── Response DTOs ───────────────────────────────────────────────────────
+
+    private sealed class RegisterResponse
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public bool VerificationRequired { get; set; }
+    }
 
     private sealed class AuthResponse
     {

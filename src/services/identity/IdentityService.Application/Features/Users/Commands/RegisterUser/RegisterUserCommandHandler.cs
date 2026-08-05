@@ -42,6 +42,10 @@ public sealed class RegisterUserCommandHandler
 
         var passwordHash = _passwordHasher.HashPassword(request.Password);
         var user = new User(request.UserName, request.Email, passwordHash);
+        // Admin-provisioned account: an authenticated administrator supplied the address,
+        // so it is treated as vouched for. Self-service registration is the path that has
+        // to prove ownership, and that goes through RegisterCommandHandler.
+        user.MarkEmailVerifiedOnCreation();
 
         await _userRepository.AddAsync(user, cancellationToken);
 

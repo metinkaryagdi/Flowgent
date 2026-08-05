@@ -13,6 +13,7 @@ import AdminGuard from './routes/AdminGuard';
 
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
+import VerifyEmailPage from './features/auth/VerifyEmailPage';
 import AcceptInvitePage from './features/invite/AcceptInvitePage';
 import ProjectsPage from './features/projects/ProjectsPage';
 import ProjectDetailPage from './features/projects/ProjectDetailPage';
@@ -50,6 +51,7 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/invite/accept" element={<AcceptInvitePage />} />
           </Route>
 

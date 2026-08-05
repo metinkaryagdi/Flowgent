@@ -2,6 +2,7 @@ import type {
     AuthResponseDto,
     LoginRequest,
     RegisterRequest,
+    RegisterResponseDto,
     UiFlags,
     UserDto,
     ProjectDto,
@@ -433,16 +434,12 @@ export const mockApi = {
                 roles: ['Admin'],
             };
         },
-        register: async (data: RegisterRequest): Promise<AuthResponseDto> => {
+        // Mirrors the real endpoint: no tokens, verification required.
+        register: async (data: RegisterRequest): Promise<RegisterResponseDto> => {
             const users = getUsers();
             const existing = users.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
             if (existing) {
-                return {
-                    accessToken: 'mock-token',
-                    expiresAt: addDays(7),
-                    user: existing,
-                    roles: ['User'],
-                };
+                return { userId: existing.id, email: existing.email, verificationRequired: true };
             }
             const user: UserDto = {
                 id: uid('user'),
@@ -452,12 +449,7 @@ export const mockApi = {
                 createdAt: nowIso(),
             };
             setUsers([user, ...users]);
-            return {
-                accessToken: 'mock-token',
-                expiresAt: addDays(7),
-                user,
-                roles: ['User'],
-            };
+            return { userId: user.id, email: user.email, verificationRequired: true };
         },
         getFlags: async (): Promise<UiFlags> => defaultFlags,
     },

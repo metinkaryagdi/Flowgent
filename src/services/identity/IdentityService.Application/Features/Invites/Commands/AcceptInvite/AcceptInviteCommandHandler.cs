@@ -55,6 +55,11 @@ public sealed class AcceptInviteCommandHandler : IRequestHandler<AcceptInviteCom
         var passwordHash = _passwordHasher.HashPassword(request.Password);
         var user = new User(request.UserName, invite.Email, passwordHash);
 
+        // Reaching this point required the token from an email sent to invite.Email, which
+        // already proves control of the address. Sending a second verification link would
+        // be pure friction, so the account starts verified and Active.
+        user.MarkEmailVerifiedOnCreation();
+
         var defaultRole = await _roleRepository.GetByNameAsync(DefaultIdentityRoles.Default, cancellationToken)
             ?? throw new InvalidOperationException($"Default role '{DefaultIdentityRoles.Default}' is not configured.");
 

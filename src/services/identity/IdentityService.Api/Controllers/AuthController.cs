@@ -3,7 +3,9 @@ using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Login;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Refresh;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Register;
+using BitirmeProject.IdentityService.Application.Features.Auth.Commands.ResendVerification;
 using BitirmeProject.IdentityService.Application.Features.Auth.Commands.Revoke;
+using BitirmeProject.IdentityService.Application.Features.Auth.Commands.VerifyEmail;
 using BitirmeProject.IdentityService.Application.Options;
 using System.IdentityModel.Tokens.Jwt;
 using MediatR;
@@ -34,13 +36,41 @@ public sealed class AuthController : ControllerBase
         _userRepository = userRepository;
     }
 
+    /// <summary>
+    /// Creates an account in Pending state and emails a verification link.
+    /// Sets no auth cookies: the account cannot sign in until the link is followed.
+    /// </summary>
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterCommand command)
+    public async Task<ActionResult<RegisterResponseDto>> Register([FromBody] RegisterCommand command)
     {
         var result = await _mediator.Send(command);
-        SetTokenCookies(result);
-        return Ok(StripTokens(result));
+        return Ok(result);
+    }
+
+    /// <summary>Confirms an address using the token from the emailed link.</summary>
+    [AllowAnonymous]
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail(
+        [FromBody] VerifyEmailCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(command, cancellationToken);
+        return Ok(new { message = "Email verified. You can now sign in." });
+    }
+
+    /// <summary>
+    /// Re-sends the verification link. Always answers 200, whether or not the address
+    /// belongs to an account, so it cannot be used to enumerate registered users.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification(
+        [FromBody] ResendVerificationCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(command, cancellationToken);
+        return Ok(new { message = "If that address needs verification, a new link has been sent." });
     }
 
     [AllowAnonymous]

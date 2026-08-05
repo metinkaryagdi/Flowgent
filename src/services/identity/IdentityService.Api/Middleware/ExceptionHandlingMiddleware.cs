@@ -63,6 +63,21 @@ public sealed class ExceptionHandlingMiddleware
             return;
         }
 
+        // Same reasoning as the lockout above: refusing an unverified account is an
+        // authentication failure (401), and the code lets the client offer "resend the
+        // link" instead of the misleading "wrong password".
+        if (exception is EmailNotVerifiedException unverified)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                message = unverified.Message,
+                code = EmailNotVerifiedException.Code,
+                email = unverified.Email
+            }));
+            return;
+        }
+
         var (statusCode, message) = exception switch
         {
             InvalidOperationException ioe when ioe.Message.Contains("credentials", StringComparison.OrdinalIgnoreCase)

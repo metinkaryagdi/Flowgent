@@ -1,4 +1,5 @@
 using Xunit;
+using BitirmeProject.IdentityService.Application.Abstractions;
 using BitirmeProject.IdentityService.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,6 +20,9 @@ public sealed class IdentityWebAppFactory : WebApplicationFactory<Program>, IAsy
         .WithUsername("test")
         .WithPassword("test")
         .Build();
+
+    /// <summary>Captures the verification links the app "sends", so tests can follow them.</summary>
+    public CapturingEmailService Emails { get; } = new();
 
     public async Task InitializeAsync()
     {
@@ -51,6 +55,13 @@ public sealed class IdentityWebAppFactory : WebApplicationFactory<Program>, IAsy
             services.AddDbContext<IdentityDbContext>(options =>
                 options.UseNpgsql(_postgres.GetConnectionString())
                        .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+
+            // SMTP: no relay exists in tests, and the issuer swallows send failures, so
+            // without this the verification token would be generated and then lost.
+            var emailDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailService));
+            if (emailDescriptor != null)
+                services.Remove(emailDescriptor);
+            services.AddSingleton<IEmailService>(Emails);
 
             // RabbitMQ hosted servislerini kaldır
             RemoveHostedService<Shared.Common.Messaging.OutboxPublisherService>(services);

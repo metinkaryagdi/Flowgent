@@ -29,13 +29,21 @@ public sealed class AuthControllerTests
         jwtOptions.Value.Returns(new JwtOptions());
         var controller = new AuthController(mediator, env, jwtOptions) { ControllerContext = MakeContext() };
         var command = new RegisterCommand("user", "user@example.com", "Pass123!");
-        var dto = new AuthResponseDto { AccessToken = "token", ExpiresAt = DateTime.UtcNow.AddHours(1) };
+        var dto = new RegisterResponseDto
+        {
+            UserId = Guid.NewGuid(),
+            Email = "user@example.com",
+            VerificationRequired = true
+        };
         mediator.Send(Arg.Any<RegisterCommand>(), Arg.Any<CancellationToken>()).Returns(dto);
 
         var result = await controller.Register(command);
 
         var ok = result.Result.Should().BeOfType<OkObjectResult>().Subject;
         ok.Value.Should().NotBeNull();
+
+        // Registration must not authenticate anyone: no auth cookies may be written.
+        controller.Response.Headers.SetCookie.Should().BeEmpty();
     }
 
     [Fact]

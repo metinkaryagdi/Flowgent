@@ -296,6 +296,10 @@ services:
       RabbitMQ__VirtualHost: "/"
       # Seq
       Seq__ServerUrl: "http://seq:5341"
+      # Origin used to build links that get emailed to users (invite acceptance,
+      # email verification). Read from config only -- never from a request body,
+      # which would let a caller choose the URL inside an email we send.
+      App__BaseUrl: "${APP_BASE_URL:-http://localhost:5174}"
       # JWT
       Jwt__Secret: "${JWT_SECRET:?JWT_SECRET is required}"
       Jwt__Issuer: "${JWT_ISSUER:-BitirmeProject.IdentityService}"
@@ -628,6 +632,9 @@ services:
       VITE_USE_MOCK_API: "false"
       # Admin log widget links straight to Seq from the browser.
       VITE_SEQ_BASE_URL: "${PUBLIC_SEQ_BASE_URL:-http://localhost:5341}"
+      # The source tree below is a bind mount, and inotify events do not cross the host
+      # boundary -- without polling the dev server serves stale modules until restarted.
+      VITE_USE_POLLING: "true"
     ports:
       - "5174:5174"
     volumes:

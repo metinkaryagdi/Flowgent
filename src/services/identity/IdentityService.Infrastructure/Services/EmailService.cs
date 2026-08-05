@@ -59,4 +59,44 @@ public sealed class EmailService : IEmailService
         var message = new MailMessage(_fromAddress, toEmail, subject, body);
         await client.SendMailAsync(message, cancellationToken);
     }
+
+    public async Task SendEmailVerificationAsync(
+        string toEmail,
+        string verificationLink,
+        CancellationToken cancellationToken = default)
+    {
+        const string subject = "Flowgent - E-posta adresinizi doğrulayın";
+        var body = $"""
+            Merhaba,
+
+            Flowgent hesabınızı oluşturmak için bu adresi kullandınız. Hesabınızı
+            etkinleştirmek ve giriş yapabilmek için aşağıdaki bağlantıya tıklayın:
+            {verificationLink}
+
+            Bu bağlantı 24 saat içinde geçerliliğini yitirecektir.
+
+            Bu hesabı siz oluşturmadıysanız bu e-postayı yok sayabilirsiniz;
+            doğrulanmayan hesaplar giriş yapamaz.
+            """;
+
+        await SendAsync(toEmail, subject, body, cancellationToken);
+    }
+
+    private async Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken)
+    {
+        using var client = new SmtpClient(_host, _port) { EnableSsl = _enableSsl };
+
+        if (!string.IsNullOrWhiteSpace(_username))
+        {
+            client.UseDefaultCredentials = false;
+            client.Credentials = new NetworkCredential(_username, _password);
+        }
+        else
+        {
+            client.Credentials = CredentialCache.DefaultNetworkCredentials;
+        }
+
+        var message = new MailMessage(_fromAddress, toEmail, subject, body);
+        await client.SendMailAsync(message, cancellationToken);
+    }
 }
