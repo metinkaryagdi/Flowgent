@@ -9,9 +9,7 @@
 ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?logo=rabbitmq&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-<!-- .github/workflows/ci.yml dosyasını commit ettikten sonra alttaki satırı aç:
 [![CI](https://github.com/metinkaryagdi/Flowgent/actions/workflows/ci.yml/badge.svg)](https://github.com/metinkaryagdi/Flowgent/actions/workflows/ci.yml)
--->
 
 ---
 
@@ -183,10 +181,13 @@ The AI service integrates **gemma3:4b** running locally on **Ollama** — projec
 
 - **JWT (HS256)** access token, 60-minute lifetime, carried in an **HttpOnly cookie** (XSS-resistant).
 - **Refresh tokens** SHA-256 hashed at rest, 30-day lifetime, **rotated** on every refresh.
-- Passwords hashed with **Bcrypt**.
-- **SecurityStamp** invalidation — changing password/role/status invalidates all existing tokens.
-- **Account lockout** for 15 minutes after five failed logins.
-- Every endpoint is authorized and pre-validated at the gateway; authorization combines a **system role** (Admin / User) with an **org-level role** (Owner / Lead / Member). Owners are protected — only a system admin can reassign Manager and Member roles, and an admin panel exposes organization and membership management across the whole system.
+- Passwords hashed with **PBKDF2-HMAC-SHA256** (ASP.NET Core `PasswordHasher`, per-user salt, 100k+ iterations).
+- **Password policy** on registration: minimum 12 characters with upper, lower, digit, and symbol.
+- **Account lockout** for 15 minutes after five consecutive failed logins; a successful login resets the counter. The API answers `401` with `code: "account_locked"` so clients can tell a lockout apart from a wrong password.
+- **Organization scoping is claim-based.** Services resolve the caller's organization from the `org_id` JWT claim only. The `X-Organization-Id` header is honoured exclusively for internal service-to-service calls carrying a valid shared API key, so a user cannot widen their own scope by sending it.
+- **SecurityStamp** is regenerated on password/role/status change. Note that tokens are **not** re-validated per request, so an already-issued access token stays usable until it expires (≤60 min). Refresh is blocked immediately.
+- Every endpoint is authorized and pre-validated at the gateway, which also applies **per-IP rate limiting** (stricter on auth endpoints). Authorization combines a **system role** (Admin / User) with an **org-level role** (Owner / Manager / Member). Owners are protected — only a system admin can reassign Manager and Member roles, and an admin panel exposes organization and membership management across the whole system.
+- In production only the reverse proxy is published (80/443). Databases, Redis, RabbitMQ, and Seq bind to `127.0.0.1`, and the individual microservice ports are not published at all.
 
 ---
 
@@ -200,49 +201,119 @@ cd Flowgent
 docker compose up -d
 ```
 
-Services come up behind health checks. Ports: Gateway 5000 · Identity 5001 · Project 5002 · Issue 5003 · Sprint 5004 · Notification 5005 · BFF 5006 · Storage 5007 · AI 5008. Infra: RabbitMQ 5672 (UI 15672) · Redis 6379 · Seq 5341 · frontend 5173.
+Services come up behind health checks. Ports: Gateway 5000 · Identity 5001 · Project 5002 · Issue 5003 · Sprint 5004 · Notification 5005 · BFF 5006 · Storage 5007 · AI 5008. Infra: RabbitMQ 5672 (UI 15672) · Redis 6379 · Seq 5341 · MailHog 8025 · frontend 5174.
 
-> Adjust paths/commands to match your repository layout.
+Every service exposes three health endpoints:
 
-### Deploying beyond localhost
+| Endpoint | Checks | Use for |
+|---|---|---|
+| `/health/live` | nothing — only that the process answers | restart/liveness probes |
+| `/health/ready` | its database, and the broker where applicable | load-balancer readiness |
+| `/health` | all of the above plus background workers | dashboards, debugging |
 
-The default `docker-compose.yml` is tuned for local development (Vite dev
-server, `Development` environment, infra ports bound to `127.0.0.1`). To run
-on a real host:
+Liveness is deliberately dependency-free: a database blip should drain traffic,
+not trigger a restart loop across every replica.
 
-1. Generate strong secrets — never reuse the placeholder `.env.example`
-   values: `./tools/generate-secrets.ps1` and paste the output into `.env`.
-2. Set `ASPNETCORE_ENVIRONMENT=Production`, and `PUBLIC_API_BASE_URL` /
-   `PUBLIC_WEB_ORIGIN` to the address browsers will actually reach.
-3. Build and run with the production overlay, which replaces the frontend's
-   dev server with a real `vite build` served by nginx:
+### Deploying to a public host
+
+The default `docker-compose.yml` is for local development (Vite dev server,
+`Development` environment). Production uses an overlay that builds the frontend
+with `vite build`, serves it from nginx, stops publishing the microservice ports
+entirely, and puts **Caddy** in front for TLS.
+
+**Prerequisites:** two DNS records (app + api) already pointing at the host's
+public IP, with ports 80 and 443 reachable — Caddy needs them for the Let's
+Encrypt ACME challenge.
+
+1. Generate strong secrets — never reuse the `.env.example` placeholders:
+   `./tools/generate-secrets.ps1`, then paste the output into `.env`.
+2. Fill in the production values in `.env`:
+   `ASPNETCORE_ENVIRONMENT=Production`, `PUBLIC_WEB_DOMAIN`, `PUBLIC_API_DOMAIN`,
+   `ACME_EMAIL`, the `SMTP_*` settings (invite emails need a real relay — MailHog
+   is not started in production), and `ADMIN_PASSWORD`. Every secret is declared
+   `${VAR:?...}`, so the stack refuses to start rather than silently running with
+   a blank password.
+3. Bring it up with the overlay:
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
    ```
-4. Re-run `tools/generate-secrets.ps1` to rotate secrets later; rotating a
-   DB/RabbitMQ/Redis password on an already-running stack means updating the
-   password inside that container too, not just editing `.env`.
+4. Verify TLS actually came up before announcing the URL:
+   ```bash
+   docker compose logs caddy | grep -i certificate
+   curl -I https://your-app-domain
+   ```
+   In `Production` the auth cookies are `Secure=true`, so if TLS is not working,
+   login fails silently for everyone.
 
-Infra ports (Postgres instances, Redis, RabbitMQ, Seq, MailHog) stay bound to
-`127.0.0.1` even in the overlay — put a reverse proxy / firewall in front of
-the app ports (5000, 5174) if the host is internet-facing.
+Rotating a Postgres/RabbitMQ/Redis password later means changing it inside the
+container too, not just editing `.env`.
+
+### Backups
+
+`docker-compose.backup.yml` adds a scheduled job that dumps all seven databases
+(`pg_dump -Fc`, one file per service) into the `db-backups` volume and prunes
+dumps older than `BACKUP_RETENTION_DAYS` (default 7). Retention only runs after a
+fully successful pass, so a broken job cannot delete the last good copies.
+
+```bash
+# scheduled backups
+docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d backup
+
+# one-off
+docker compose -f docker-compose.yml -f docker-compose.backup.yml run --rm backup backup.sh
+
+# restore one service (stop it first; the restore drops and recreates objects)
+docker compose stop identity-api
+docker compose -f docker-compose.yml -f docker-compose.backup.yml \
+  run --rm -e RESTORE_CONFIRM=yes backup restore.sh identity latest
+docker compose start identity-api
+```
+
+The dumps live on the same host as the databases, so they survive a container
+rebuild but not the loss of the machine — copy them off-box for real disaster
+recovery.
 
 ---
 
 ## Testing
 
-Each service has its own unit-test project (command/query handlers, FluentValidation rules, domain behavior, event consumers, middleware). The full flow is additionally verified with end-to-end scenario tests and Docker Compose integration tests — including stopping a service mid-flow and confirming events wait in the queue and are processed with no data loss once it recovers.
+**303 automated tests**, all green: 246 unit tests (command/query handlers, FluentValidation rules, domain behaviour, event consumers, middleware) and 57 integration tests that run against a real PostgreSQL spun up per fixture with Testcontainers — so Docker must be running.
+
+```bash
+dotnet test tests/tests.sln
+```
+
+Security-sensitive behaviour has dedicated regression coverage, each verified to
+fail when the fix it guards is reverted:
+
+- **Cross-organization isolation** — a user from org A sending org B's id in
+  `X-Organization-Id` must not see org B's issues or sprints.
+- **Account lockout** — five failures lock, a success resets, and a locked
+  account is rejected before password verification.
+- **Notification hub** — connections must join the right group, which broke once
+  because the claim was read under the wrong name and failed silently.
+
+One Playwright end-to-end test drives the real browser journey (register →
+onboarding → project → issue → drag across the board → live notification
+connection) against the running stack:
+
+```bash
+cd src/frontend/web && npx playwright test
+```
 
 ---
 
 ## Roadmap
 
+- [x] **Redis** read cache for the issue board, invalidated with a generation token
+- [x] CI with automated **container & dependency scanning** (Trivy → GitHub Security tab)
+- [x] Automatic **TLS** via Caddy, and scheduled database backups with a tested restore path
+- [ ] Add **OpenTelemetry** distributed tracing & metrics — the stack currently ships logs only
+- [ ] Ship backups **off-host** (object storage) so they survive losing the machine
+- [ ] Per-request token revocation (today a revoked access token stays valid until it expires)
 - [ ] Deploy on **Kubernetes** with horizontal autoscaling and a service mesh
-- [ ] Activate **Redis** as a read cache for hot queries
-- [ ] Add **OpenTelemetry** distributed tracing & metrics
 - [ ] Extend the AI assistant to a full **RAG** pipeline (vector DB)
 - [ ] Multi-tenant architecture and a mobile client
-- [ ] CI/CD pipeline with automated security scanning
 - [ ] English localisation of the UI
 
 ---

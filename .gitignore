@@ -45,3 +45,6 @@ tools/build_thesis*.py
 bitirme*.docx
 bitirme_rapor*.pdf
 docs/SAVUNMA_HAZIRLIK.md
+
+# Kişisel operasyon notları — asla commitlenmez
+*.local.md
